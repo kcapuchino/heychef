@@ -72,6 +72,7 @@ export default function Home() {
   const [plannerDay, setPlannerDay] = useState("Monday");
   const [plannerMeal, setPlannerMeal] = useState("Dinner");
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
+  const [isEditingRecipe, setIsEditingRecipe] = useState(false);
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
@@ -374,6 +375,15 @@ function addToShoppingList(recipe: Recipe) {
     setMealPlan(updatedMealPlan);
     setSelectedRecipe(null);
   }
+
+  function updateSelectedRecipe(updatedRecipe: Recipe) {
+  const updatedRecipes = recipes.map((recipe) =>
+    recipe.id === updatedRecipe.id ? updatedRecipe : recipe
+  );
+
+  setRecipes(updatedRecipes);
+  setSelectedRecipe(updatedRecipe);
+}
 
   function removeShoppingItem(item: string) {
     setShoppingList(shoppingList.filter((listItem) => listItem !== item));
@@ -939,12 +949,94 @@ Bake for 25 minutes`}
                 <RecipeMeta recipe={selectedRecipe} />
               </div>
 
-              <button
-                onClick={() => toggleFavorite(selectedRecipe.id)}
-                className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
-              >
-                {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
-              </button>
+              <div className="flex flex-wrap gap-3">
+  
+
+  <div className="flex gap-3">
+  <button
+    onClick={() => setIsEditingRecipe(!isEditingRecipe)}
+    className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+  >
+    {isEditingRecipe ? "Done Editing" : "Edit Recipe"}
+  </button>
+
+  <button
+    onClick={() => toggleFavorite(selectedRecipe.id)}
+    className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+  >
+    {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
+  </button>
+  {isEditingRecipe && (
+  <div className="mb-8 rounded-3xl bg-[#f8efe6] p-5">
+    <h2 className="mb-4 text-xl font-bold">Edit Recipe</h2>
+
+    <label className="mb-2 block font-bold">Title</label>
+    <input
+      value={selectedRecipe.title}
+      onChange={(e) =>
+        updateSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+      }
+      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+    />
+
+    <label className="mb-2 block font-bold">Image URL</label>
+    <input
+      value={selectedRecipe.image || ""}
+      onChange={(e) =>
+        updateSelectedRecipe({ ...selectedRecipe, image: e.target.value })
+      }
+      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+    />
+
+    <label className="mb-2 block font-bold">Cook Time</label>
+    <input
+      value={selectedRecipe.cookTime || ""}
+      onChange={(e) =>
+        updateSelectedRecipe({ ...selectedRecipe, cookTime: e.target.value })
+      }
+      placeholder="30 min"
+      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+    />
+
+    <label className="mb-2 block font-bold">Servings</label>
+    <input
+      value={selectedRecipe.servings || ""}
+      onChange={(e) =>
+        updateSelectedRecipe({ ...selectedRecipe, servings: e.target.value })
+      }
+      placeholder="4 servings"
+      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+    />
+
+    <label className="mb-2 block font-bold">Ingredients</label>
+    <textarea
+      value={selectedRecipe.ingredients.join("\n")}
+      onChange={(e) =>
+        updateSelectedRecipe({
+          ...selectedRecipe,
+          ingredients: e.target.value.split("\n").filter(Boolean),
+        })
+      }
+      rows={8}
+      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+    />
+
+    <label className="mb-2 block font-bold">Steps</label>
+    <textarea
+      value={selectedRecipe.steps.join("\n")}
+      onChange={(e) =>
+        updateSelectedRecipe({
+          ...selectedRecipe,
+          steps: e.target.value.split("\n").filter(Boolean),
+        })
+      }
+      rows={10}
+      className="w-full rounded-xl border border-[#ead7c8] p-3"
+    />
+  </div>
+)}
+</div>
+</div>
             </div>
 
             <div className="mb-8 flex flex-wrap gap-3">
@@ -1015,23 +1107,59 @@ Bake for 25 minutes`}
             )}
 
             <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
-            <div className="mb-8 space-y-3">
-              {selectedRecipe.ingredients.map((ingredient) => (
-                <label key={ingredient} className="flex items-center gap-3">
-                  <input type="checkbox" className="h-5 w-5" />
-                  <span>{ingredient}</span>
-                </label>
-              ))}
-            </div>
+
+{isEditingRecipe ? (
+  <textarea
+    value={selectedRecipe.ingredients.join("\n")}
+    onChange={(e) =>
+      updateSelectedRecipe({
+        ...selectedRecipe,
+        ingredients: e.target.value
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      })
+    }
+    rows={8}
+    className="mb-8 w-full rounded-2xl border border-[#ead7c8] p-4"
+  />
+) : (
+  <div className="mb-8 space-y-3">
+    {selectedRecipe.ingredients.map((ingredient) => (
+      <label key={ingredient} className="flex items-center gap-3">
+        <input type="checkbox" className="h-5 w-5" />
+        <span>{ingredient}</span>
+      </label>
+    ))}
+  </div>
+)}
 
             <h2 className="mb-4 text-2xl font-bold">Steps</h2>
-            <ol className="space-y-3">
-              {selectedRecipe.steps.map((step, index) => (
-                <li key={`${step}-${index}`} className="rounded-2xl bg-[#f8efe6] p-4">
-                  <strong>Step {index + 1}:</strong> {step}
-                </li>
-              ))}
-            </ol>
+
+{isEditingRecipe ? (
+  <textarea
+    value={selectedRecipe.steps.join("\n")}
+    onChange={(e) =>
+      updateSelectedRecipe({
+        ...selectedRecipe,
+        steps: e.target.value
+          .split("\n")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      })
+    }
+    rows={10}
+    className="w-full rounded-2xl border border-[#ead7c8] p-4"
+  />
+) : (
+  <ol className="space-y-3">
+    {selectedRecipe.steps.map((step, index) => (
+      <li key={`${step}-${index}`} className="rounded-2xl bg-[#f8efe6] p-4">
+        <strong>Step {index + 1}:</strong> {step}
+      </li>
+    ))}
+  </ol>
+)}
           </div>
         </section>
       </main>
