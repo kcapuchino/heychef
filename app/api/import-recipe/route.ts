@@ -35,11 +35,13 @@ function findRecipeJsonLd(json: any): any | null {
 function getImage(image: any) {
   if (!image) return "";
   if (typeof image === "string") return image;
+
   if (Array.isArray(image)) {
     const first = image[0];
     if (typeof first === "string") return first;
     return first?.url || "";
   }
+
   return image.url || "";
 }
 
@@ -51,7 +53,6 @@ function getSteps(instructions: any): string[] {
   if (Array.isArray(instructions)) {
     return instructions.flatMap((item) => {
       if (typeof item === "string") return [item];
-
       if (item.text) return [item.text];
 
       if (item.itemListElement) {
@@ -65,6 +66,34 @@ function getSteps(instructions: any): string[] {
   if (instructions.text) return [instructions.text];
 
   return [];
+}
+
+function formatDuration(value: any) {
+  if (!value) return "";
+
+  const text = String(value);
+
+  const hours = text.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (hours) {
+    const h = hours[1] ? Number(hours[1]) : 0;
+    const m = hours[2] ? Number(hours[2]) : 0;
+
+    if (h && m) return `${h} hr ${m} min`;
+    if (h) return `${h} hr`;
+    if (m) return `${m} min`;
+  }
+
+  return text;
+}
+
+function getServings(recipe: any) {
+  const yieldValue = recipe.recipeYield || recipe.yield || "";
+
+  if (Array.isArray(yieldValue)) {
+    return yieldValue[0] || "";
+  }
+
+  return yieldValue;
 }
 
 function fallbackFromHtml(html: string) {
@@ -96,6 +125,8 @@ function fallbackFromHtml(html: string) {
     image: "",
     ingredients,
     steps,
+    cookTime: "",
+    servings: "",
   };
 }
 
@@ -145,6 +176,10 @@ export async function POST(request: Request) {
               image: getImage(recipe.image),
               ingredients: recipe.recipeIngredient || [],
               steps: getSteps(recipe.recipeInstructions),
+              cookTime: formatDuration(
+                recipe.cookTime || recipe.totalTime || recipe.prepTime || ""
+              ),
+              servings: getServings(recipe),
               sourceUrl: url,
             });
           }
