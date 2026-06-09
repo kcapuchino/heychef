@@ -943,34 +943,28 @@ Bake for 25 minutes`}
   className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
 />
 
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h1 className="mb-2 text-4xl font-bold">{selectedRecipe.title}</h1>
-                <RecipeMeta recipe={selectedRecipe} />
-              </div>
+            <div className="mb-6">
+  <h1 className="mb-2 text-4xl font-bold">{selectedRecipe.title}</h1>
+  <RecipeMeta recipe={selectedRecipe} />
 
-              <div className="flex flex-wrap gap-3">
-  
+  <div className="mt-4 flex gap-3">
+    <button
+      onClick={() => setIsEditingRecipe(!isEditingRecipe)}
+      className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+    >
+      {isEditingRecipe ? "Done Editing" : "Edit Recipe"}
+    </button>
 
-  <div className="flex gap-3">
-  <button
-    onClick={() => setIsEditingRecipe(!isEditingRecipe)}
-    className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
-  >
-    {isEditingRecipe ? "Done Editing" : "Edit Recipe"}
-  </button>
-
-  <button
-    onClick={() => toggleFavorite(selectedRecipe.id)}
-    className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
-  >
-    {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
-  </button>
+    <button
+      onClick={() => toggleFavorite(selectedRecipe.id)}
+      className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+    >
+      {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
+    </button>
+  </div>
 </div>
-</div>
-            </div>
             {isEditingRecipe && (
-  <div className="mb-8 rounded-3xl bg-[#f8efe6] p-5">
+  <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
     <h2 className="mb-4 text-xl font-bold">Edit Recipe</h2>
 
     <label className="mb-2 block font-bold">Title</label>
@@ -1055,7 +1049,7 @@ Bake for 25 minutes`}
               </button>
             </div>
 
-            <div className="mb-8 rounded-3xl bg-[#f8efe6] p-5">
+            <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
               <h2 className="mb-3 text-xl font-bold">Add to Meal Plan</h2>
 
               <div className="mb-4 grid gap-3 md:grid-cols-2">
@@ -1107,8 +1101,6 @@ Bake for 25 minutes`}
             )}
 
             <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
-
-<h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
 
 <div className="mb-8 space-y-3">
   {selectedRecipe.ingredients.map((ingredient) => (
