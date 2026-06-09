@@ -73,6 +73,7 @@ export default function Home() {
   const [plannerMeal, setPlannerMeal] = useState("Dinner");
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
@@ -138,6 +139,29 @@ export default function Home() {
     setShowAllRecipes(false);
     localStorage.removeItem("hey-chef-current-user");
   }
+
+  function createNewRecipe() {
+  const newRecipe: Recipe = {
+    id: crypto.randomUUID(),
+    title: "New Recipe",
+    image: "",
+    ingredients: [],
+    steps: [],
+    cookTime: "",
+    servings: "",
+    sourceUrl: "",
+    isFavorite: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  setRecipes([newRecipe, ...recipes]);
+  setSelectedRecipe(newRecipe);
+  setIsEditingRecipe(true);
+  setShowAllRecipes(false);
+  setShowImport(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+}
 
   async function importRecipe() {
     if (!recipeUrl) return;
@@ -438,55 +462,74 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     return (
       <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
         <section className="mx-auto max-w-6xl px-6 py-10">
-  <nav className="mb-8 flex flex-wrap items-center justify-between gap-3">
-    <div>
+  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div>
+    <button
+      onClick={() => {
+        setSelectedRecipe(null);
+        setShowMealPlanner(false);
+        setShowShoppingList(false);
+        setShowAllRecipes(false);
+        setIsMenuOpen(false);
+      }}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+  </div>
+
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
+  >
+    ☰
+  </button>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
       <button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowMealPlanner(false);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-  }}
-  className="text-2xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-      <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
+          setShowMealPlanner(true);
+          setIsMenuOpen(false);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        📅 Meal Planner
+      </button>
+
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowMealPlanner(false);
+          setShowAllRecipes(false);
+          setShowShoppingList(true);
+          setIsMenuOpen(false);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🛒 Shopping List ({shoppingList.length})
+      </button>
+
+      <button
+        onClick={createNewRecipe}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ➕ New Recipe
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
     </div>
-
-    <div className="flex flex-wrap gap-3">
-  <button
-    onClick={() => {
-      setSelectedRecipe(null);
-      setShowShoppingList(false);
-      setShowAllRecipes(false);
-      setShowMealPlanner(true);
-    }}
-    className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
-  >
-    Meal Planner
-  </button>
-
-  <button
-    onClick={() => {
-      setSelectedRecipe(null);
-      setShowMealPlanner(false);
-      setShowAllRecipes(false);
-      setShowShoppingList(true);
-    }}
-    className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
-  >
-    Shopping List ({shoppingList.length})
-  </button>
-
-  <button
-    onClick={logoutUser}
-    className="rounded-full bg-white px-5 py-2 text-sm text-[#a63a0a]"
-  >
-    Log Out
-  </button>
-</div>
-  </nav>
+  )}
+</nav>
           <button
   onClick={() => {
     setShowShoppingList(false);
@@ -541,48 +584,74 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     return (
       <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
         <section className="mx-auto max-w-6xl px-6 py-10">
-  <nav className="mb-8 flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowMealPlanner(false);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-  }}
-  className="text-2xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-      <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
-    </div>
+  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div>
+    <button
+      onClick={() => {
+        setSelectedRecipe(null);
+        setShowMealPlanner(false);
+        setShowShoppingList(false);
+        setShowAllRecipes(false);
+        setIsMenuOpen(false);
+      }}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+  </div>
 
-    <div className="flex flex-wrap gap-3">
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
+  >
+    ☰
+  </button>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
       <button
         onClick={() => {
           setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
           setShowMealPlanner(true);
+          setIsMenuOpen(false);
         }}
-        className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
-        Meal Planner
+        📅 Meal Planner
       </button>
 
       <button
         onClick={() => {
           setSelectedRecipe(null);
+          setShowMealPlanner(false);
+          setShowAllRecipes(false);
           setShowShoppingList(true);
+          setIsMenuOpen(false);
         }}
-        className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
-        Shopping List ({shoppingList.length})
+        🛒 Shopping List ({shoppingList.length})
       </button>
 
-      <button onClick={logoutUser} className="rounded-full bg-white px-5 py-2 text-sm text-[#a63a0a]">
-        Log Out
+      <button
+        onClick={createNewRecipe}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ➕ New Recipe
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
       </button>
     </div>
-  </nav>
+  )}
+</nav>
           <button
   onClick={() => {
     setShowMealPlanner(false);
@@ -710,55 +779,74 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return (
     <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
       <section className="mx-auto max-w-6xl px-6 py-10">
-        <nav className="mb-8 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <button
-              onClick={() => {
-                setSelectedRecipe(null);
-                setShowMealPlanner(false);
-                setShowShoppingList(false);
-                setShowAllRecipes(false);
-              }}
-              className="text-2xl font-bold text-[#a63a0a]"
-            >
-              Hey Chef!
-            </button>
-            <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
-          </div>
+        <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div>
+    <button
+      onClick={() => {
+        setSelectedRecipe(null);
+        setShowMealPlanner(false);
+        setShowShoppingList(false);
+        setShowAllRecipes(false);
+        setIsMenuOpen(false);
+      }}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+  </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => {
-                setSelectedRecipe(null);
-                setShowShoppingList(false);
-                setShowAllRecipes(false);
-                setShowMealPlanner(true);
-              }}
-              className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
-            >
-              Meal Planner
-            </button>
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
+  >
+    ☰
+  </button>
 
-            <button
-              onClick={() => {
-                setSelectedRecipe(null);
-                setShowMealPlanner(false);
-                setShowAllRecipes(false);
-                setShowShoppingList(true);
-              }}
-              className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
-            >
-              Shopping List ({shoppingList.length})
-            </button>
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
+          setShowMealPlanner(true);
+          setIsMenuOpen(false);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        📅 Meal Planner
+      </button>
 
-            <button
-              onClick={logoutUser}
-              className="rounded-full bg-white px-5 py-2 text-sm text-[#a63a0a]"
-            >
-              Log Out
-            </button>
-          </div>
-        </nav>
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowMealPlanner(false);
+          setShowAllRecipes(false);
+          setShowShoppingList(true);
+          setIsMenuOpen(false);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🛒 Shopping List ({shoppingList.length})
+      </button>
+
+      <button
+        onClick={createNewRecipe}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ➕ New Recipe
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</nav>
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <button
@@ -804,6 +892,18 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
                 {isImporting ? "Importing..." : "Import"}
               </button>
             </div>
+            <div className="my-5 flex items-center gap-4">
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+  <span className="text-sm text-[#6d5549]">OR</span>
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+</div>
+
+<button
+  onClick={createNewRecipe}
+  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  + New Recipe
+</button>
 
             {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
 
@@ -883,48 +983,74 @@ Bake for 25 minutes`}
     return (
       <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
         <section className="mx-auto max-w-6xl px-6 py-10">
-  <nav className="mb-8 flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowMealPlanner(false);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-  }}
-  className="text-2xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-      <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
-    </div>
+  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div>
+    <button
+      onClick={() => {
+        setSelectedRecipe(null);
+        setShowMealPlanner(false);
+        setShowShoppingList(false);
+        setShowAllRecipes(false);
+        setIsMenuOpen(false);
+      }}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+  </div>
 
-    <div className="flex flex-wrap gap-3">
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
+  >
+    ☰
+  </button>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
       <button
         onClick={() => {
           setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
           setShowMealPlanner(true);
+          setIsMenuOpen(false);
         }}
-        className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
-        Meal Planner
+        📅 Meal Planner
       </button>
 
       <button
         onClick={() => {
           setSelectedRecipe(null);
+          setShowMealPlanner(false);
+          setShowAllRecipes(false);
           setShowShoppingList(true);
+          setIsMenuOpen(false);
         }}
-        className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
-        Shopping List ({shoppingList.length})
+        🛒 Shopping List ({shoppingList.length})
       </button>
 
-      <button onClick={logoutUser} className="rounded-full bg-white px-5 py-2 text-sm text-[#a63a0a]">
-        Log Out
+      <button
+        onClick={createNewRecipe}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ➕ New Recipe
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
       </button>
     </div>
-  </nav>
+  )}
+</nav>
 
   <button
     onClick={() => {
@@ -1134,69 +1260,113 @@ Bake for 25 minutes`}
   return (
     <main className="min-h-screen bg-[#f8efe6] text-[#2b1a12]">
       <section className="mx-auto max-w-6xl px-6 py-10">
-        <nav className="mb-12 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-2xl font-bold text-[#a63a0a]">Hey Chef!</div>
-            <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
-          </div>
+       <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div>
+    <button
+      onClick={() => {
+        setSelectedRecipe(null);
+        setShowMealPlanner(false);
+        setShowShoppingList(false);
+        setShowAllRecipes(false);
+        setIsMenuOpen(false);
+      }}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+  </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => setShowMealPlanner(true)}
-              className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
-            >
-              Meal Planner
-            </button>
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
+  >
+    ☰
+  </button>
 
-            <button
-              onClick={() => setShowShoppingList(true)}
-              className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm text-[#a63a0a]"
-            >
-              Shopping List ({shoppingList.length})
-            </button>
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
+          setShowMealPlanner(true);
+          setIsMenuOpen(false);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        📅 Meal Planner
+      </button>
 
-            <button onClick={logoutUser} className="rounded-full bg-white px-5 py-2 text-sm text-[#a63a0a]">
-              Log Out
-            </button>
-          </div>
-        </nav>
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowMealPlanner(false);
+          setShowAllRecipes(false);
+          setShowShoppingList(true);
+          setIsMenuOpen(false);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🛒 Shopping List ({shoppingList.length})
+      </button>
 
-        <div className="grid gap-10 md:grid-cols-2 md:items-center">
-          <div>
-            <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
-              What’s for dinner?
-            </p>
+      <button
+        onClick={createNewRecipe}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ➕ New Recipe
+      </button>
 
-            <h1 className="mb-5 text-5xl font-bold leading-tight md:text-7xl">
-              Save recipes from anywhere.
-            </h1>
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</nav>
 
-            <p className="mb-8 text-lg text-[#6d5549]">
-              Import recipes, clean up the clutter, plan your week, and build your shopping list in
-              one place.
-            </p>
+        <div className="grid gap-8 md:grid-cols-2 md:items-center">
+  {/* TEXT */}
+  <div className="order-2 md:order-1">
+    <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
+      What’s for dinner?
+    </p>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setShowImport(true)}
-                className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
-              >
-                Import Recipe
-              </button>
+    <h1 className="mb-5 text-5xl font-bold leading-tight md:text-7xl">
+      Save recipes from anywhere.
+    </h1>
 
-              <button
-                onClick={() => setShowAllRecipes(true)}
-                className="rounded-full bg-white px-6 py-3 text-[#a63a0a] shadow"
-              >
-                View Recipes
-              </button>
-            </div>
-          </div>
+    <p className="mb-8 text-lg text-[#6d5549]">
+      Import recipes, clean up the clutter, plan your week, and build your shopping list in
+      one place.
+    </p>
 
-          <div className="rounded-[2rem] bg-white p-4 shadow-2xl">
-            <div className="h-80 rounded-[1.5rem] bg-[url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=1200&auto=format&fit=crop')] bg-cover bg-center" />
-          </div>
-        </div>
+    <div className="flex flex-wrap gap-3">
+      <button
+        onClick={() => setShowImport(true)}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
+      >
+        Import Recipe
+      </button>
+
+      <button
+        onClick={() => setShowAllRecipes(true)}
+        className="rounded-full bg-white px-6 py-3 text-[#a63a0a] shadow"
+      >
+        View Recipes
+      </button>
+    </div>
+  </div>
+
+  {/* IMAGE */}
+  <div className="order-1 rounded-[2rem] bg-white p-4 shadow-2xl md:order-2">
+    <div className="h-72 rounded-[1.5rem] bg-[url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=1200&auto=format&fit=crop')] bg-cover bg-center md:h-80" />
+  </div>
+</div>
 
         {showImport && (
           <section className="mt-10 rounded-3xl bg-white p-6 shadow-lg">
@@ -1221,6 +1391,18 @@ Bake for 25 minutes`}
                 {isImporting ? "Importing..." : "Import"}
               </button>
             </div>
+            <div className="my-5 flex items-center gap-4">
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+  <span className="text-sm text-[#6d5549]">OR</span>
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+</div>
+
+<button
+  onClick={createNewRecipe}
+  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  + New Recipe
+</button>
 
             {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
 
