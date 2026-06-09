@@ -23,7 +23,7 @@ type SavedUserData = {
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const meals = ["Breakfast", "Lunch", "Dinner"];
-const placeholderImage = "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1200&auto=format&fit=crop";
+const placeholderImage = "https://placehold.co/1200x800/f8efe6/a63a0a?text=Hey+Chef";
 
 function getUpcomingWeekLabel() {
   const today = new Date();
