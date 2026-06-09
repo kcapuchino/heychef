@@ -23,6 +23,8 @@ type SavedUserData = {
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const meals = ["Breakfast", "Lunch", "Dinner"];
+const placeholderImage =
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1200&auto=format&fit=crop";
 
 function getUpcomingWeekLabel() {
   const today = new Date();
@@ -815,10 +817,13 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
               >
                 {recipe.image ? (
                   <img
-                    src={recipe.image}
-                    alt={recipe.title}
-                    className="mb-4 h-36 w-full rounded-2xl object-cover"
-                  />
+  src={
+    recipe.image ||
+    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1200&auto=format&fit=crop"
+  }
+  alt={recipe.title}
+  className="mb-4 h-36 w-full rounded-2xl object-cover"
+/>
                 ) : (
                   <div className="mb-4 h-36 rounded-2xl bg-[#ead7c8]" />
                 )}
@@ -896,15 +901,11 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   </button>
 
           <div className="rounded-[2rem] bg-white p-6 shadow-xl">
-            {selectedRecipe.image ? (
-              <img
-                src={selectedRecipe.image}
-                alt={selectedRecipe.title}
-                className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
-              />
-            ) : (
-              <div className="mb-6 h-60 rounded-[1.5rem] bg-[#ead7c8]" />
-            )}
+            <img
+  src={selectedRecipe.image || placeholderImage}
+  alt={selectedRecipe.title}
+  className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
+/>
 
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
@@ -1164,16 +1165,11 @@ Bake for 25 minutes`}
                   onClick={() => setSelectedRecipe(recipe)}
                   className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                 >
-                  {recipe.image ? (
-                    <img
-                      src={recipe.image}
-                      alt={recipe.title}
-                      className="mb-4 h-36 w-full rounded-2xl object-cover"
-                    />
-                  ) : (
-                    <div className="mb-4 h-36 rounded-2xl bg-[#ead7c8]" />
-                  )}
-
+                  <img
+  src={recipe.image || placeholderImage}
+  alt={recipe.title}
+  className="mb-4 h-36 w-full rounded-2xl object-cover"
+/>
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-lg font-bold">{recipe.title}</h3>
                     <span>{recipe.isFavorite ? "★" : ""}</span>
