@@ -943,11 +943,16 @@ Bake for 25 minutes`}
   className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
 />
 
-            <div className="mb-6">
-  <h1 className="mb-2 text-4xl font-bold">{selectedRecipe.title}</h1>
-  <RecipeMeta recipe={selectedRecipe} />
+            <div className="mb-6 flex items-start justify-between gap-4">
+  <div>
+    <h1 className="mb-2 text-4xl font-bold">
+      {selectedRecipe.title}
+    </h1>
 
-  <div className="mt-4 flex gap-3">
+    <RecipeMeta recipe={selectedRecipe} />
+  </div>
+
+  <div className="flex gap-3">
     <button
       onClick={() => setIsEditingRecipe(!isEditingRecipe)}
       className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
@@ -1100,7 +1105,7 @@ Bake for 25 minutes`}
               </a>
             )}
 
-            <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
+          
 
 <div className="mb-8 space-y-3">
   {selectedRecipe.ingredients.map((ingredient) => (
