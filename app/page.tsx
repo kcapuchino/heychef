@@ -797,6 +797,39 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             </div>
 
             {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
+            {showManualImport && (
+  <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+    <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
+
+    <p className="mb-4 text-[#6d5549]">
+      Some websites block imports. Paste the recipe below and Hey Chef will organize it
+      into ingredients and steps.
+    </p>
+
+    <textarea
+      value={manualRecipe}
+      onChange={(e) => setManualRecipe(e.target.value)}
+      rows={12}
+      placeholder={`Lemon Texas Sheet Cake
+
+2 cups flour
+2 cups sugar
+1 cup butter
+
+Directions
+Mix ingredients
+Bake for 25 minutes`}
+      className="w-full rounded-2xl border border-[#ead7c8] p-4"
+    />
+
+    <button
+      onClick={importManualRecipe}
+      className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+    >
+      Create Recipe
+    </button>
+  </div>
+)}
           </section>
         )}
 
@@ -815,18 +848,11 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
                 }}
                 className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
-                {recipe.image ? (
-                  <img
-  src={
-    recipe.image ||
-    "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1200&auto=format&fit=crop"
-  }
+                <img
+  src={recipe.image || placeholderImage}
   alt={recipe.title}
   className="mb-4 h-36 w-full rounded-2xl object-cover"
 />
-                ) : (
-                  <div className="mb-4 h-36 rounded-2xl bg-[#ead7c8]" />
-                )}
 
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="text-lg font-bold">{recipe.title}</h3>
@@ -1104,39 +1130,6 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             </div>
 
             {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
-            {showManualImport && (
-  <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
-    <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
-
-    <p className="mb-4 text-[#6d5549]">
-      Some websites block imports. Paste the recipe below and Hey Chef will organize it
-      into ingredients and steps.
-    </p>
-
-    <textarea
-      value={manualRecipe}
-      onChange={(e) => setManualRecipe(e.target.value)}
-      rows={12}
-      placeholder={`Lemon Texas Sheet Cake
-
-2 cups flour
-2 cups sugar
-1 cup butter
-
-Directions
-Mix ingredients
-Bake for 25 minutes`}
-      className="w-full rounded-2xl border border-[#ead7c8] p-4"
-    />
-
-    <button
-      onClick={importManualRecipe}
-      className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-    >
-      Create Recipe
-    </button>
-  </div>
-)}
 
             {showManualImport && (
               <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
