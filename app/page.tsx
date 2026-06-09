@@ -306,7 +306,37 @@ export default function Home() {
 }
 
 function addItemsToShoppingList(items: string[]) {
-  setShoppingList([...shoppingList, ...items]);
+  const updated = [...shoppingList];
+
+  items.forEach((item) => {
+    const existingIndex = updated.findIndex(
+      (existingItem) =>
+        existingItem === item || existingItem.startsWith(`${item} ×`)
+    );
+
+    if (existingIndex >= 0) {
+      const existingItem = updated[existingIndex];
+      const match = existingItem.match(/×\s*(\d+)$/);
+
+      if (match) {
+        updated[existingIndex] = `${item} × ${Number(match[1]) + 1}`;
+      } else {
+        updated[existingIndex] = `${item} × 2`;
+      }
+    } else {
+      updated.push(item);
+    }
+  });
+
+  const sorted = updated.sort((a, b) => {
+    const cleanA = a.replace(/^\d+\s*/, "").toLowerCase();
+    const cleanB = b.replace(/^\d+\s*/, "").toLowerCase();
+
+    return cleanA.localeCompare(cleanB);
+  });
+
+  setShoppingList(sorted);
+  alert("Ingredients added to your shopping list.");
 }
 
 function addToShoppingList(recipe: Recipe) {
