@@ -23,7 +23,7 @@ type SavedUserData = {
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const meals = ["Breakfast", "Lunch", "Dinner"];
-const placeholderImage = "https://placehold.co/1200x800/f8efe6/a63a0a?text=Hey+Chef";
+const placeholderImage = "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=1200&auto=format&fit=crop";
 
 function getUpcomingWeekLabel() {
   const today = new Date();
@@ -796,6 +796,40 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             </div>
 
             {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
+
+            {showManualImport && (
+              <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+                <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
+
+                <p className="mb-4 text-[#6d5549]">
+                  Some websites block imports. Paste the recipe below and Hey Chef will organize it
+                  into ingredients and steps.
+                </p>
+
+                <textarea
+                  value={manualRecipe}
+                  onChange={(e) => setManualRecipe(e.target.value)}
+                  rows={12}
+                  placeholder={`Lemon Texas Sheet Cake
+
+2 cups flour
+2 cups sugar
+1 cup butter
+
+Directions
+Mix ingredients
+Bake for 25 minutes`}
+                  className="w-full rounded-2xl border border-[#ead7c8] p-4"
+                />
+
+                <button
+                  onClick={importManualRecipe}
+                  className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+                >
+                  Create Recipe
+                </button>
+              </div>
+            )}
           </section>
         )}
 
