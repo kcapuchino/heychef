@@ -275,25 +275,38 @@ export default function Home() {
     }
   }
 
-  function simplifyIngredient(item: string) {
-  return item
-    .toLowerCase()
-    .replace(/\d+\/\d+|\d+(\.\d+)?/g, "")
-    .replace(/\b(cups?|tbsp|tablespoons?|tsp|teaspoons?|ounces?|oz|pounds?|lbs?|grams?|g)\b/g, "")
-    .replace(/[,()]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  function parseIngredient(item: string) {
+  const cleaned = item.trim();
+
+  const match = cleaned.match(/^(\d+(?:\/\d+)?|\d+(?:\.\d+)?)\s+(.+)$/);
+
+  if (!match) {
+    return {
+      quantity: 0,
+      name: cleaned.toLowerCase(),
+      original: cleaned,
+    };
+  }
+
+  const quantityText = match[1];
+  const name = match[2].toLowerCase().trim();
+
+  let quantity = Number(quantityText);
+
+  if (quantityText.includes("/")) {
+    const [top, bottom] = quantityText.split("/").map(Number);
+    quantity = top / bottom;
+  }
+
+  return {
+    quantity,
+    name,
+    original: cleaned,
+  };
 }
 
 function addItemsToShoppingList(items: string[]) {
-  const existingKeys = shoppingList.map(simplifyIngredient);
-
-  const newItems = items.filter((item) => {
-    const key = simplifyIngredient(item);
-    return key && !existingKeys.includes(key);
-  });
-
-  setShoppingList([...shoppingList, ...newItems]);
+  setShoppingList([...shoppingList, ...items]);
 }
 
 function addToShoppingList(recipe: Recipe) {
@@ -738,7 +751,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             }}
             className="text-[#a63a0a]"
           >
-            ← Back home
+            ← Back Home
           </button>
 
           <button

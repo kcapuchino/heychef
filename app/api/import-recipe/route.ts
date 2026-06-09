@@ -52,8 +52,8 @@ function getSteps(instructions: any): string[] {
 
   if (Array.isArray(instructions)) {
     return instructions.flatMap((item) => {
-      if (typeof item === "string") return [item];
-      if (item.text) return [item.text];
+      if (typeof item === "string") return [cleanText(item)];
+      if (item.text) return [cleanText(item.text)];
 
       if (item.itemListElement) {
         return getSteps(item.itemListElement);
@@ -63,7 +63,7 @@ function getSteps(instructions: any): string[] {
     });
   }
 
-  if (instructions.text) return [instructions.text];
+  if (instructions.text) return [cleanText(instructions.text)];
 
   return [];
 }
@@ -73,27 +73,61 @@ function formatDuration(value: any) {
 
   const text = String(value);
 
-  const hours = text.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
-  if (hours) {
-    const h = hours[1] ? Number(hours[1]) : 0;
-    const m = hours[2] ? Number(hours[2]) : 0;
+  const isoMatch = text.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (isoMatch) {
+    const h = isoMatch[1] ? Number(isoMatch[1]) : 0;
+    const m = isoMatch[2] ? Number(isoMatch[2]) : 0;
 
     if (h && m) return `${h} hr ${m} min`;
     if (h) return `${h} hr`;
     if (m) return `${m} min`;
   }
 
-  return text;
+  return cleanText(text);
 }
 
 function getServings(recipe: any) {
   const yieldValue = recipe.recipeYield || recipe.yield || "";
 
   if (Array.isArray(yieldValue)) {
-    return yieldValue[0] || "";
+    return cleanText(String(yieldValue[0] || ""));
   }
 
-  return yieldValue;
+  return cleanText(String(yieldValue || ""));
+}
+
+function findTimeInHtml(html: string) {
+  const cleaned = cleanText(html);
+
+  const totalTimeMatch = cleaned.match(
+    /(total time|total):?\s*([0-9]+\s*(hours?|hrs?|hr|minutes?|mins?|min)(\s*[0-9]+\s*(minutes?|mins?|min))?)/i
+  );
+
+  if (totalTimeMatch?.[2]) return cleanText(totalTimeMatch[2]);
+
+  const cookTimeMatch = cleaned.match(
+    /(cook time|cook):?\s*([0-9]+\s*(hours?|hrs?|hr|minutes?|mins?|min)(\s*[0-9]+\s*(minutes?|mins?|min))?)/i
+  );
+
+  if (cookTimeMatch?.[2]) return cleanText(cookTimeMatch[2]);
+
+  const prepTimeMatch = cleaned.match(
+    /(prep time|prep):?\s*([0-9]+\s*(hours?|hrs?|hr|minutes?|mins?|min)(\s*[0-9]+\s*(minutes?|mins?|min))?)/i
+  );
+
+  if (prepTimeMatch?.[2]) return cleanText(prepTimeMatch[2]);
+
+  return "";
+}
+
+function findServingsInHtml(html: string) {
+  const cleaned = cleanText(html);
+
+  const servingsMatch = cleaned.match(/(servings|yield):?\s*([0-9]+(\s*to\s*[0-9]+)?)/i);
+
+  if (servingsMatch?.[2]) return cleanText(servingsMatch[2]);
+
+  return "";
 }
 
 function fallbackFromHtml(html: string) {
@@ -125,8 +159,8 @@ function fallbackFromHtml(html: string) {
     image: "",
     ingredients,
     steps,
-    cookTime: "",
-    servings: "",
+    cookTime: findTimeInHtml(html),
+    servings: findServingsInHtml(html),
   };
 }
 
@@ -171,15 +205,19 @@ export async function POST(request: Request) {
           const recipe = findRecipeJsonLd(parsed);
 
           if (recipe) {
+            const cookTime =
+              formatDuration(recipe.totalTime || recipe.cookTime || recipe.prepTime || "") ||
+              findTimeInHtml(html);
+
+            const servings = getServings(recipe) || findServingsInHtml(html);
+
             return NextResponse.json({
               title: recipe.name || "Imported Recipe",
               image: getImage(recipe.image),
               ingredients: recipe.recipeIngredient || [],
               steps: getSteps(recipe.recipeInstructions),
-              cookTime: formatDuration(
-                recipe.cookTime || recipe.totalTime || recipe.prepTime || ""
-              ),
-              servings: getServings(recipe),
+              cookTime,
+              servings,
               sourceUrl: url,
             });
           }
