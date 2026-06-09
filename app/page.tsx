@@ -275,34 +275,13 @@ export default function Home() {
     }
   }
 
-  function parseIngredient(item: string) {
-  const cleaned = item.trim();
-
-  const match = cleaned.match(/^(\d+(?:\/\d+)?|\d+(?:\.\d+)?)\s+(.+)$/);
-
-  if (!match) {
-    return {
-      quantity: 0,
-      name: cleaned.toLowerCase(),
-      original: cleaned,
-    };
-  }
-
-  const quantityText = match[1];
-  const name = match[2].toLowerCase().trim();
-
-  let quantity = Number(quantityText);
-
-  if (quantityText.includes("/")) {
-    const [top, bottom] = quantityText.split("/").map(Number);
-    quantity = top / bottom;
-  }
-
-  return {
-    quantity,
-    name,
-    original: cleaned,
-  };
+  function cleanForSort(item: string) {
+  return item
+    .replace(/×\s*\d+$/g, "")
+    .replace(/^\d+(\s+\d\/\d|\/\d|\.\d+)?\s*/g, "")
+    .replace(/^(cups?|cup|tablespoons?|tbsp|teaspoons?|tsp|pounds?|lb|ounces?|oz)\s+/i, "")
+    .toLowerCase()
+    .trim();
 }
 
 function addItemsToShoppingList(items: string[]) {
@@ -328,12 +307,9 @@ function addItemsToShoppingList(items: string[]) {
     }
   });
 
-  const sorted = updated.sort((a, b) => {
-    const cleanA = a.replace(/^\d+\s*/, "").toLowerCase();
-    const cleanB = b.replace(/^\d+\s*/, "").toLowerCase();
-
-    return cleanA.localeCompare(cleanB);
-  });
+  const sorted = [...updated].sort((a, b) =>
+    cleanForSort(a).localeCompare(cleanForSort(b))
+  );
 
   setShoppingList(sorted);
   alert("Ingredients added to your shopping list.");
