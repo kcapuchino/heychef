@@ -212,12 +212,25 @@ export default function Home() {
   createdAt: new Date().toISOString(),
 };
 
-      setRecipes([newRecipe, ...recipes]);
-      setPlannerRecipeId(newRecipe.id);
-      setRecipeUrl("");
-      setShowImport(false);
-      setImportError("");
-      setShowManualImport(false);
+      if (selectedRecipe && isEditingRecipe) {
+  updateSelectedRecipe({
+    ...newRecipe,
+    id: selectedRecipe.id,
+    isFavorite: selectedRecipe.isFavorite,
+    createdAt: selectedRecipe.createdAt,
+  });
+
+  setPlannerRecipeId(selectedRecipe.id);
+} else {
+  setRecipes([newRecipe, ...recipes]);
+  setSelectedRecipe(newRecipe);
+  setPlannerRecipeId(newRecipe.id);
+}
+
+setRecipeUrl("");
+setShowImport(false);
+setImportError("");
+setShowManualImport(false);
     } catch (error) {
       console.error(error);
       setImportError("Something went wrong importing this recipe. Try pasting it manually.");
@@ -354,6 +367,26 @@ function addToShoppingList(recipe: Recipe) {
     setShowMealPlanner(false);
     setShowShoppingList(true);
   }
+
+  function addNewMealPlanItemsToShoppingList() {
+  const allIngredients = Object.values(mealPlan)
+    .flat()
+    .flatMap((recipe) => recipe.ingredients);
+
+  const newIngredients = allIngredients.filter(
+    (ingredient) =>
+      !shoppingList.some(
+        (item) => item === ingredient || item.startsWith(`${ingredient} ×`)
+      )
+  );
+
+  if (newIngredients.length === 0) {
+    alert("No new ingredients to add.");
+    return;
+  }
+
+  addItemsToShoppingList(newIngredients);
+}
 
   function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
     const key = `${day}-${meal}`;
@@ -668,12 +701,21 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
               <p className="mt-2 text-[#6d5549]">Add up to 3 recipes per meal slot. Resets Weekly</p>
             </div>
 
-            <button
-              onClick={addMealPlanToShoppingList}
-              className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-            >
-              Add Week to Shopping List
-            </button>
+            <div className="flex flex-wrap gap-3">
+  <button
+    onClick={addNewMealPlanItemsToShoppingList}
+    className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+  >
+    Add New Items to Shopping List
+  </button>
+
+  <button
+    onClick={addMealPlanToShoppingList}
+    className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+  >
+    Add Everything Again
+  </button>
+</div>
           </div>
 
           <section className="mb-8 rounded-3xl bg-white p-6 shadow">
@@ -1069,7 +1111,7 @@ Bake for 25 minutes`}
   className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
 />
 
-            <div className="mb-6 flex items-start justify-between gap-4">
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
   <div>
     <h1 className="mb-2 text-4xl font-bold">
       {selectedRecipe.title}
@@ -1078,7 +1120,7 @@ Bake for 25 minutes`}
     <RecipeMeta recipe={selectedRecipe} />
   </div>
 
-  <div className="flex gap-3">
+  <div className="flex flex-col gap-3 md:flex-row">
     <button
       onClick={() => setIsEditingRecipe(!isEditingRecipe)}
       className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
@@ -1097,6 +1139,35 @@ Bake for 25 minutes`}
             {isEditingRecipe && (
   <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
     <h2 className="mb-4 text-xl font-bold">Edit Recipe</h2>
+
+    <div className="mb-6 rounded-2xl border border-[#ead7c8] bg-white p-4">
+      <h3 className="mb-2 font-bold">Import Instead</h3>
+
+      <div className="flex flex-col gap-3 md:flex-row">
+        <input
+          value={recipeUrl}
+          onChange={(e) => setRecipeUrl(e.target.value)}
+          placeholder="https://example.com/recipe"
+          className="flex-1 rounded-xl border border-[#ead7c8] p-3"
+        />
+
+        <button
+          onClick={importRecipe}
+          disabled={isImporting}
+          className="rounded-xl bg-[#a63a0a] px-5 py-3 text-white disabled:opacity-60"
+        >
+          {isImporting ? "Importing..." : "Import Recipe"}
+        </button>
+      </div>
+
+      {importError && (
+        <p className="mt-3 text-sm text-red-700">{importError}</p>
+      )}
+
+      <p className="mt-3 text-sm text-[#6d5549]">
+        If import does not work, fill out the fields below manually.
+      </p>
+    </div>
 
     <label className="mb-2 block font-bold">Title</label>
     <input
@@ -1138,29 +1209,37 @@ Bake for 25 minutes`}
 
     <label className="mb-2 block font-bold">Ingredients</label>
     <textarea
-      value={selectedRecipe.ingredients.join("\n")}
-      onChange={(e) =>
-        updateSelectedRecipe({
-          ...selectedRecipe,
-          ingredients: e.target.value.split("\n").filter(Boolean),
-        })
-      }
-      rows={8}
-      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+  value={selectedRecipe.ingredients.join("\n")}
+  onChange={(e) =>
+    updateSelectedRecipe({
+      ...selectedRecipe,
+      ingredients: e.target.value.split("\n"),
+    })
+  }
+  rows={10}
+  placeholder={`2 eggs
+1 cup flour
+1 tsp salt`}
+  className="mb-4 min-h-[250px] w-full rounded-xl border border-[#ead7c8] p-3"
+  enterKeyHint="enter"
+/>
 
     <label className="mb-2 block font-bold">Steps</label>
     <textarea
-      value={selectedRecipe.steps.join("\n")}
-      onChange={(e) =>
-        updateSelectedRecipe({
-          ...selectedRecipe,
-          steps: e.target.value.split("\n").filter(Boolean),
-        })
-      }
-      rows={10}
-      className="w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+  value={selectedRecipe.steps.join("\n")}
+  onChange={(e) =>
+    updateSelectedRecipe({
+      ...selectedRecipe,
+      steps: e.target.value.split("\n"),
+    })
+  }
+  rows={12}
+  placeholder={`Mix ingredients
+Bake 25 minutes
+Let cool`}
+  className="min-h-[300px] w-full rounded-xl border border-[#ead7c8] p-3"
+  enterKeyHint="enter"
+/>
   </div>
 )}
 
@@ -1375,7 +1454,7 @@ Bake for 25 minutes`}
               Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
             </p>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
               <input
                 value={recipeUrl}
                 onChange={(e) => setRecipeUrl(e.target.value)}
