@@ -10,6 +10,7 @@ type Recipe = {
   steps: string[];
   cookTime?: string;
   servings?: string;
+  category?: string;
   sourceUrl?: string;
   isFavorite?: boolean;
   createdAt: string;
@@ -74,10 +75,17 @@ export default function Home() {
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
   const homeSectionTitle = favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
+  const filteredRecipes =
+  categoryFilter === "all"
+    ? recipes
+    : recipes.filter(
+        (recipe) => recipe.category === categoryFilter
+      );
 
   useEffect(() => {
     const savedUser = localStorage.getItem("hey-chef-current-user");
@@ -1018,6 +1026,22 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
         </div>
 
         <h1 className="mb-6 text-5xl font-bold">All Recipes</h1>
+        <div className="mb-6">
+  <select
+    value={categoryFilter}
+    onChange={(e) => setCategoryFilter(e.target.value)}
+    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+  >
+    <option value="all">All Categories</option>
+    <option value="Main Dish">Main Dish</option>
+    <option value="Side Dish">Side Dish</option>
+    <option value="Dessert">Dessert</option>
+    <option value="Breakfast">Breakfast</option>
+    <option value="Soup">Soup</option>
+    <option value="Snack">Snack</option>
+    <option value="Drink">Drink</option>
+  </select>
+</div>
 
         {showImport && (
           <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
@@ -1099,7 +1123,7 @@ Bake for 25 minutes`}
           </div>
         ) : (
           <div className="grid gap-5 md:grid-cols-3">
-            {recipes.map((recipe) => (
+            {filteredRecipes.map((recipe) => (
               <button
                 key={recipe.id}
                 onClick={() => {
@@ -1120,6 +1144,11 @@ Bake for 25 minutes`}
                 </div>
 
                 <RecipeMeta recipe={recipe} />
+                {recipe.category && (
+  <span className="inline-block rounded-full bg-[#fff4ef] px-3 py-1 text-xs text-[#a63a0a]">
+    {recipe.category}
+  </span>
+)}
                 <button
   onClick={(e) => {
     e.stopPropagation();
@@ -1337,6 +1366,28 @@ Bake for 25 minutes`}
       placeholder="4 servings"
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
+
+    <label className="mb-2 block font-bold">Category</label>
+
+<select
+  value={selectedRecipe.category || ""}
+  onChange={(e) =>
+    updateSelectedRecipe({
+      ...selectedRecipe,
+      category: e.target.value,
+    })
+  }
+  className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+>
+  <option value="">Select Category</option>
+  <option value="Main Dish">Main Dish</option>
+  <option value="Side Dish">Side Dish</option>
+  <option value="Dessert">Dessert</option>
+  <option value="Breakfast">Breakfast</option>
+  <option value="Soup">Soup</option>
+  <option value="Snack">Snack</option>
+  <option value="Drink">Drink</option>
+</select>
 
     <label className="mb-2 block font-bold">Ingredients</label>
     <textarea
