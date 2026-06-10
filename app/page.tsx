@@ -572,7 +572,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   if (showShoppingList) {
     return (
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
-       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
+      <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -1561,8 +1561,8 @@ Let cool`}
   }
 
   return (
-    <main className="min-h-screen bg-[#f8efe6] text-[#2b1a12]">
-      <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
+  <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+    <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
        <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -1648,14 +1648,14 @@ Let cool`}
   )}
 </nav>
 
-        <div className="grid gap-8 md:grid-cols-2 md:items-center">
+        <div className="grid gap-10 md:grid-cols-2 md:items-center">
   {/* TEXT */}
   <div className="order-2 md:order-1">
     <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
       What’s for dinner?
     </p>
 
-    <h1 className="mb-5 text-5xl font-bold leading-tight md:text-7xl">
+    <h1 className="mb-5 text-4xl font-bold leading-tight md:text-7xl">
       Save recipes from anywhere.
     </h1>
 
@@ -1682,7 +1682,7 @@ Let cool`}
   </div>
 
   {/* IMAGE */}
-  <div className="order-1 rounded-[2rem] bg-white p-4 shadow-2xl md:order-2">
+  <div className="order-1 rounded-[2rem] bg-white p-5 shadow-2xl md:order-2">
     <div className="h-72 rounded-[1.5rem] bg-[url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=1200&auto=format&fit=crop')] bg-cover bg-center md:h-80" />
   </div>
 </div>
