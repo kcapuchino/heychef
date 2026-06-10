@@ -73,6 +73,10 @@ export default function Home() {
   const [plannerDay, setPlannerDay] = useState("Monday");
   const [plannerMeal, setPlannerMeal] = useState("Dinner");
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
+  const [plannerPopup, setPlannerPopup] = useState<{
+  day: string;
+  meal: string;
+} | null>(null);
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -421,11 +425,15 @@ function addToShoppingList(recipe: Recipe) {
   }
 
   function addRecipeFromPlanner() {
-    const recipe = recipes.find((item) => item.id === plannerRecipeId);
-    if (!recipe) return;
+  const recipe = recipes.find((item) => item.id === plannerRecipeId);
+  if (!recipe) return;
 
-    addRecipeToMealPlan(plannerDay, plannerMeal, recipe);
-  }
+  const day = plannerPopup?.day || plannerDay;
+  const meal = plannerPopup?.meal || plannerMeal;
+
+  addRecipeToMealPlan(day, meal, recipe);
+  setPlannerPopup(null);
+}
 
   function removeRecipeFromMealPlan(day: string, meal: string, recipeId: string) {
     const key = `${day}-${meal}`;
@@ -515,8 +523,8 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 }
   if (!userEmail) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
-        <section className="mx-auto flex min-h-screen max-w-xl items-center">
+      <main className="min-h-screen bg-[#f8efe6] px-4 py-6 text-[#2b1a12] md:p-8">
+        <section className="mx-auto max-w-6xl px-0 py-6 md:px-6 md:py-10">
           <div className="w-full rounded-[2rem] bg-white p-8 shadow-xl">
             <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
               Hey Chef!
@@ -553,8 +561,8 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 
   if (showShoppingList) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
-        <section className="mx-auto max-w-6xl px-6 py-10">
+      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -691,8 +699,8 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 
   if (showMealPlanner) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
-        <section className="mx-auto max-w-6xl px-6 py-10">
+      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+        <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -788,135 +796,152 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 </button>
 
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-5xl font-bold">Weekly Meal Planner</h1>
-              <p className="mt-2 text-[#6d5549]">Add up to 3 recipes per meal slot. Resets Weekly</p>
-            </div>
+  <div>
+    <h1 className="text-4xl font-bold md:text-5xl">Weekly Meal Planner</h1>
+    <p className="mt-2 text-[#6d5549]">
+      Add up to 3 recipes per meal slot. Resets Weekly
+    </p>
+  </div>
 
-            <div className="flex flex-wrap gap-3">
-  <button
-    onClick={addNewMealPlanItemsToShoppingList}
-    className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-  >
-    Add New Items to Shopping List
-  </button>
+  <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
+    <button
+      onClick={addNewMealPlanItemsToShoppingList}
+      className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+    >
+      Add New Items to Shopping List
+    </button>
 
-  <button
-  onClick={() => {
-    if (confirm("Clear your meal plan and start fresh?")) {
-      setMealPlan({});
-    }
-  }}
-  className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
->
-  Reset Meal Plan
-</button>
+    <button
+      onClick={() => {
+        if (confirm("Clear your meal plan and start fresh?")) {
+          setMealPlan({});
+        }
+      }}
+      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      Reset Meal Plan
+    </button>
+  </div>
 </div>
-          </div>
 
-          <section className="mb-8 rounded-3xl bg-white p-6 shadow">
-            <h2 className="mb-4 text-2xl font-bold">Add a Recipe to Your Week</h2>
+{plannerPopup && (
+  <section className="fixed inset-0 z-50 flex items-end bg-black/30 px-4 pb-6 md:items-center md:justify-center md:pb-0">
+    <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
+      <h2 className="mb-2 text-3xl font-bold">Add Recipe</h2>
 
-            {recipes.length === 0 ? (
-              <p className="text-[#6d5549]">Import a recipe first, then add it to your week.</p>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-4">
-                <select
-                  value={plannerRecipeId}
-                  onChange={(e) => setPlannerRecipeId(e.target.value)}
-                  className="rounded-full border border-[#ead7c8] bg-white px-4 py-3"
-                >
-                  {recipes.map((recipe) => (
-                    <option key={recipe.id} value={recipe.id}>
-                      {recipe.title}
-                    </option>
-                  ))}
-                </select>
+      <p className="mb-5 text-[#6d5549]">
+        Add a recipe to {plannerPopup.day} {plannerPopup.meal}.
+      </p>
 
-                <select
-                  value={plannerDay}
-                  onChange={(e) => setPlannerDay(e.target.value)}
-                  className="rounded-full border border-[#ead7c8] bg-white px-4 py-3"
-                >
-                  {days.map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={plannerMeal}
-                  onChange={(e) => setPlannerMeal(e.target.value)}
-                  className="rounded-full border border-[#ead7c8] bg-white px-4 py-3"
-                >
-                  {meals.map((meal) => (
-                    <option key={meal} value={meal}>
-                      {meal}
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={addRecipeFromPlanner}
-                  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-                >
-                  Add
-                </button>
-              </div>
-            )}
-          </section>
-
-          <div className="grid gap-4">
-            {days.map((day) => (
-              <div key={day} className="rounded-3xl bg-white p-5 shadow">
-                <h2 className="mb-4 text-2xl font-bold text-[#a63a0a]">{day}</h2>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  {meals.map((meal) => {
-                    const key = `${day}-${meal}`;
-                    const plannedRecipes = mealPlan[key] || [];
-
-                    return (
-                      <div key={meal} className="rounded-2xl bg-[#f8efe6] p-4">
-                        <h3 className="mb-3 font-bold">{meal}</h3>
-
-                        {plannedRecipes.length === 0 ? (
-                          <p className="text-sm text-[#6d5549]">No recipes added.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {plannedRecipes.map((recipe) => (
-                              <div
-  key={recipe.id}
-  className="flex items-center justify-between rounded-xl bg-white p-3 text-sm"
->
-  <button
-    onClick={() => {
-      setSelectedRecipe(recipe);
-      setShowMealPlanner(false);
-    }}
-    className="text-left font-medium text-[#a63a0a] hover:underline"
-  >
-    {recipe.title}
-  </button>
-
-  <button
-    onClick={() => removeRecipeFromMealPlan(day, meal, recipe.id)}
-    className="text-[#a63a0a]"
-  >
-    Remove
-  </button>
-</div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+      {recipes.length === 0 ? (
+        <p className="text-[#6d5549]">Import a recipe first.</p>
+      ) : (
+        <>
+          <select
+            value={plannerRecipeId}
+            onChange={(e) => setPlannerRecipeId(e.target.value)}
+            className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
+          >
+            <option value="">Choose a recipe</option>
+            {recipes.map((recipe) => (
+              <option key={recipe.id} value={recipe.id}>
+                {recipe.title}
+              </option>
             ))}
-          </div>
+          </select>
+
+          <button
+            onClick={addRecipeFromPlanner}
+            className="w-full rounded-full bg-[#a63a0a] px-6 py-4 text-white"
+          >
+            Add to {plannerPopup.meal}
+          </button>
+        </>
+      )}
+
+      <button
+        onClick={() => setPlannerPopup(null)}
+        className="mt-4 w-full rounded-full bg-[#fff4ef] px-6 py-3 text-[#a63a0a]"
+      >
+        Cancel
+      </button>
+    </div>
+  </section>
+)}
+
+<div className="grid gap-4">
+  {days.map((day) => (
+    <div
+  key={day}
+  className="rounded-3xl bg-white p-4 shadow md:p-5"
+>
+      <h2 className="mb-4 text-2xl font-bold text-[#a63a0a]">{day}</h2>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {meals.map((meal) => {
+          const key = `${day}-${meal}`;
+          const plannedRecipes = mealPlan[key] || [];
+
+          return (
+           <div
+  key={meal}
+  className="rounded-2xl bg-[#f8efe6] p-4 md:p-5"
+>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-bold">{meal}</h3>
+
+                <span className="rounded-full bg-white px-3 py-1 text-xs text-[#6d5549]">
+                  {plannedRecipes.length}/3
+                </span>
+              </div>
+
+              {plannedRecipes.length === 0 ? (
+                <p className="text-sm text-[#6d5549]">No recipes added.</p>
+              ) : (
+                <div className="space-y-2">
+                  {plannedRecipes.map((recipe) => (
+                    <div key={recipe.id} className="rounded-xl bg-white p-3 text-sm">
+                      <div className="flex items-start justify-between gap-3">
+                        <button
+                          onClick={() => {
+                            setSelectedRecipe(recipe);
+                            setShowMealPlanner(false);
+                          }}
+                          className="text-left font-medium text-[#a63a0a] hover:underline"
+                        >
+                          {recipe.title}
+                        </button>
+
+                        <button
+                          onClick={() => removeRecipeFromMealPlan(day, meal, recipe.id)}
+                          className="shrink-0 text-[#a63a0a]"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {plannedRecipes.length < 3 && (
+                <button
+                  onClick={() => {
+                    setPlannerPopup({ day, meal });
+                    setPlannerRecipeId(recipes[0]?.id || "");
+                  }}
+                  className="mt-4 w-full rounded-full bg-white px-4 py-3 text-sm font-semibold text-[#a63a0a] shadow-sm"
+                >
+                  + Add Recipe
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ))}
+</div>
         </section>
       </main>
     );
@@ -924,8 +949,8 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 
   if (showAllRecipes) {
   return (
-    <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
-      <section className="mx-auto max-w-6xl px-6 py-10">
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+      <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
         <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -1173,8 +1198,8 @@ Bake for 25 minutes`}
 
   if (selectedRecipe) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
-        <section className="mx-auto max-w-6xl px-6 py-10">
+      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -1265,7 +1290,7 @@ Bake for 25 minutes`}
     ← Back to All Recipes
   </button>
 
-          <div className="rounded-[2rem] bg-white p-6 shadow-xl">
+          <div className="rounded-[2rem] bg-white p-5 md:p-6 shadow-xl">
             <img
   src={selectedRecipe.image || placeholderImage}
   alt={selectedRecipe.title}
@@ -1521,7 +1546,7 @@ Let cool`}
 
   return (
     <main className="min-h-screen bg-[#f8efe6] text-[#2b1a12]">
-      <section className="mx-auto max-w-6xl px-6 py-10">
+      <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
        <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
@@ -1623,7 +1648,7 @@ Let cool`}
       one place.
     </p>
 
-    <div className="flex flex-wrap gap-3">
+    <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
         onClick={() => setShowImport(true)}
         className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
