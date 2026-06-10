@@ -499,12 +499,17 @@ function goShoppingList() {
   setShowImport(false);
   setIsMenuOpen(false);
 }
-
 function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return (
-    <div className="mt-2 flex flex-wrap gap-4 text-sm text-[#6d5549]">
+    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#6d5549]">
       <span>⏱ {recipe.cookTime || "Time not listed"}</span>
       <span>👥 {recipe.servings || "Servings not listed"}</span>
+
+      {recipe.category && (
+        <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-xs text-[#a63a0a]">
+          {recipe.category}
+        </span>
+      )}
     </div>
   );
 }
@@ -1144,11 +1149,7 @@ Bake for 25 minutes`}
                 </div>
 
                 <RecipeMeta recipe={recipe} />
-                {recipe.category && (
-  <span className="inline-block rounded-full bg-[#fff4ef] px-3 py-1 text-xs text-[#a63a0a]">
-    {recipe.category}
-  </span>
-)}
+                
                 <button
   onClick={(e) => {
     e.stopPropagation();
