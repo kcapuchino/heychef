@@ -91,6 +91,16 @@ export default function Home() {
         (recipe) => recipe.category === categoryFilter
       );
 
+  const totalSlots = 21;
+
+const filledSlots = Object.values(mealPlan).filter(
+  (recipes) => recipes.length > 0
+).length;
+
+const plannerPercent = Math.round(
+  (filledSlots / totalSlots) * 100
+);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("hey-chef-current-user");
 
@@ -587,12 +597,12 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   </button>
 
   <button onClick={goMealPlanner} className="text-[#a63a0a]">
-    Meal Planner
-  </button>
+  Meal Planner ({filledSlots}/21)
+</button>
 
   <button onClick={goShoppingList} className="text-[#a63a0a]">
-    Shopping List
-  </button>
+  Shopping List ({shoppingList.length})
+</button>
 
   <button onClick={createNewRecipe} className="text-[#a63a0a]">
     New Recipe
@@ -725,12 +735,12 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   </button>
 
   <button onClick={goMealPlanner} className="text-[#a63a0a]">
-    Meal Planner
-  </button>
+  Meal Planner ({filledSlots}/21)
+</button>
 
   <button onClick={goShoppingList} className="text-[#a63a0a]">
-    Shopping List
-  </button>
+  Shopping List ({shoppingList.length})
+</button>
 
   <button onClick={createNewRecipe} className="text-[#a63a0a]">
     New Recipe
@@ -744,17 +754,17 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
       <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
+  onClick={() => {
+    setSelectedRecipe(null);
+    setShowShoppingList(false);
+    setShowAllRecipes(false);
+    setShowMealPlanner(true);
+    setIsMenuOpen(false);
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📅 Meal Planner ({filledSlots}/21)
+</button>
 
       <button
         onClick={() => {
@@ -975,12 +985,12 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   </button>
 
   <button onClick={goMealPlanner} className="text-[#a63a0a]">
-    Meal Planner
-  </button>
+  Meal Planner ({filledSlots}/21)
+</button>
 
   <button onClick={goShoppingList} className="text-[#a63a0a]">
-    Shopping List
-  </button>
+  Shopping List ({shoppingList.length})
+</button>
 
   <button onClick={createNewRecipe} className="text-[#a63a0a]">
     New Recipe
@@ -994,17 +1004,17 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
       <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
+  onClick={() => {
+    setSelectedRecipe(null);
+    setShowShoppingList(false);
+    setShowAllRecipes(false);
+    setShowMealPlanner(true);
+    setIsMenuOpen(false);
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📅 Meal Planner ({filledSlots}/21)
+</button>
 
       <button
         onClick={() => {
@@ -1217,12 +1227,12 @@ Bake for 25 minutes`}
     </button>
 
     <button onClick={goMealPlanner} className="text-[#a63a0a]">
-      Meal Planner
-    </button>
+  Meal Planner ({filledSlots}/21)
+</button>
 
     <button onClick={goShoppingList} className="text-[#a63a0a]">
-      Shopping List
-    </button>
+  Shopping List ({shoppingList.length})
+</button>
 
     <button onClick={createNewRecipe} className="text-[#a63a0a]">
       New Recipe
@@ -1250,11 +1260,17 @@ Bake for 25 minutes`}
       </button>
 
       <button
-        onClick={goMealPlanner}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
+  onClick={() => {
+    setSelectedRecipe(null);
+    setShowShoppingList(false);
+    setShowAllRecipes(false);
+    setShowMealPlanner(true);
+    setIsMenuOpen(false);
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📅 Meal Planner ({filledSlots}/21)
+</button>
 
       <button
         onClick={goShoppingList}
@@ -1571,12 +1587,12 @@ Let cool`}
   </button>
 
   <button onClick={goMealPlanner} className="text-[#a63a0a]">
-    Meal Planner
-  </button>
+  Meal Planner ({filledSlots}/21)
+</button>
 
   <button onClick={goShoppingList} className="text-[#a63a0a]">
-    Shopping List
-  </button>
+  Shopping List ({shoppingList.length})
+</button>
 
   <button onClick={createNewRecipe} className="text-[#a63a0a]">
     New Recipe
@@ -1590,17 +1606,17 @@ Let cool`}
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
       <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
+  onClick={() => {
+    setSelectedRecipe(null);
+    setShowShoppingList(false);
+    setShowAllRecipes(false);
+    setShowMealPlanner(true);
+    setIsMenuOpen(false);
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📅 Meal Planner ({filledSlots}/21)
+</button>
 
       <button
         onClick={() => {
