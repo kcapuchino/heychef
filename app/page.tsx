@@ -430,17 +430,18 @@ function addToShoppingList(recipe: Recipe) {
   }
 
   function deleteRecipe(recipeId: string) {
-    setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
+  setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
 
-    const updatedMealPlan: Record<string, Recipe[]> = {};
+  const updatedMealPlan: Record<string, Recipe[]> = {};
 
-    Object.entries(mealPlan).forEach(([key, plannedRecipes]) => {
-      updatedMealPlan[key] = plannedRecipes.filter((recipe) => recipe.id !== recipeId);
-    });
+  Object.entries(mealPlan).forEach(([key, plannedRecipes]) => {
+    updatedMealPlan[key] = plannedRecipes.filter((recipe) => recipe.id !== recipeId);
+  });
 
-    setMealPlan(updatedMealPlan);
-    setSelectedRecipe(null);
-  }
+  setMealPlan(updatedMealPlan);
+  setSelectedRecipe(null);
+  setShowAllRecipes(true);
+}
 
   function updateSelectedRecipe(updatedRecipe: Recipe) {
   const updatedRecipes = recipes.map((recipe) =>
@@ -788,11 +789,15 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   </button>
 
   <button
-    onClick={addMealPlanToShoppingList}
-    className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-  >
-    Add Everything Again
-  </button>
+  onClick={() => {
+    if (confirm("Clear your meal plan and start fresh?")) {
+      setMealPlan({});
+    }
+  }}
+  className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  Reset Meal Plan
+</button>
 </div>
           </div>
 
@@ -869,17 +874,26 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
                           <div className="space-y-2">
                             {plannedRecipes.map((recipe) => (
                               <div
-                                key={recipe.id}
-                                className="flex items-center justify-between rounded-xl bg-white p-3 text-sm"
-                              >
-                                <span>{recipe.title}</span>
-                                <button
-                                  onClick={() => removeRecipeFromMealPlan(day, meal, recipe.id)}
-                                  className="text-[#a63a0a]"
-                                >
-                                  Remove
-                                </button>
-                              </div>
+  key={recipe.id}
+  className="flex items-center justify-between rounded-xl bg-white p-3 text-sm"
+>
+  <button
+    onClick={() => {
+      setSelectedRecipe(recipe);
+      setShowMealPlanner(false);
+    }}
+    className="text-left font-medium text-[#a63a0a] hover:underline"
+  >
+    {recipe.title}
+  </button>
+
+  <button
+    onClick={() => removeRecipeFromMealPlan(day, meal, recipe.id)}
+    className="text-[#a63a0a]"
+  >
+    Remove
+  </button>
+</div>
                             ))}
                           </div>
                         )}
@@ -1106,6 +1120,18 @@ Bake for 25 minutes`}
                 </div>
 
                 <RecipeMeta recipe={recipe} />
+                <button
+  onClick={(e) => {
+    e.stopPropagation();
+
+    if (confirm(`Delete ${recipe.title}?`)) {
+      deleteRecipe(recipe.id);
+    }
+  }}
+  className="mt-4 rounded-full border border-[#a63a0a] px-4 py-2 text-sm text-[#a63a0a]"
+>
+  Delete
+</button>
               </button>
             ))}
           </div>
