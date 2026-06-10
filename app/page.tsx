@@ -98,6 +98,15 @@ export default function Home() {
 
     localStorage.setItem(`hey-chef-data-${userEmail}`, JSON.stringify(savedData));
   }, [recipes, shoppingList, mealPlan, userEmail, hasLoadedUser]);
+  useEffect(() => {
+  setIsMenuOpen(false);
+}, [
+  selectedRecipe,
+  showAllRecipes,
+  showMealPlanner,
+  showShoppingList,
+  showImport,
+]);
 
   function loadUser(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
@@ -445,6 +454,43 @@ function addToShoppingList(recipe: Recipe) {
   function removeShoppingItem(item: string) {
     setShoppingList(shoppingList.filter((listItem) => listItem !== item));
   }
+
+  function goHome() {
+  setSelectedRecipe(null);
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowImport(false);
+  setIsMenuOpen(false);
+}
+
+function goAllRecipes() {
+  setSelectedRecipe(null);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowAllRecipes(true);
+  setShowImport(false);
+  setIsMenuOpen(false);
+}
+
+function goMealPlanner() {
+  setSelectedRecipe(null);
+  setShowAllRecipes(false);
+  setShowShoppingList(false);
+  setShowMealPlanner(true);
+  setShowImport(false);
+  setIsMenuOpen(false);
+}
+
+function goShoppingList() {
+  setSelectedRecipe(null);
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(true);
+  setShowImport(false);
+  setIsMenuOpen(false);
+}
+
 function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return (
     <div className="mt-2 flex flex-wrap gap-4 text-sm text-[#6d5549]">
@@ -498,26 +544,42 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-      onClick={() => {
-        setSelectedRecipe(null);
-        setShowMealPlanner(false);
-        setShowShoppingList(false);
-        setShowAllRecipes(false);
-        setIsMenuOpen(false);
-      }}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  onClick={goHome}
+  className="text-3xl font-bold text-[#a63a0a]"
+>
+  Hey Chef!
+</button>
     <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
   </div>
 
   <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
-  >
-    ☰
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
+>
+  ☰
+</button>
+
+<div className="hidden md:flex items-center gap-10 text-lg">
+  <button onClick={goAllRecipes} className="text-[#a63a0a]">
+    Recipes
   </button>
+
+  <button onClick={goMealPlanner} className="text-[#a63a0a]">
+    Meal Planner
+  </button>
+
+  <button onClick={goShoppingList} className="text-[#a63a0a]">
+    Shopping List
+  </button>
+
+  <button onClick={createNewRecipe} className="text-[#a63a0a]">
+    New Recipe
+  </button>
+
+  <button onClick={logoutUser} className="text-[#a63a0a]">
+    Log Out
+  </button>
+</div>
 
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
@@ -620,26 +682,42 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-      onClick={() => {
-        setSelectedRecipe(null);
-        setShowMealPlanner(false);
-        setShowShoppingList(false);
-        setShowAllRecipes(false);
-        setIsMenuOpen(false);
-      }}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  onClick={goHome}
+  className="text-3xl font-bold text-[#a63a0a]"
+>
+  Hey Chef!
+</button>
     <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
   </div>
 
   <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
-  >
-    ☰
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
+>
+  ☰
+</button>
+
+<div className="hidden md:flex items-center gap-10 text-lg">
+  <button onClick={goAllRecipes} className="text-[#a63a0a]">
+    Recipes
   </button>
+
+  <button onClick={goMealPlanner} className="text-[#a63a0a]">
+    Meal Planner
+  </button>
+
+  <button onClick={goShoppingList} className="text-[#a63a0a]">
+    Shopping List
+  </button>
+
+  <button onClick={createNewRecipe} className="text-[#a63a0a]">
+    New Recipe
+  </button>
+
+  <button onClick={logoutUser} className="text-[#a63a0a]">
+    Log Out
+  </button>
+</div>
 
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
@@ -824,26 +902,42 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
         <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-      onClick={() => {
-        setSelectedRecipe(null);
-        setShowMealPlanner(false);
-        setShowShoppingList(false);
-        setShowAllRecipes(false);
-        setIsMenuOpen(false);
-      }}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  onClick={goHome}
+  className="text-3xl font-bold text-[#a63a0a]"
+>
+  Hey Chef!
+</button>
     <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
   </div>
 
   <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
-  >
-    ☰
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
+>
+  ☰
+</button>
+
+<div className="hidden md:flex items-center gap-10 text-lg">
+  <button onClick={goAllRecipes} className="text-[#a63a0a]">
+    Recipes
   </button>
+
+  <button onClick={goMealPlanner} className="text-[#a63a0a]">
+    Meal Planner
+  </button>
+
+  <button onClick={goShoppingList} className="text-[#a63a0a]">
+    Shopping List
+  </button>
+
+  <button onClick={createNewRecipe} className="text-[#a63a0a]">
+    New Recipe
+  </button>
+
+  <button onClick={logoutUser} className="text-[#a63a0a]">
+    Log Out
+  </button>
+</div>
 
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
@@ -1028,13 +1122,7 @@ Bake for 25 minutes`}
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-      onClick={() => {
-        setSelectedRecipe(null);
-        setShowMealPlanner(false);
-        setShowShoppingList(false);
-        setShowAllRecipes(false);
-        setIsMenuOpen(false);
-      }}
+      onClick={goHome}
       className="text-3xl font-bold text-[#a63a0a]"
     >
       Hey Chef!
@@ -1042,36 +1130,53 @@ Bake for 25 minutes`}
     <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
   </div>
 
+  <div className="hidden items-center gap-10 text-lg md:flex">
+    <button onClick={goAllRecipes} className="text-[#a63a0a]">
+      Recipes
+    </button>
+
+    <button onClick={goMealPlanner} className="text-[#a63a0a]">
+      Meal Planner
+    </button>
+
+    <button onClick={goShoppingList} className="text-[#a63a0a]">
+      Shopping List
+    </button>
+
+    <button onClick={createNewRecipe} className="text-[#a63a0a]">
+      New Recipe
+    </button>
+
+    <button onClick={logoutUser} className="text-[#a63a0a]">
+      Log Out
+    </button>
+  </div>
+
   <button
     onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
     ☰
   </button>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
       <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-          setIsMenuOpen(false);
-        }}
+        onClick={goAllRecipes}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🍳 Recipes
+      </button>
+
+      <button
+        onClick={goMealPlanner}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         📅 Meal Planner
       </button>
 
       <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowMealPlanner(false);
-          setShowAllRecipes(false);
-          setShowShoppingList(true);
-          setIsMenuOpen(false);
-        }}
+        onClick={goShoppingList}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         🛒 Shopping List ({shoppingList.length})
@@ -1342,26 +1447,42 @@ Let cool`}
        <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-      onClick={() => {
-        setSelectedRecipe(null);
-        setShowMealPlanner(false);
-        setShowShoppingList(false);
-        setShowAllRecipes(false);
-        setIsMenuOpen(false);
-      }}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  onClick={goHome}
+  className="text-3xl font-bold text-[#a63a0a]"
+>
+  Hey Chef!
+</button>
     <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
   </div>
 
   <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
-    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow"
-  >
-    ☰
+  onClick={() => setIsMenuOpen(!isMenuOpen)}
+  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
+>
+  ☰
+</button>
+
+<div className="hidden md:flex items-center gap-10 text-lg">
+  <button onClick={goAllRecipes} className="text-[#a63a0a]">
+    Recipes
   </button>
+
+  <button onClick={goMealPlanner} className="text-[#a63a0a]">
+    Meal Planner
+  </button>
+
+  <button onClick={goShoppingList} className="text-[#a63a0a]">
+    Shopping List
+  </button>
+
+  <button onClick={createNewRecipe} className="text-[#a63a0a]">
+    New Recipe
+  </button>
+
+  <button onClick={logoutUser} className="text-[#a63a0a]">
+    Log Out
+  </button>
+</div>
 
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
