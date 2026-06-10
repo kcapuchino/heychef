@@ -1033,10 +1033,10 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
         <h1 className="mb-6 text-5xl font-bold">All Recipes</h1>
         <div className="mb-6">
   <select
-    value={categoryFilter}
-    onChange={(e) => setCategoryFilter(e.target.value)}
-    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-  >
+  value={categoryFilter}
+  onChange={(e) => setCategoryFilter(e.target.value)}
+  className="min-w-[280px] rounded-full border border-[#ead7c8] bg-white px-6 py-4 pr-14 text-[#2b1a12] shadow-sm"
+>
     <option value="all">All Categories</option>
     <option value="Main Dish">Main Dish</option>
     <option value="Side Dish">Side Dish</option>
