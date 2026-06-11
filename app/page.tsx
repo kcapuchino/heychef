@@ -970,43 +970,43 @@ function renderAuthCard() {
 </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
-      <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
+  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+    <button
+      onClick={goAllRecipes}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🍳 Recipes
+    </button>
 
-      <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowMealPlanner(false);
-          setShowAllRecipes(false);
-          setShowShoppingList(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({shoppingList.length})
-      </button>
+    <button
+      onClick={goMealPlanner}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      📅 Meal Planner ({filledSlots}/21)
+    </button>
 
+    <button
+      onClick={goShoppingList}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🛒 Shopping List ({shoppingList.length})
+    </button>
 
+    <button
+      onClick={goPantry}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🥫 My Pantry
+    </button>
 
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
-    </div>
-  )}
+    <button
+      onClick={logoutUser}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
           <button
   onClick={() => {
@@ -1177,43 +1177,43 @@ function renderAuthCard() {
 </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
-      <button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-    setShowMealPlanner(true);
-    setIsMenuOpen(false);
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📅 Meal Planner ({filledSlots}/21)
-</button>
+  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+    <button
+      onClick={goAllRecipes}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🍳 Recipes
+    </button>
 
-      <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowMealPlanner(false);
-          setShowAllRecipes(false);
-          setShowShoppingList(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({shoppingList.length})
-      </button>
+    <button
+      onClick={goMealPlanner}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      📅 Meal Planner ({filledSlots}/21)
+    </button>
 
-    
+    <button
+      onClick={goShoppingList}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🛒 Shopping List ({shoppingList.length})
+    </button>
 
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
-    </div>
-  )}
+    <button
+      onClick={goPantry}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🥫 My Pantry
+    </button>
+
+    <button
+      onClick={logoutUser}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
           <button
   onClick={() => {
@@ -1449,38 +1449,43 @@ if (showPantry) {
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
-      <button
-        onClick={goMealPlanner}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner ({filledSlots}/21)
-      </button>
+  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+    <button
+      onClick={goAllRecipes}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🍳 Recipes
+    </button>
 
-      <button
-        onClick={goShoppingList}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({shoppingList.length})
-      </button>
+    <button
+      onClick={goMealPlanner}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      📅 Meal Planner ({filledSlots}/21)
+    </button>
 
-      <button
-        onClick={goPantry}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🥫 My Pantry
-      </button>
+    <button
+      onClick={goShoppingList}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🛒 Shopping List ({shoppingList.length})
+    </button>
 
-      
+    <button
+      onClick={goPantry}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🥫 My Pantry
+    </button>
 
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
-    </div>
-  )}
+    <button
+      onClick={logoutUser}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav><button
   onClick={() => {
     setShowPantry(false);
@@ -1731,56 +1736,43 @@ if (showPantry) {
 </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
-      
-      <button
-  onClick={goAllRecipes}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🍳 Recipes
-</button>
+  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+    <button
+      onClick={goAllRecipes}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🍳 Recipes
+    </button>
 
-<button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-    setShowMealPlanner(true);
-    setIsMenuOpen(false);
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📅 Meal Planner ({filledSlots}/21)
-</button>
+    <button
+      onClick={goMealPlanner}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      📅 Meal Planner ({filledSlots}/21)
+    </button>
 
-<button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowMealPlanner(false);
-    setShowAllRecipes(false);
-    setShowShoppingList(true);
-    setIsMenuOpen(false);
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🛒 Shopping List ({shoppingList.length})
-</button>
+    <button
+      onClick={goShoppingList}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🛒 Shopping List ({shoppingList.length})
+    </button>
 
-<button
-  onClick={goPantry}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🥫 My Pantry
-</button>
+    <button
+      onClick={goPantry}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🥫 My Pantry
+    </button>
 
-<button
-  onClick={logoutUser}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  ↪ Log Out
-</button>
-    </div>
-  )}
+    <button
+      onClick={logoutUser}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -2005,44 +1997,43 @@ Bake for 25 minutes`}
   </button>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
-      <button
-        onClick={goAllRecipes}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🍳 Recipes
-      </button>
+  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+    <button
+      onClick={goAllRecipes}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🍳 Recipes
+    </button>
 
-      <button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-    setShowMealPlanner(true);
-    setIsMenuOpen(false);
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📅 Meal Planner ({filledSlots}/21)
-</button>
+    <button
+      onClick={goMealPlanner}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      📅 Meal Planner ({filledSlots}/21)
+    </button>
 
-      <button
-        onClick={goShoppingList}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({shoppingList.length})
-      </button>
+    <button
+      onClick={goShoppingList}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🛒 Shopping List ({shoppingList.length})
+    </button>
 
-    
+    <button
+      onClick={goPantry}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🥫 My Pantry
+    </button>
 
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
-    </div>
-  )}
+    <button
+      onClick={logoutUser}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 
   <button
@@ -2326,49 +2317,43 @@ Let cool`}
 </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
-      <button
-  onClick={() => {
-    setSelectedRecipe(null);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-    setShowMealPlanner(true);
-    setIsMenuOpen(false);
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📅 Meal Planner ({filledSlots}/21)
-</button>
+  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+    <button
+      onClick={goAllRecipes}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🍳 Recipes
+    </button>
 
-      <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowMealPlanner(false);
-          setShowAllRecipes(false);
-          setShowShoppingList(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({shoppingList.length})
-      </button>
-      <button
-  onClick={goPantry}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🥫 My Pantry
-</button>
+    <button
+      onClick={goMealPlanner}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      📅 Meal Planner ({filledSlots}/21)
+    </button>
 
-      
+    <button
+      onClick={goShoppingList}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🛒 Shopping List ({shoppingList.length})
+    </button>
 
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
-    </div>
-  )}
+    <button
+      onClick={goPantry}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      🥫 My Pantry
+    </button>
+
+    <button
+      onClick={logoutUser}
+      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 
         <div className="grid gap-10 md:grid-cols-2 md:items-center">
