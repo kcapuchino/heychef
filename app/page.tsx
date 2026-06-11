@@ -208,33 +208,29 @@ const plannerPercent = Math.round(
     if (session?.user?.email) {
       setUserEmail(session.user.email);
       setHasLoadedUser(true);
+    } else {
+      setUserEmail("");
+      setHasLoadedUser(true);
     }
   }
 
   loadSession();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (session?.user?.email) {
+      setUserEmail(session.user.email);
+      setHasLoadedUser(true);
+    } else {
+      setUserEmail("");
+      setHasLoadedUser(true);
+      setRecipes([]);
+    }
+  });
+
+  return () => subscription.unsubscribe();
 }, []);
-
-  useEffect(() => {
-    if (!userEmail || !hasLoadedUser) return;
-
-    const savedData: SavedUserData = {
-  recipes,
-  shoppingList,
-  mealPlan,
-  pantryItems,
-};
-
-    localStorage.setItem(`hey-chef-data-${userEmail}`, JSON.stringify(savedData));
-  }, [recipes, shoppingList, mealPlan, pantryItems, userEmail, hasLoadedUser]);
-  useEffect(() => {
-  setIsMenuOpen(false);
-}, [
-  selectedRecipe,
-  showAllRecipes,
-  showMealPlanner,
-  showShoppingList,
-  showImport,
-]);
 
   function loadUser(email: string) {
     const normalizedEmail = email.trim().toLowerCase();
@@ -263,6 +259,46 @@ setPantryItems(
     localStorage.setItem("hey-chef-current-user", normalizedEmail);
     setHasLoadedUser(true);
   }
+
+  useEffect(() => {
+  async function loadRecipes() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("recipes")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setRecipes(
+      (data || []).map((recipe) => ({
+        id: recipe.id,
+        title: recipe.title,
+        image: recipe.image_url || "",
+        ingredients: recipe.ingredients || [],
+        steps: recipe.steps || [],
+        cookTime: recipe.cook_time || "",
+        servings: recipe.servings || "",
+        category: recipe.category || "",
+        sourceUrl: recipe.source_url || "",
+        isFavorite: recipe.is_favorite || false,
+        createdAt: recipe.created_at,
+      }))
+    );
+  }
+
+  if (userEmail) {
+    loadRecipes();
+  }
+}, [userEmail]);
 
   async function loginUser(email: string, password: string) {
   setAuthError("");
@@ -309,18 +345,48 @@ setPantryItems(
   localStorage.removeItem("hey-chef-current-user");
 }
 
-  function createNewRecipe() {
+  async function createNewRecipe() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again before creating a recipe.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: "New Recipe",
+      image_url: "",
+      ingredients: [],
+      steps: [],
+      cook_time: "",
+      servings: "",
+      source_url: "",
+      is_favorite: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
   const newRecipe: Recipe = {
-    id: crypto.randomUUID(),
-    title: "New Recipe",
-    image: "",
-    ingredients: [],
-    steps: [],
-    cookTime: "",
-    servings: "",
-    sourceUrl: "",
-    isFavorite: false,
-    createdAt: new Date().toISOString(),
+    id: data.id,
+    title: data.title,
+    image: data.image_url || "",
+    ingredients: data.ingredients || [],
+    steps: data.steps || [],
+    cookTime: data.cook_time || "",
+    servings: data.servings || "",
+    sourceUrl: data.source_url || "",
+    isFavorite: data.is_favorite || false,
+    createdAt: data.created_at,
   };
 
   setRecipes([newRecipe, ...recipes]);
@@ -330,134 +396,192 @@ setPantryItems(
   setShowImport(false);
   setShowMealPlanner(false);
   setShowShoppingList(false);
-}
+}supabase.auth.getUser()
 
   async function importRecipe() {
-    if (!recipeUrl) return;
+  if (!recipeUrl) return;
 
-    setIsImporting(true);
-    setImportError("");
-    setShowManualImport(false);
+  setIsImporting(true);
+  setImportError("");
+  setShowManualImport(false);
+
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setImportError("Please log in again before importing a recipe.");
+      return;
+    }
+
+    const response = await fetch("/api/import-recipe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: recipeUrl }),
+    });
+
+    const text = await response.text();
+
+    let importedData;
 
     try {
-      const response = await fetch("/api/import-recipe", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: recipeUrl }),
-      });
-
-      const text = await response.text();
-
-      let data;
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        setImportError(
-          "The import route is not returning JSON. Check app/api/import-recipe/route.ts and restart npm."
-        );
-        setShowManualImport(true);
-        return;
-      }
-
-      if (!response.ok) {
-        setImportError(data.error || "Could not import this recipe.");
-        setShowManualImport(true);
-        return;
-      }
-
-      const newRecipe: Recipe = {
-  id: crypto.randomUUID(),
-  title: data.title || "Imported Recipe",
-  image: data.image || "",
-  ingredients: data.ingredients || [],
-  steps: data.steps || [],
-  cookTime: data.cookTime || "",
-  servings: data.servings || "",
-  sourceUrl: data.sourceUrl || recipeUrl,
-  isFavorite: false,
-  createdAt: new Date().toISOString(),
-};
-
-      if (selectedRecipe && isEditingRecipe) {
-  updateSelectedRecipe({
-    ...newRecipe,
-    id: selectedRecipe.id,
-    isFavorite: selectedRecipe.isFavorite,
-    createdAt: selectedRecipe.createdAt,
-  });
-
-  setPlannerRecipeId(selectedRecipe.id);
-} else {
-  setRecipes([newRecipe, ...recipes]);
-  setSelectedRecipe(newRecipe);
-  setPlannerRecipeId(newRecipe.id);
-}
-
-setRecipeUrl("");
-setShowImport(false);
-setImportError("");
-setShowManualImport(false);
-    } catch (error) {
-      console.error(error);
-      setImportError("Something went wrong importing this recipe. Try pasting it manually.");
+      importedData = JSON.parse(text);
+    } catch {
+      setImportError(
+        "The import route is not returning JSON. Check app/api/import-recipe/route.ts and restart npm."
+      );
       setShowManualImport(true);
-    } finally {
-      setIsImporting(false);
+      return;
     }
-  }
 
-  function importManualRecipe() {
-    if (!manualRecipe) return;
+    if (!response.ok) {
+      setImportError(importedData.error || "Could not import this recipe.");
+      setShowManualImport(true);
+      return;
+    }
 
-    const lines = manualRecipe
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
+    const { data: savedRecipe, error } = await supabase
+      .from("recipes")
+      .insert({
+        user_id: user.id,
+        title: importedData.title || "Imported Recipe",
+        image_url: importedData.image || "",
+        ingredients: importedData.ingredients || [],
+        steps: importedData.steps || [],
+        cook_time: importedData.cookTime || "",
+        servings: importedData.servings || "",
+        source_url: importedData.sourceUrl || recipeUrl,
+        is_favorite: false,
+      })
+      .select()
+      .single();
 
-    const recipe: Recipe = {
-      id: crypto.randomUUID(),
-      title: lines[0] || "Manual Recipe",
-      image: "",
-      ingredients: [],
-      steps: [],
-      sourceUrl: recipeUrl || "",
-      isFavorite: false,
-      createdAt: new Date().toISOString(),
+    if (error) {
+      setImportError(error.message);
+      return;
+    }
+
+    const newRecipe: Recipe = {
+      id: savedRecipe.id,
+      title: savedRecipe.title,
+      image: savedRecipe.image_url || "",
+      ingredients: savedRecipe.ingredients || [],
+      steps: savedRecipe.steps || [],
+      cookTime: savedRecipe.cook_time || "",
+      servings: savedRecipe.servings || "",
+      sourceUrl: savedRecipe.source_url || "",
+      isFavorite: savedRecipe.is_favorite || false,
+      createdAt: savedRecipe.created_at,
     };
 
-    let inSteps = false;
+    setRecipes([newRecipe, ...recipes]);
+    setSelectedRecipe(newRecipe);
+    setPlannerRecipeId(newRecipe.id);
 
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      const lowerLine = line.toLowerCase();
+    setRecipeUrl("");
+    setShowImport(false);
+    setImportError("");
+    setShowManualImport(false);
+  } catch (error) {
+    console.error(error);
+    setImportError("Something went wrong importing this recipe. Try pasting it manually.");
+    setShowManualImport(true);
+  } finally {
+    setIsImporting(false);
+  }
+}
 
-      if (
-        lowerLine.includes("directions") ||
-        lowerLine.includes("instructions") ||
-        lowerLine.includes("steps")
-      ) {
-        inSteps = true;
-        continue;
-      }
+  async function importManualRecipe() {
+  if (!manualRecipe) return;
 
-      if (inSteps) {
-        recipe.steps.push(line);
-      } else {
-        recipe.ingredients.push(line);
-      }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  const lines = manualRecipe
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const recipe: Recipe = {
+    id: crypto.randomUUID(),
+    title: lines[0] || "Manual Recipe",
+    image: "",
+    ingredients: [],
+    steps: [],
+    sourceUrl: recipeUrl || "",
+    isFavorite: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  let inSteps = false;
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    const lowerLine = line.toLowerCase();
+
+    if (
+      lowerLine.includes("directions") ||
+      lowerLine.includes("instructions") ||
+      lowerLine.includes("steps")
+    ) {
+      inSteps = true;
+      continue;
     }
 
-    setRecipes([recipe, ...recipes]);
-    setPlannerRecipeId(recipe.id);
-    setManualRecipe("");
-    setRecipeUrl("");
-    setShowManualImport(false);
-    setImportError("");
-    setShowImport(false);
+    if (inSteps) {
+      recipe.steps.push(line);
+    } else {
+      recipe.ingredients.push(line);
+    }
   }
+
+  const { data: savedRecipe, error } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: recipe.title,
+      image_url: "",
+      ingredients: recipe.ingredients,
+      steps: recipe.steps,
+      source_url: recipe.sourceUrl,
+      is_favorite: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const dbRecipe: Recipe = {
+    id: savedRecipe.id,
+    title: savedRecipe.title,
+    image: savedRecipe.image_url || "",
+    ingredients: savedRecipe.ingredients || [],
+    steps: savedRecipe.steps || [],
+    sourceUrl: savedRecipe.source_url || "",
+    isFavorite: savedRecipe.is_favorite || false,
+    createdAt: savedRecipe.created_at,
+  };
+
+  setRecipes([dbRecipe, ...recipes]);
+  setPlannerRecipeId(dbRecipe.id);
+  setManualRecipe("");
+  setRecipeUrl("");
+  setShowManualImport(false);
+  setImportError("");
+  setShowImport(false);
+}
 
   function toggleFavorite(recipeId: string) {
     const recipe = recipes.find((item) => item.id === recipeId);
@@ -626,7 +750,27 @@ function addToShoppingList(recipe: Recipe) {
   setShowAllRecipes(true);
 }
 
-  function updateSelectedRecipe(updatedRecipe: Recipe) {
+  async function updateSelectedRecipe(updatedRecipe: Recipe) {
+  const { error } = await supabase
+    .from("recipes")
+    .update({
+      title: updatedRecipe.title,
+      category: updatedRecipe.category || null,
+      image_url: updatedRecipe.image || "",
+      cook_time: updatedRecipe.cookTime || "",
+      servings: updatedRecipe.servings || "",
+      ingredients: updatedRecipe.ingredients,
+      steps: updatedRecipe.steps,
+      source_url: updatedRecipe.sourceUrl || "",
+      is_favorite: updatedRecipe.isFavorite || false,
+    })
+    .eq("id", updatedRecipe.id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
   const updatedRecipes = recipes.map((recipe) =>
     recipe.id === updatedRecipe.id ? updatedRecipe : recipe
   );
