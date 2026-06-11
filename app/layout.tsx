@@ -16,7 +16,16 @@ export const metadata: Metadata = {
   title: "Hey Chef",
   description:
     "Save recipes, plan meals, build shopping lists, and track pantry items.",
-  
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Hey Chef",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
 };
 
 export default function RootLayout({

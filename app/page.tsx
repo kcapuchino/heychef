@@ -264,35 +264,27 @@ setPantryItems(
     setHasLoadedUser(true);
   }
 
-  async function loginUser() {
+  async function loginUser(email: string, password: string) {
   setAuthError("");
 
-  if (!loginEmail || !loginPassword) {
+  if (!email || !password) {
     setAuthError("Enter your email and password.");
     return;
   }
 
-  const email = loginEmail.trim().toLowerCase();
+  const cleanEmail = email.trim().toLowerCase();
 
   const { error } =
     authMode === "signup"
-      ? await supabase.auth.signUp({
-          email,
-          password: loginPassword,
-        })
-      : await supabase.auth.signInWithPassword({
-          email,
-          password: loginPassword,
-        });
+      ? await supabase.auth.signUp({ email: cleanEmail, password })
+      : await supabase.auth.signInWithPassword({ email: cleanEmail, password });
 
   if (error) {
     setAuthError(error.message);
     return;
   }
 
-  setUserEmail(email);
-  setLoginEmail("");
-  setLoginPassword("");
+  setUserEmail(cleanEmail);
   setHasLoadedUser(true);
 }
 
@@ -730,7 +722,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     </div>
   );
 }
-function AuthCard() {
+function renderAuthCard() {
   return (
     <>
       <h2 className="mb-2 text-3xl font-bold">
@@ -743,30 +735,43 @@ function AuthCard() {
           : "Log in to get back to your recipes."}
       </p>
 
-      <input
-        type="email"
-        value={loginEmail}
-        onChange={(e) => setLoginEmail(e.target.value)}
-        placeholder="Email"
-        className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-      />
+      <form
+  onSubmit={(e) => {
+    e.preventDefault();
 
-      <input
-        type="password"
-        value={loginPassword}
-        onChange={(e) => setLoginPassword(e.target.value)}
-        placeholder="Password"
-        className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-      />
+    const formData = new FormData(e.currentTarget);
+    loginUser(
+      String(formData.get("email") || ""),
+      String(formData.get("password") || "")
+    );
+  }}
+>
+  <input
+    name="email"
+    type="email"
+    placeholder="Email"
+    autoComplete="email"
+    className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
+  />
 
-      {authError && <p className="mb-4 text-red-600">{authError}</p>}
+  <input
+    name="password"
+    type="password"
+    placeholder="Password"
+    autoComplete={authMode === "signup" ? "new-password" : "current-password"}
+    className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
+  />
 
-      <button
-        onClick={loginUser}
-        className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-      >
-        {authMode === "signup" ? "Create Account" : "Log In"}
-      </button>
+  {authError && <p className="mb-4 text-red-600">{authError}</p>}
+
+  <button
+    type="submit"
+    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+  >
+    {authMode === "signup" ? "Create Account" : "Log In"}
+  </button>
+</form>
+
       <button
   onClick={() => {
     const ua = navigator.userAgent;
@@ -818,9 +823,7 @@ function AuthCard() {
             Import recipes, plan meals, build shopping lists, and keep your favorite meals in one cozy place.
           </p>
 
-          <div className="mb-8 rounded-[2rem] bg-white p-6 shadow-xl md:hidden">
-            <AuthCard />
-          </div>
+          
 
           <p className="mb-4 font-semibold text-[#a63a0a]">
             Explore a few recipes before creating your account.
@@ -851,7 +854,7 @@ function AuthCard() {
         </div>
 
         <div className="hidden rounded-[2rem] bg-white p-6 shadow-xl md:block">
-          <AuthCard />
+          {renderAuthCard()}
         </div>
       </section>
 
