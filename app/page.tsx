@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Recipe = {
   id: string;
@@ -102,6 +103,10 @@ const [showPantry, setShowPantry] = useState(false);
 const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
 const [pantrySort, setPantrySort] = useState("az");
 
+const [loginPassword, setLoginPassword] = useState("");
+const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+const [authError, setAuthError] = useState("");
+
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
   const homeSectionTitle = favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
@@ -150,6 +155,21 @@ const plannerPercent = Math.round(
       loadUser(savedUser);
     }
   }, []);
+
+  useEffect(() => {
+  async function loadSession() {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.user?.email) {
+      setUserEmail(session.user.email);
+      setHasLoadedUser(true);
+    }
+  }
+
+  loadSession();
+}, []);
 
   useEffect(() => {
     if (!userEmail || !hasLoadedUser) return;
@@ -201,24 +221,58 @@ setPantryItems(
     setHasLoadedUser(true);
   }
 
-  function loginUser() {
-    if (!loginEmail) return;
-    loadUser(loginEmail);
-    setLoginEmail("");
+  async function loginUser() {
+  setAuthError("");
+
+  if (!loginEmail || !loginPassword) {
+    setAuthError("Enter your email and password.");
+    return;
   }
 
-  function logoutUser() {
-    setUserEmail("");
-    setHasLoadedUser(false);
-    setRecipes([]);
-    setShoppingList([]);
-    setMealPlan({});
-    setSelectedRecipe(null);
-    setShowMealPlanner(false);
-    setShowShoppingList(false);
-    setShowAllRecipes(false);
-    localStorage.removeItem("hey-chef-current-user");
+  const email = loginEmail.trim().toLowerCase();
+
+  const { error } =
+    authMode === "signup"
+      ? await supabase.auth.signUp({
+          email,
+          password: loginPassword,
+        })
+      : await supabase.auth.signInWithPassword({
+          email,
+          password: loginPassword,
+        });
+
+  if (error) {
+    setAuthError(error.message);
+    return;
   }
+
+  setUserEmail(email);
+  setLoginEmail("");
+  setLoginPassword("");
+  setHasLoadedUser(true);
+}
+
+  async function logoutUser() {
+  await supabase.auth.signOut();
+
+  setUserEmail("");
+  setHasLoadedUser(false);
+
+  setRecipes([]);
+  setShoppingList([]);
+  setMealPlan({});
+  setSelectedRecipe(null);
+
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowAllRecipes(false);
+
+  setLoginEmail("");
+  setLoginPassword("");
+
+  localStorage.removeItem("hey-chef-current-user");
+}
 
   function createNewRecipe() {
   const newRecipe: Recipe = {
@@ -648,18 +702,42 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             </p>
 
             <input
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-            />
+  type="email"
+  value={loginEmail}
+  onChange={(e) => setLoginEmail(e.target.value)}
+  placeholder="Email"
+  className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+/>
 
-            <button
-              onClick={loginUser}
-              className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-            >
-              Log In / Create Account
-            </button>
+<input
+  type="password"
+  value={loginPassword}
+  onChange={(e) => setLoginPassword(e.target.value)}
+  placeholder="Password"
+  className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+/>
+
+{authError && (
+  <p className="mb-4 text-red-600">
+    {authError}
+  </p>
+)}
+
+<button
+  onClick={loginUser}
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+>
+  {authMode === "signup" ? "Create Account" : "Log In"}
+</button>
+
+<button
+  onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
+  className="mt-4 w-full text-[#a63a0a]"
+>
+  {authMode === "login"
+    ? "Need an account? Create one"
+    : "Already have an account? Log in"}
+</button>
 
             <p className="mt-4 text-sm text-[#6d5549]">
               Prototype note: this saves in this browser for now. Supabase will make it real across
@@ -2133,6 +2211,9 @@ Let cool`}
       Import recipes, clean up the clutter, plan your week, and build your shopping list in
       one place.
     </p>
+    
+
+
 
     <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
