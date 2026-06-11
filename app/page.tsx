@@ -767,6 +767,28 @@ function AuthCard() {
       >
         {authMode === "signup" ? "Create Account" : "Log In"}
       </button>
+      <button
+  onClick={() => {
+    const ua = navigator.userAgent;
+
+    if (/iPhone|iPad|iPod/.test(ua)) {
+      alert(
+        "Install Hey Chef:\n\nTap the Share button in Safari, then choose 'Add to Home Screen'."
+      );
+    } else if (/Android/.test(ua)) {
+      alert(
+        "Install Hey Chef:\n\nTap the browser menu and choose 'Install App' or 'Add to Home Screen'."
+      );
+    } else {
+      alert(
+        "Install Hey Chef:\n\nLook for the install icon in Chrome's address bar or use Chrome Menu → Install Hey Chef."
+      );
+    }
+  }}
+  className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  📱 Install Hey Chef
+</button>
 
       <button
         onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
