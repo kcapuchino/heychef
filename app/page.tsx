@@ -2740,7 +2740,8 @@ Let cool`}
 />
   </div>
 )}
-
+{!isEditingRecipe && (
+  <>
             <div className="mb-8 flex flex-wrap gap-3">
               <button
                 onClick={() => addToShoppingList(selectedRecipe)}
@@ -2828,6 +2829,8 @@ Let cool`}
     </li>
   ))}
 </ol>
+  </>
+)}
           </div>
         </section>
       </main>
