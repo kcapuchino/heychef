@@ -310,7 +310,7 @@ setPantryItems(
 
   const cleanEmail = email.trim().toLowerCase();
 
-  const { error } =
+  const { data, error } =
     authMode === "signup"
       ? await supabase.auth.signUp({ email: cleanEmail, password })
       : await supabase.auth.signInWithPassword({ email: cleanEmail, password });
@@ -318,6 +318,30 @@ setPantryItems(
   if (error) {
     setAuthError(error.message);
     return;
+  }
+
+  const user = data.user;
+
+  if (user) {
+    const isGovEmail =
+      cleanEmail.endsWith("@in.gov") || cleanEmail.endsWith(".gov");
+
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: user.id,
+      email: cleanEmail,
+      plan: isGovEmail ? "gov_free" : "free",
+      verified_domain: isGovEmail ? "in.gov" : null,
+      domain_verified_at: isGovEmail ? new Date().toISOString() : null,
+      domain_expires_at: isGovEmail ? oneYearFromNow.toISOString() : null,
+    });
+
+    if (profileError) {
+      setAuthError(profileError.message);
+      return;
+    }
   }
 
   setUserEmail(cleanEmail);
