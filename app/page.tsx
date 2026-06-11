@@ -739,10 +739,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     : "Already have an account? Log in"}
 </button>
 
-            <p className="mt-4 text-sm text-[#6d5549]">
-              Prototype note: this saves in this browser for now. Supabase will make it real across
-              devices.
-            </p>
+          
           </div>
         </section>
       </main>
