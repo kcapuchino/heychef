@@ -825,38 +825,43 @@ function addToShoppingList(recipe: Recipe) {
     setShowShoppingList(true);
   }
 
-  function addNewMealPlanItemsToShoppingList() {
-  const ingredientCounts: Record<string, number> = {};
+  async function addNewMealPlanItemsToShoppingList() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  Object.values(mealPlan)
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  const allIngredients = Object.values(mealPlan)
     .flat()
-    .forEach((recipe) => {
-      recipe.ingredients.forEach((ingredient) => {
-        ingredientCounts[ingredient] = (ingredientCounts[ingredient] || 0) + 1;
-      });
-    });
+    .flatMap((recipe) => recipe.ingredients);
 
-  const updatedShoppingList = [...shoppingList];
+  if (allIngredients.length === 0) {
+    alert("No meal plan items to add.");
+    return;
+  }
 
-  Object.entries(ingredientCounts).forEach(([ingredient, mealPlanCount]) => {
-    const existingIndex = updatedShoppingList.findIndex(
-      (item) => item === ingredient || item.startsWith(`${ingredient} ×`)
-    );
+  const rows = allIngredients.map((item) => ({
+    user_id: user.id,
+    name: item,
+  }));
 
-    if (existingIndex >= 0) {
-      if (mealPlanCount > 1) {
-        updatedShoppingList[existingIndex] = `${ingredient} × ${mealPlanCount}`;
-      } else {
-        updatedShoppingList[existingIndex] = ingredient;
-      }
-    } else {
-      updatedShoppingList.push(
-        mealPlanCount > 1 ? `${ingredient} × ${mealPlanCount}` : ingredient
-      );
-    }
-  });
+  const { data, error } = await supabase
+    .from("shopping_items")
+    .insert(rows)
+    .select();
 
-  const sorted = updatedShoppingList.sort((a, b) =>
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const newItems = (data || []).map((item) => item.name);
+
+  const sorted = [...shoppingList, ...newItems].sort((a, b) =>
     cleanForSort(a).localeCompare(cleanForSort(b))
   );
 
@@ -1068,6 +1073,12 @@ async function addShoppingItemToPantry(shoppingItem: string) {
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
+  await supabase
+  .from("shopping_items")
+  .delete()
+  .eq("name", shoppingItem);
+
+setShoppingList(shoppingList.filter((item) => item !== shoppingItem));
 }
 
 function goAllRecipes() {
@@ -1705,11 +1716,21 @@ setNewShoppingItem("");
     </button>
 
     <button
-      onClick={() => {
-        if (confirm("Clear your meal plan and start fresh?")) {
-          setMealPlan({});
-        }
-      }}
+      onClick={async () => {
+  if (confirm("Clear your meal plan and start fresh?")) {
+    const { error } = await supabase
+      .from("meal_plan")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setMealPlan({});
+  }
+}}
       className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
     >
       Reset Meal Plan
@@ -2100,30 +2121,40 @@ if (showPantry) {
                           <div className="grid gap-3 md:grid-cols-3">
                             <input
                               value={item.name}
-                              onChange={(e) =>
-                                setPantryItems(
-                                  pantryItems.map((p) =>
-                                    p.id === item.id
-                                      ? { ...p, name: e.target.value }
-                                      : p
-                                  )
-                                )
-                              }
+                              onChange={async (e) => {
+  const newName = e.target.value;
+
+  setPantryItems(
+    pantryItems.map((p) =>
+      p.id === item.id ? { ...p, name: newName } : p
+    )
+  );
+
+  await supabase
+    .from("pantry_items")
+    .update({ name: newName })
+    .eq("id", item.id);
+}}
                               placeholder="Item"
                               className="rounded-xl border border-[#ead7c8] p-3"
                             />
 
                             <input
                               value={item.quantity}
-                              onChange={(e) =>
-                                setPantryItems(
-                                  pantryItems.map((p) =>
-                                    p.id === item.id
-                                      ? { ...p, quantity: e.target.value }
-                                      : p
-                                  )
-                                )
-                              }
+                              onChange={async (e) => {
+  const newQuantity = e.target.value;
+
+  setPantryItems(
+    pantryItems.map((p) =>
+      p.id === item.id ? { ...p, quantity: newQuantity } : p
+    )
+  );
+
+  await supabase
+    .from("pantry_items")
+    .update({ quantity: newQuantity })
+    .eq("id", item.id);
+}}
                               placeholder="Qty"
                               className="rounded-xl border border-[#ead7c8] p-3"
                             />
@@ -2132,15 +2163,20 @@ if (showPantry) {
 
                             <select
                               value={item.category}
-                              onChange={(e) =>
-                                setPantryItems(
-                                  pantryItems.map((p) =>
-                                    p.id === item.id
-                                      ? { ...p, category: e.target.value }
-                                      : p
-                                  )
-                                )
-                              }
+                              onChange={async (e) => {
+  const newCategory = e.target.value;
+
+  setPantryItems(
+    pantryItems.map((p) =>
+      p.id === item.id ? { ...p, category: newCategory } : p
+    )
+  );
+
+  await supabase
+    .from("pantry_items")
+    .update({ category: newCategory })
+    .eq("id", item.id);
+}}
                               className="rounded-xl border border-[#ead7c8] bg-white p-3"
                             >
                               <option value="Dairy">Dairy</option>
