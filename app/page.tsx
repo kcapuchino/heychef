@@ -459,26 +459,32 @@ function addToShoppingList(recipe: Recipe) {
       });
     });
 
-  const itemsToAdd: string[] = [];
+  const updatedShoppingList = [...shoppingList];
 
-  Object.entries(ingredientCounts).forEach(([ingredient, count]) => {
-    const alreadyOnList = shoppingList.some(
+  Object.entries(ingredientCounts).forEach(([ingredient, mealPlanCount]) => {
+    const existingIndex = updatedShoppingList.findIndex(
       (item) => item === ingredient || item.startsWith(`${ingredient} ×`)
     );
 
-    if (!alreadyOnList) {
-      for (let i = 0; i < count; i++) {
-        itemsToAdd.push(ingredient);
+    if (existingIndex >= 0) {
+      if (mealPlanCount > 1) {
+        updatedShoppingList[existingIndex] = `${ingredient} × ${mealPlanCount}`;
+      } else {
+        updatedShoppingList[existingIndex] = ingredient;
       }
+    } else {
+      updatedShoppingList.push(
+        mealPlanCount > 1 ? `${ingredient} × ${mealPlanCount}` : ingredient
+      );
     }
   });
 
-  if (itemsToAdd.length === 0) {
-    alert("No new ingredients to add.");
-    return;
-  }
+  const sorted = updatedShoppingList.sort((a, b) =>
+    cleanForSort(a).localeCompare(cleanForSort(b))
+  );
 
-  addItemsToShoppingList(itemsToAdd);
+  setShoppingList(sorted);
+  alert("Shopping list updated from your meal plan.");
 }
 
   function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
