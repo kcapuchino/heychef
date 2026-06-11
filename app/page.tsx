@@ -823,7 +823,10 @@ function renderAuthCard() {
             Import recipes, plan meals, build shopping lists, and keep your favorite meals in one cozy place.
           </p>
 
-          
+          {/* Mobile login form goes here */}
+          <div className="mb-8 rounded-[2rem] bg-white p-6 shadow-xl md:hidden">
+            {renderAuthCard()}
+          </div>
 
           <p className="mb-4 font-semibold text-[#a63a0a]">
             Explore a few recipes before creating your account.
@@ -853,30 +856,28 @@ function renderAuthCard() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] bg-white p-6 shadow-xl">
-  {renderAuthCard()}
-</div>
+        {/* Desktop login form stays in right column */}
+        <div className="hidden rounded-[2rem] bg-white p-6 shadow-xl md:block">
+          {renderAuthCard()}
+        </div>
       </section>
 
       {sampleRecipe && (
         <div
-  className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0"
-  onClick={() => setSampleRecipe(null)}
->
+          className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0"
+          onClick={() => setSampleRecipe(null)}
+        >
           <div
-  className="max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-2xl"
-  onClick={(e) => e.stopPropagation()}
->
-  <div
-  className="relative max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-2xl"
-  onClick={(e) => e.stopPropagation()}
-></div>
-<button
-  onClick={() => setSampleRecipe(null)}
-  className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white text-3xl text-[#6d5549] shadow-lg hover:text-[#a63a0a]"
->
-  ×
-</button>
+            className="relative max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSampleRecipe(null)}
+              className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white text-3xl text-[#6d5549] shadow-lg hover:text-[#a63a0a]"
+            >
+              ×
+            </button>
+
             <img
               src={sampleRecipe.image || placeholderImage}
               alt={sampleRecipe.title}
