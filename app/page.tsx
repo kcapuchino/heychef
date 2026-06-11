@@ -2595,7 +2595,13 @@ Bake for 25 minutes`}
 
   <div className="flex flex-col gap-3 md:flex-row">
     <button
-      onClick={() => setIsEditingRecipe(!isEditingRecipe)}
+      onClick={() => {
+  if (isEditingRecipe && selectedRecipe) {
+    updateSelectedRecipe(selectedRecipe);
+  }
+
+  setIsEditingRecipe(!isEditingRecipe);
+}}
       className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
     >
       {isEditingRecipe ? "Done Editing" : "Edit Recipe"}
