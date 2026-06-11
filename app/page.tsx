@@ -320,7 +320,7 @@ setPantryItems(
     return;
   }
 
-  const user = data.user;
+  const user = data.user ?? data.session?.user;
 
   if (user) {
     const isGovEmail =
