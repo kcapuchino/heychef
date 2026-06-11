@@ -853,9 +853,9 @@ function renderAuthCard() {
           </div>
         </div>
 
-        <div className="hidden rounded-[2rem] bg-white p-6 shadow-xl md:block">
-          {renderAuthCard()}
-        </div>
+        <div className="rounded-[2rem] bg-white p-6 shadow-xl">
+  {renderAuthCard()}
+</div>
       </section>
 
       {sampleRecipe && (
