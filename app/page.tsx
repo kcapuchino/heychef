@@ -31,7 +31,7 @@ type PantryItem = {
 type SavedUserData = {
   recipes: Recipe[];
   shoppingList: string[];
-  mealPlan: Record<string, Recipe[]>;
+  mealPlan: Record<string, PlannedRecipe[]>;
   pantryItems: PantryItem[];
 };
 
@@ -116,7 +116,7 @@ export default function Home() {
   const [showShoppingList, setShowShoppingList] = useState(false);
 
   const [showMealPlanner, setShowMealPlanner] = useState(false);
-  const [mealPlan, setMealPlan] = useState<Record<string, Recipe[]>>({});
+  const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({});
 
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState("");
@@ -360,6 +360,64 @@ useEffect(() => {
 
   if (userEmail) {
     loadPantry();
+  }
+  
+}, [userEmail]);
+
+useEffect(() => {
+  async function loadMealPlan() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("meal_plan")
+      .select(`
+        id,
+        day,
+        meal,
+        recipes (*)
+      `);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const loadedPlan: Record<string, PlannedRecipe[]> = {};
+
+    (data || []).forEach((item: any) => {
+      if (!item.recipes) return;
+
+      const key = `${item.day}-${item.meal}`;
+
+      if (!loadedPlan[key]) {
+        loadedPlan[key] = [];
+      }
+
+      loadedPlan[key].push({
+        id: item.recipes.id,
+        title: item.recipes.title,
+        image: item.recipes.image_url || "",
+        ingredients: item.recipes.ingredients || [],
+        steps: item.recipes.steps || [],
+        cookTime: item.recipes.cook_time || "",
+        servings: item.recipes.servings || "",
+        category: item.recipes.category || "",
+        sourceUrl: item.recipes.source_url || "",
+        isFavorite: item.recipes.is_favorite || false,
+        createdAt: item.recipes.created_at,
+        mealPlanId: item.id,
+      });
+    });
+
+    setMealPlan(loadedPlan);
+  }
+
+  if (userEmail) {
+    loadMealPlan();
   }
 }, [userEmail]);
 
@@ -824,21 +882,30 @@ function addToShoppingList(recipe: Recipe) {
     return;
   }
 
-  const { error } = await supabase.from("meal_plan").insert({
-    user_id: user.id,
-    recipe_id: recipe.id,
-    day,
-    meal,
-  });
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .insert({
+      user_id: user.id,
+      recipe_id: recipe.id,
+      day,
+      meal,
+    })
+    .select()
+    .single();
 
   if (error) {
     alert(error.message);
     return;
   }
 
+  const plannedRecipe: PlannedRecipe = {
+    ...recipe,
+    mealPlanId: data.id,
+  };
+
   setMealPlan({
     ...mealPlan,
-    [key]: [...currentRecipes, recipe],
+    [key]: [...currentRecipes, plannedRecipe],
   });
 }
 
@@ -853,15 +920,31 @@ function addToShoppingList(recipe: Recipe) {
   setPlannerPopup(null);
 }
 
-  function removeRecipeFromMealPlan(day: string, meal: string, recipeId: string) {
-    const key = `${day}-${meal}`;
-    const currentRecipes = mealPlan[key] || [];
+  async function removeRecipeFromMealPlan(
+  day: string,
+  meal: string,
+  mealPlanId: string
+) {
+  const { error } = await supabase
+    .from("meal_plan")
+    .delete()
+    .eq("id", mealPlanId);
 
-    setMealPlan({
-      ...mealPlan,
-      [key]: currentRecipes.filter((recipe) => recipe.id !== recipeId),
-    });
+  if (error) {
+    alert(error.message);
+    return;
   }
+
+  const key = `${day}-${meal}`;
+  const currentRecipes = mealPlan[key] || [];
+
+  setMealPlan({
+    ...mealPlan,
+    [key]: currentRecipes.filter(
+      (recipe) => recipe.mealPlanId !== mealPlanId
+    ),
+  });
+}
 
   async function deleteRecipe(recipeId: string) {
   const { error } = await supabase
@@ -876,7 +959,7 @@ function addToShoppingList(recipe: Recipe) {
 
   setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
 
-  const updatedMealPlan: Record<string, Recipe[]> = {};
+  const updatedMealPlan: Record<string, PlannedRecipe[]> = {};
 
   Object.entries(mealPlan).forEach(([key, plannedRecipes]) => {
     updatedMealPlan[key] = plannedRecipes.filter(
@@ -1710,7 +1793,7 @@ setNewShoppingItem("");
               ) : (
                 <div className="space-y-2">
                   {plannedRecipes.map((recipe) => (
-                    <div key={recipe.id} className="rounded-xl bg-white p-3 text-sm">
+                    <div key={recipe.mealPlanId} className="rounded-xl bg-white p-3 text-sm">
                       <div className="flex items-start justify-between gap-3">
                         <button
                           onClick={() => {
@@ -1723,7 +1806,7 @@ setNewShoppingItem("");
                         </button>
 
                         <button
-                          onClick={() => removeRecipeFromMealPlan(day, meal, recipe.id)}
+                          onClick={() => removeRecipeFromMealPlan(day, meal, recipe.mealPlanId)}
                           className="shrink-0 text-[#a63a0a]"
                         >
                           Remove
