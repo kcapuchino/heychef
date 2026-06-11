@@ -803,20 +803,41 @@ function addToShoppingList(recipe: Recipe) {
   alert("Shopping list updated from your meal plan.");
 }
 
-  function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
-    const key = `${day}-${meal}`;
-    const currentRecipes = mealPlan[key] || [];
+  async function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
+  const key = `${day}-${meal}`;
+  const currentRecipes = mealPlan[key] || [];
 
-    if (currentRecipes.length >= 3) {
-      alert("Free plan allows up to 3 recipes per meal slot.");
-      return;
-    }
-
-    setMealPlan({
-      ...mealPlan,
-      [key]: [...currentRecipes, recipe],
-    });
+  if (currentRecipes.length >= 3) {
+    alert("Free plan allows up to 3 recipes per meal slot.");
+    return;
   }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  const { error } = await supabase.from("meal_plan").insert({
+    user_id: user.id,
+    recipe_id: recipe.id,
+    day,
+    meal,
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setMealPlan({
+    ...mealPlan,
+    [key]: [...currentRecipes, recipe],
+  });
+}
 
   function addRecipeFromPlanner() {
   const recipe = recipes.find((item) => item.id === plannerRecipeId);
@@ -894,9 +915,19 @@ function addToShoppingList(recipe: Recipe) {
   setSelectedRecipe(updatedRecipe);
 }
 
-  function removeShoppingItem(item: string) {
-    setShoppingList(shoppingList.filter((listItem) => listItem !== item));
+  async function removeShoppingItem(item: string) {
+  const { error } = await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("name", item);
+
+  if (error) {
+    alert(error.message);
+    return;
   }
+
+  setShoppingList(shoppingList.filter((listItem) => listItem !== item));
+}
 
   function goHome() {
   setSelectedRecipe(null);
@@ -1341,10 +1372,20 @@ function renderAuthCard() {
   </div>
 
   <button
-    onClick={() => {
+    onClick={async () => {
       if (confirm("Clear your shopping list?")) {
-        setShoppingList([]);
-      }
+  const { error } = await supabase
+    .from("shopping_items")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setShoppingList([]);
+}
     }}
     className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
   >
