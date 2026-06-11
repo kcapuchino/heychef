@@ -300,6 +300,40 @@ setPantryItems(
   }
 }, [userEmail]);
 
+useEffect(() => {
+  async function loadPantry() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("pantry_items")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setPantryItems(
+      (data || []).map((item) => ({
+        id: item.id,
+        name: item.name,
+        quantity: item.quantity || "",
+        category: item.category || "Other",
+        createdAt: item.created_at,
+      }))
+    );
+  }
+
+  if (userEmail) {
+    loadPantry();
+  }
+}, [userEmail]);
+
   async function loginUser(email: string, password: string) {
   setAuthError("");
 
@@ -420,7 +454,7 @@ setPantryItems(
   setShowImport(false);
   setShowMealPlanner(false);
   setShowShoppingList(false);
-}supabase.auth.getUser()
+}
 
   async function importRecipe() {
   if (!recipeUrl) return;
@@ -607,29 +641,44 @@ setPantryItems(
   setShowImport(false);
 }
 
-  function toggleFavorite(recipeId: string) {
-    const recipe = recipes.find((item) => item.id === recipeId);
-    if (!recipe) return;
+  async function toggleFavorite(recipeId: string) {
+  const recipe = recipes.find((item) => item.id === recipeId);
+  if (!recipe) return;
 
-    const currentFavorites = recipes.filter((item) => item.isFavorite);
+  const currentFavorites = recipes.filter((item) => item.isFavorite);
 
-    if (!recipe.isFavorite && currentFavorites.length >= 3) {
-      alert("You can favorite up to 3 recipes for your homepage.");
-      return;
-    }
-
-    const updatedRecipes = recipes.map((item) =>
-      item.id === recipeId ? { ...item, isFavorite: !item.isFavorite } : item
-    );
-
-    setRecipes(updatedRecipes);
-
-    const updatedSelectedRecipe = updatedRecipes.find((item) => item.id === recipeId) || null;
-
-    if (selectedRecipe?.id === recipeId) {
-      setSelectedRecipe(updatedSelectedRecipe);
-    }
+  if (!recipe.isFavorite && currentFavorites.length >= 3) {
+    alert("You can favorite up to 3 recipes for your homepage.");
+    return;
   }
+
+  const newFavoriteValue = !recipe.isFavorite;
+
+  const { error } = await supabase
+    .from("recipes")
+    .update({
+      is_favorite: newFavoriteValue,
+    })
+    .eq("id", recipeId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const updatedRecipes = recipes.map((item) =>
+    item.id === recipeId ? { ...item, isFavorite: newFavoriteValue } : item
+  );
+
+  setRecipes(updatedRecipes);
+
+  const updatedSelectedRecipe =
+    updatedRecipes.find((item) => item.id === recipeId) || null;
+
+  if (selectedRecipe?.id === recipeId) {
+    setSelectedRecipe(updatedSelectedRecipe);
+  }
+}
 
   function cleanForSort(item: string) {
   return item
@@ -760,13 +809,25 @@ function addToShoppingList(recipe: Recipe) {
     });
   }
 
-  function deleteRecipe(recipeId: string) {
+  async function deleteRecipe(recipeId: string) {
+  const { error } = await supabase
+    .from("recipes")
+    .delete()
+    .eq("id", recipeId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
   setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
 
   const updatedMealPlan: Record<string, Recipe[]> = {};
 
   Object.entries(mealPlan).forEach(([key, plannedRecipes]) => {
-    updatedMealPlan[key] = plannedRecipes.filter((recipe) => recipe.id !== recipeId);
+    updatedMealPlan[key] = plannedRecipes.filter(
+      (recipe) => recipe.id !== recipeId
+    );
   });
 
   setMealPlan(updatedMealPlan);
@@ -1730,24 +1791,46 @@ if (showPantry) {
     </select>
 
     <button
-      onClick={() => {
-        if (!newPantryItem.trim()) return;
+      onClick={async () => {
+  if (!newPantryItem.trim()) return;
 
-        setPantryItems([
-          {
-            id: crypto.randomUUID(),
-            name: newPantryItem.trim(),
-            quantity: newPantryQuantity.trim() || "1",
-            category: newPantryCategory,
-            createdAt: new Date().toISOString(),
-          },
-          ...pantryItems,
-        ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-        setNewPantryItem("");
-        setNewPantryQuantity("");
-        setNewPantryCategory("Other");
-      }}
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from("pantry_items")
+    .insert({
+      user_id: user.id,
+      name: newPantryItem.trim(),
+      quantity: newPantryQuantity.trim() || "1",
+      category: newPantryCategory,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setPantryItems([
+    {
+      id: data.id,
+      name: data.name,
+      quantity: data.quantity,
+      category: data.category,
+      createdAt: data.created_at,
+    },
+    ...pantryItems,
+  ]);
+
+  setNewPantryItem("");
+  setNewPantryQuantity("");
+  setNewPantryCategory("Other");
+}}
       className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
     >
       Add Item
@@ -1866,11 +1949,21 @@ if (showPantry) {
 
                           <div className="mt-3 flex justify-end">
                             <button
-                              onClick={() =>
-                                setPantryItems(
-                                  pantryItems.filter((p) => p.id !== item.id)
-                                )
-                              }
+                              onClick={async () => {
+  const { error } = await supabase
+    .from("pantry_items")
+    .delete()
+    .eq("id", item.id);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  setPantryItems(
+    pantryItems.filter((p) => p.id !== item.id)
+  );
+}}
                               className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm text-[#a63a0a]"
                             >
                               Delete
