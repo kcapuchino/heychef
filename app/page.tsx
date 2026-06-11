@@ -433,38 +433,52 @@ useEffect(() => {
   const cleanEmail = email.trim().toLowerCase();
 
   const { data, error } =
-    authMode === "signup"
-      ? await supabase.auth.signUp({ email: cleanEmail, password })
-      : await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+  authMode === "signup"
+    ? await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+      })
+    : await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
 
-  if (error) {
+if (error) {
+  if (
+    error.message.toLowerCase().includes("already registered") ||
+    error.message.toLowerCase().includes("already exists")
+  ) {
+    setAuthError("Account already created. Please log in instead.");
+  } else {
     setAuthError(error.message);
-    return;
   }
+
+  return;
+}
 
   const user = data.user ?? data.session?.user;
 
-  if (user) {
-    const isGovEmail =
-      cleanEmail.endsWith("@in.gov") || cleanEmail.endsWith(".gov");
+if (authMode === "signup" && user) {
+  const isGovEmail =
+    cleanEmail.endsWith("@in.gov") || cleanEmail.endsWith(".gov");
 
-    const oneYearFromNow = new Date();
-    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+  const oneYearFromNow = new Date();
+  oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: user.id,
-      email: cleanEmail,
-      plan: isGovEmail ? "gov_free" : "free",
-      verified_domain: isGovEmail ? "in.gov" : null,
-      domain_verified_at: isGovEmail ? new Date().toISOString() : null,
-      domain_expires_at: isGovEmail ? oneYearFromNow.toISOString() : null,
-    });
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: user.id,
+    email: cleanEmail,
+    plan: isGovEmail ? "gov_free" : "free",
+    verified_domain: isGovEmail ? "in.gov" : null,
+    domain_verified_at: isGovEmail ? new Date().toISOString() : null,
+    domain_expires_at: isGovEmail ? oneYearFromNow.toISOString() : null,
+  });
 
-    if (profileError) {
-      setAuthError(profileError.message);
-      return;
-    }
+  if (profileError) {
+    setAuthError(profileError.message);
+    return;
   }
+}
 
   setUserEmail(cleanEmail);
   setHasLoadedUser(true);
@@ -1235,7 +1249,7 @@ function renderAuthCard() {
   <button
     type="button"
     onClick={resetPassword}
-    className="mt-4 w-full text-sm text-[#a63a0a] underline"
+    className="mt-4 w-full text-[#a63a0a] underline"
   >
     Forgot password?
   </button>
