@@ -16,6 +16,9 @@ type Recipe = {
   isFavorite?: boolean;
   createdAt: string;
 };
+type PlannedRecipe = Recipe & {
+  mealPlanId: string;
+};
 
 type PantryItem = {
   id: string;
