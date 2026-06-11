@@ -2639,13 +2639,6 @@ Bake for 25 minutes`}
     {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
   </button>
 </div>
-
-<button
-  onClick={() => toggleFavorite(selectedRecipe.id)}
-  className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
->
-  {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
-</button>
 </div>
 
 
