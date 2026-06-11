@@ -301,6 +301,32 @@ setPantryItems(
 }, [userEmail]);
 
 useEffect(() => {
+  async function loadShoppingItems() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("shopping_items")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setShoppingList((data || []).map((item) => item.name));
+  }
+
+  if (userEmail) {
+    loadShoppingItems();
+  }
+}, [userEmail]);
+
+useEffect(() => {
   async function loadPantry() {
     const {
       data: { user },
@@ -1331,11 +1357,34 @@ function renderAuthCard() {
   />
 
   <button
-    onClick={() => {
+    onClick={async () => {
       if (!newShoppingItem.trim()) return;
 
-      setShoppingList([...shoppingList, newShoppingItem.trim()]);
-      setNewShoppingItem("");
+      const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+  alert("Please log in again.");
+  return;
+}
+
+const { data, error } = await supabase
+  .from("shopping_items")
+  .insert({
+    user_id: user.id,
+    name: newShoppingItem.trim(),
+  })
+  .select()
+  .single();
+
+if (error) {
+  alert(error.message);
+  return;
+}
+
+setShoppingList([data.name, ...shoppingList]);
+setNewShoppingItem("");
     }}
     className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
   >
