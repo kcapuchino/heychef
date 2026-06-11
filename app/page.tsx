@@ -36,6 +36,48 @@ const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 const meals = ["Breakfast", "Lunch", "Dinner"];
 const placeholderImage = "https://placehold.co/1200x800/f8efe6/a63a0a?text=Hey+Chef";
 
+const sampleRecipes: Recipe[] = [
+  {
+    id: "sample-tostadas",
+    title: "Avocado & Black Bean Tostadas",
+    image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1200&q=80",
+    ingredients: ["Avocado", "Black beans", "Tostada shells", "Cabbage", "Lime", "Cilantro"],
+    steps: ["Mash avocado with lime.", "Warm black beans.", "Layer beans, avocado, cabbage, and cilantro on tostadas."],
+    cookTime: "20 min",
+    servings: "4 servings",
+    category: "Main Dish",
+    sourceUrl: "https://cooking.nytimes.com/recipes/1027324-avocado-black-bean-tostadas",
+    isFavorite: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "sample-green-beans",
+    title: "Green Bean Salad with Dill Pickles & Feta",
+    image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80",
+    ingredients: ["Green beans", "Dill pickles", "Feta", "Herbs", "Olive oil", "Vinegar"],
+    steps: ["Blanch green beans.", "Chop pickles and herbs.", "Toss everything with feta and dressing."],
+    cookTime: "15 min",
+    servings: "4 servings",
+    category: "Side Dish",
+    sourceUrl: "https://cooking.nytimes.com/recipes/1025454-green-bean-salad-with-dill-pickles-and-feta",
+    isFavorite: false,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "sample-pancakes",
+    title: "Sorghum Lemon Ricotta Pancakes",
+    image: "https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=1200&q=80",
+    ingredients: ["Sorghum flour", "Baking powder", "Eggs", "Lemon juice", "Lemon zest", "Milk", "Ricotta"],
+    steps: ["Mix dry ingredients.", "Whisk wet ingredients.", "Combine, rest batter, then cook pancakes."],
+    cookTime: "25 min",
+    servings: "4 servings",
+    category: "Breakfast",
+    sourceUrl: "https://www.sorghumcheckoff.com/recipes/sorghum-lemon-ricotta-pancakes/",
+    isFavorite: false,
+    createdAt: new Date().toISOString(),
+  },
+];
+
 function getUpcomingWeekLabel() {
   const today = new Date();
   const day = today.getDay();
@@ -106,6 +148,7 @@ const [pantrySort, setPantrySort] = useState("az");
 const [loginPassword, setLoginPassword] = useState("");
 const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 const [authError, setAuthError] = useState("");
+const [sampleRecipe, setSampleRecipe] = useState<Recipe | null>(null);
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
@@ -687,6 +730,55 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     </div>
   );
 }
+function AuthCard() {
+  return (
+    <>
+      <h2 className="mb-2 text-3xl font-bold">
+        {authMode === "signup" ? "Create your kitchen" : "Welcome back"}
+      </h2>
+
+      <p className="mb-5 text-[#6d5549]">
+        {authMode === "signup"
+          ? "Create an account to save your recipes."
+          : "Log in to get back to your recipes."}
+      </p>
+
+      <input
+        type="email"
+        value={loginEmail}
+        onChange={(e) => setLoginEmail(e.target.value)}
+        placeholder="Email"
+        className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        type="password"
+        value={loginPassword}
+        onChange={(e) => setLoginPassword(e.target.value)}
+        placeholder="Password"
+        className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      {authError && <p className="mb-4 text-red-600">{authError}</p>}
+
+      <button
+        onClick={loginUser}
+        className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+      >
+        {authMode === "signup" ? "Create Account" : "Log In"}
+      </button>
+
+      <button
+        onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
+        className="mt-4 w-full text-[#a63a0a]"
+      >
+        {authMode === "login"
+          ? "Need an account? Create one"
+          : "Already have an account? Log in"}
+      </button>
+    </>
+  );
+}
   if (!userEmail) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
@@ -700,73 +792,108 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             Save recipes from anywhere.
           </h1>
 
-          <p className="mb-8 max-w-xl text-lg text-[#6d5549]">
+          <p className="mb-6 max-w-xl text-lg text-[#6d5549]">
             Import recipes, plan meals, build shopping lists, and keep your favorite meals in one cozy place.
           </p>
 
+          <div className="mb-8 rounded-[2rem] bg-white p-6 shadow-xl md:hidden">
+            <AuthCard />
+          </div>
+
+          <p className="mb-4 font-semibold text-[#a63a0a]">
+            Explore a few recipes before creating your account.
+          </p>
+
           <div className="grid gap-4 md:grid-cols-3">
-            {[
-              "Lemon Sheet Cake",
-              "Cozy Veggie Pasta",
-              "Sunday Pancakes",
-            ].map((title) => (
-              <div key={title} className="rounded-3xl bg-white p-4 shadow">
-                <div className="mb-4 h-28 rounded-2xl bg-[#fff4ef]" />
-                <h3 className="font-bold">{title}</h3>
-                <p className="mt-1 text-sm text-[#6d5549]">
-                  Sample recipe
+            {sampleRecipes.map((recipe) => (
+              <button
+                key={recipe.id}
+                onClick={() => setSampleRecipe(recipe)}
+                className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <img
+                  src={recipe.image || placeholderImage}
+                  alt={recipe.title}
+                  className="mb-4 h-36 w-full rounded-2xl object-cover"
+                />
+
+                <h3 className="text-lg font-bold">{recipe.title}</h3>
+                <RecipeMeta recipe={recipe} />
+
+                <p className="mt-3 text-sm text-[#6d5549]">
+                  Click to preview
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="rounded-[2rem] bg-white p-6 shadow-xl">
-          <h2 className="mb-2 text-3xl font-bold">
-            {authMode === "signup" ? "Create your kitchen" : "Welcome back"}
-          </h2>
-
-          <p className="mb-5 text-[#6d5549]">
-            {authMode === "signup"
-              ? "Create an account to save your recipes."
-              : "Log in to get back to your recipes."}
-          </p>
-
-          <input
-            type="email"
-            value={loginEmail}
-            onChange={(e) => setLoginEmail(e.target.value)}
-            placeholder="Email"
-            className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-          />
-
-          <input
-            type="password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-            placeholder="Password"
-            className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-          />
-
-          {authError && <p className="mb-4 text-red-600">{authError}</p>}
-
-          <button
-            onClick={loginUser}
-            className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-          >
-            {authMode === "signup" ? "Create Account" : "Log In"}
-          </button>
-
-          <button
-            onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
-            className="mt-4 w-full text-[#a63a0a]"
-          >
-            {authMode === "login"
-              ? "Need an account? Create one"
-              : "Already have an account? Log in"}
-          </button>
+        <div className="hidden rounded-[2rem] bg-white p-6 shadow-xl md:block">
+          <AuthCard />
         </div>
       </section>
+
+      {sampleRecipe && (
+        <div
+  className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0"
+  onClick={() => setSampleRecipe(null)}
+>
+          <div
+  className="max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-2xl"
+  onClick={(e) => e.stopPropagation()}
+>
+  <div
+  className="relative max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-2xl"
+  onClick={(e) => e.stopPropagation()}
+></div>
+<button
+  onClick={() => setSampleRecipe(null)}
+  className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white text-3xl text-[#6d5549] shadow-lg hover:text-[#a63a0a]"
+>
+  ×
+</button>
+            <img
+              src={sampleRecipe.image || placeholderImage}
+              alt={sampleRecipe.title}
+              className="mb-5 h-56 w-full rounded-3xl object-cover"
+            />
+
+            <h2 className="mb-2 text-3xl font-bold">{sampleRecipe.title}</h2>
+            <RecipeMeta recipe={sampleRecipe} />
+
+            <h3 className="mb-3 mt-6 text-xl font-bold">Ingredients</h3>
+            <ul className="mb-6 space-y-2">
+              {sampleRecipe.ingredients.map((ingredient) => (
+                <li key={ingredient}>• {ingredient}</li>
+              ))}
+            </ul>
+
+            <h3 className="mb-3 text-xl font-bold">Steps</h3>
+            <ol className="mb-6 space-y-3">
+              {sampleRecipe.steps.map((step, index) => (
+                <li key={`${step}-${index}`} className="rounded-2xl bg-[#f8efe6] p-4">
+                  <strong>Step {index + 1}:</strong> {step}
+                </li>
+              ))}
+            </ol>
+
+            <a
+              href={sampleRecipe.sourceUrl}
+              target="_blank"
+              className="mb-4 block text-[#a63a0a] underline"
+            >
+              View original recipe
+            </a>
+
+            <button
+              onClick={() => setSampleRecipe(null)}
+              className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+            >
+              Close Preview
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
