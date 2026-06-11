@@ -886,13 +886,38 @@ function isItemInPantry(shoppingItem: string) {
   );
 }
 
-function addShoppingItemToPantry(shoppingItem: string) {
+async function addShoppingItemToPantry(shoppingItem: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("pantry_items")
+    .insert({
+      user_id: user.id,
+      name: shoppingItem,
+      quantity: "1",
+      category: "Other",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
   const newPantryItem: PantryItem = {
-    id: crypto.randomUUID(),
-    name: shoppingItem,
-    quantity: "1",
-    category: "Other",
-    createdAt: new Date().toISOString(),
+    id: data.id,
+    name: data.name,
+    quantity: data.quantity || "1",
+    category: data.category || "Other",
+    createdAt: data.created_at,
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
