@@ -715,30 +715,34 @@ useEffect(() => {
     .trim();
 }
 
-function addItemsToShoppingList(items: string[]) {
-  const updated = [...shoppingList];
+async function addItemsToShoppingList(items: string[]) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  items.forEach((item) => {
-    const existingIndex = updated.findIndex(
-      (existingItem) =>
-        existingItem === item || existingItem.startsWith(`${item} ×`)
-    );
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
 
-    if (existingIndex >= 0) {
-      const existingItem = updated[existingIndex];
-      const match = existingItem.match(/×\s*(\d+)$/);
+  const rows = items.map((item) => ({
+    user_id: user.id,
+    name: item,
+  }));
 
-      if (match) {
-        updated[existingIndex] = `${item} × ${Number(match[1]) + 1}`;
-      } else {
-        updated[existingIndex] = `${item} × 2`;
-      }
-    } else {
-      updated.push(item);
-    }
-  });
+  const { data, error } = await supabase
+    .from("shopping_items")
+    .insert(rows)
+    .select();
 
-  const sorted = [...updated].sort((a, b) =>
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const newItems = (data || []).map((item) => item.name);
+
+  const sorted = [...shoppingList, ...newItems].sort((a, b) =>
     cleanForSort(a).localeCompare(cleanForSort(b))
   );
 
