@@ -133,6 +133,7 @@ export default function Home() {
   meal: string;
 } | null>(null);
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
+  const [editRecipeDraft, setEditRecipeDraft] = useState<Recipe | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
 const [recipeSort, setRecipeSort] = useState("newest");
@@ -2592,29 +2593,62 @@ Bake for 25 minutes`}
 
     <RecipeMeta recipe={selectedRecipe} />
   </div>
-
-  <div className="flex flex-col gap-3 md:flex-row">
+<div className="flex flex-col gap-3 md:flex-row">
+  {!isEditingRecipe ? (
     <button
       onClick={() => {
-  if (isEditingRecipe && selectedRecipe) {
-    updateSelectedRecipe(selectedRecipe);
-  }
-
-  setIsEditingRecipe(!isEditingRecipe);
-}}
+        setEditRecipeDraft(selectedRecipe);
+        setIsEditingRecipe(true);
+      }}
       className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
     >
-      {isEditingRecipe ? "Done Editing" : "Edit Recipe"}
+      Edit Recipe
     </button>
+  ) : (
+    <>
+      <button
+        onClick={() => {
+          if (!editRecipeDraft) return;
 
-    <button
-      onClick={() => toggleFavorite(selectedRecipe.id)}
-      className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
-    >
-      {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
-    </button>
-  </div>
+          updateSelectedRecipe(editRecipeDraft);
+          setSelectedRecipe(editRecipeDraft);
+          setEditRecipeDraft(null);
+          setIsEditingRecipe(false);
+        }}
+        className="rounded-full bg-[#a63a0a] px-4 py-2 text-white"
+      >
+        Save Changes
+      </button>
+
+      <button
+        onClick={() => {
+          setEditRecipeDraft(null);
+          setIsEditingRecipe(false);
+        }}
+        className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+      >
+        Cancel
+      </button>
+    </>
+  )}
+
+  <button
+    onClick={() => toggleFavorite(selectedRecipe.id)}
+    className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+  >
+    {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
+  </button>
 </div>
+
+<button
+  onClick={() => toggleFavorite(selectedRecipe.id)}
+  className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+>
+  {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
+</button>
+</div>
+
+
             {isEditingRecipe && (
   <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
     <h2 className="mb-4 text-xl font-bold">Edit Recipe</h2>
@@ -2623,9 +2657,12 @@ Bake for 25 minutes`}
 
     <label className="mb-2 block font-bold">Title</label>
     <input
-      value={selectedRecipe.title}
+      value={editRecipeDraft?.title || ""}
       onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+  setEditRecipeDraft({
+    ...editRecipeDraft!,
+    title: e.target.value,
+  })
 }
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
@@ -2680,9 +2717,12 @@ Bake for 25 minutes`}
 
     <label className="mb-2 block font-bold">Ingredients</label>
     <textarea
-  value={selectedRecipe.ingredients.join("\n")}
+  value={editRecipeDraft?.ingredients.join("\n") || ""}
   onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+  setEditRecipeDraft({
+    ...editRecipeDraft!,
+    ingredients: e.target.value.split("\n"),
+  })
 }
   rows={10}
   placeholder={`2 eggs
@@ -2694,7 +2734,7 @@ Bake for 25 minutes`}
 
     <label className="mb-2 block font-bold">Steps</label>
     <textarea
-  value={selectedRecipe.steps.join("\n")}
+  value={editRecipeDraft?.steps.join("\n") || ""}
   onChange={(e) =>
   setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
 }
