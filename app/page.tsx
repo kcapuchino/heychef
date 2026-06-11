@@ -16,10 +16,19 @@ type Recipe = {
   createdAt: string;
 };
 
+type PantryItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  category: string;
+  createdAt: string;
+};
+
 type SavedUserData = {
   recipes: Recipe[];
   shoppingList: string[];
   mealPlan: Record<string, Recipe[]>;
+  pantryItems: PantryItem[];
 };
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -80,16 +89,49 @@ export default function Home() {
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
+const [recipeSort, setRecipeSort] = useState("newest");
+
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
+  const [hidePantryItems, setHidePantryItems] = useState(true);
+  const [newShoppingItem, setNewShoppingItem] = useState("");
+  const [newPantryItem, setNewPantryItem] = useState("");
+  const [newPantryQuantity, setNewPantryQuantity] = useState("");
+const [newPantryCategory, setNewPantryCategory] = useState("Other");
+const [shoppingSort, setShoppingSort] = useState("az");
+const [showPantry, setShowPantry] = useState(false);
+const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
+const [pantrySort, setPantrySort] = useState("az");
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
   const homeSectionTitle = favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
-  const filteredRecipes =
-  categoryFilter === "all"
-    ? recipes
-    : recipes.filter(
-        (recipe) => recipe.category === categoryFilter
+  const filteredRecipes = recipes
+  .filter((recipe) =>
+    categoryFilter === "all"
+      ? true
+      : recipe.category === categoryFilter
+  )
+  .sort((a, b) => {
+    if (recipeSort === "az") {
+      return a.title.localeCompare(b.title);
+    }
+
+    if (recipeSort === "za") {
+      return b.title.localeCompare(a.title);
+    }
+
+    if (recipeSort === "newest") {
+      return (
+        new Date(b.createdAt).getTime() -
+        new Date(a.createdAt).getTime()
       );
+    }
+
+    return (
+      new Date(a.createdAt).getTime() -
+      new Date(b.createdAt).getTime()
+    );
+  });
 
   const totalSlots = 21;
 
@@ -113,13 +155,14 @@ const plannerPercent = Math.round(
     if (!userEmail || !hasLoadedUser) return;
 
     const savedData: SavedUserData = {
-      recipes,
-      shoppingList,
-      mealPlan,
-    };
+  recipes,
+  shoppingList,
+  mealPlan,
+  pantryItems,
+};
 
     localStorage.setItem(`hey-chef-data-${userEmail}`, JSON.stringify(savedData));
-  }, [recipes, shoppingList, mealPlan, userEmail, hasLoadedUser]);
+  }, [recipes, shoppingList, mealPlan, pantryItems, userEmail, hasLoadedUser]);
   useEffect(() => {
   setIsMenuOpen(false);
 }, [
@@ -137,15 +180,21 @@ const plannerPercent = Math.round(
     if (savedData) {
       const parsed: SavedUserData = JSON.parse(savedData);
       setRecipes(parsed.recipes || []);
-      setShoppingList(parsed.shoppingList || []);
-      setMealPlan(parsed.mealPlan || {});
-      setPlannerRecipeId(parsed.recipes?.[0]?.id || "");
+setShoppingList(parsed.shoppingList || []);
+setMealPlan(parsed.mealPlan || {});
+setPantryItems(
+  (parsed.pantryItems || []).map((item) => ({
+    ...item,
+    category: item.category || "Other",
+  }))
+);
     } else {
-      setRecipes([]);
-      setShoppingList([]);
-      setMealPlan({});
-      setPlannerRecipeId("");
-    }
+  setRecipes([]);
+  setShoppingList([]);
+  setMealPlan({});
+  setPantryItems([]);
+  setPlannerRecipeId("");
+}
 
     setUserEmail(normalizedEmail);
     localStorage.setItem("hey-chef-current-user", normalizedEmail);
@@ -400,23 +449,36 @@ function addToShoppingList(recipe: Recipe) {
   }
 
   function addNewMealPlanItemsToShoppingList() {
-  const allIngredients = Object.values(mealPlan)
+  const ingredientCounts: Record<string, number> = {};
+
+  Object.values(mealPlan)
     .flat()
-    .flatMap((recipe) => recipe.ingredients);
+    .forEach((recipe) => {
+      recipe.ingredients.forEach((ingredient) => {
+        ingredientCounts[ingredient] = (ingredientCounts[ingredient] || 0) + 1;
+      });
+    });
 
-  const newIngredients = allIngredients.filter(
-    (ingredient) =>
-      !shoppingList.some(
-        (item) => item === ingredient || item.startsWith(`${ingredient} ×`)
-      )
-  );
+  const itemsToAdd: string[] = [];
 
-  if (newIngredients.length === 0) {
+  Object.entries(ingredientCounts).forEach(([ingredient, count]) => {
+    const alreadyOnList = shoppingList.some(
+      (item) => item === ingredient || item.startsWith(`${ingredient} ×`)
+    );
+
+    if (!alreadyOnList) {
+      for (let i = 0; i < count; i++) {
+        itemsToAdd.push(ingredient);
+      }
+    }
+  });
+
+  if (itemsToAdd.length === 0) {
     alert("No new ingredients to add.");
     return;
   }
 
-  addItemsToShoppingList(newIngredients);
+  addItemsToShoppingList(itemsToAdd);
 }
 
   function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
@@ -487,14 +549,36 @@ function addToShoppingList(recipe: Recipe) {
   setShowAllRecipes(false);
   setShowMealPlanner(false);
   setShowShoppingList(false);
+  setShowPantry(false);
   setShowImport(false);
   setIsMenuOpen(false);
+}
+
+function isItemInPantry(shoppingItem: string) {
+  return pantryItems.some((pantryItem) =>
+    shoppingItem.toLowerCase().includes(
+      pantryItem.name.toLowerCase()
+    )
+  );
+}
+
+function addShoppingItemToPantry(shoppingItem: string) {
+  const newPantryItem: PantryItem = {
+    id: crypto.randomUUID(),
+    name: shoppingItem,
+    quantity: "1",
+    category: "Other",
+    createdAt: new Date().toISOString(),
+  };
+
+  setPantryItems([newPantryItem, ...pantryItems]);
 }
 
 function goAllRecipes() {
   setSelectedRecipe(null);
   setShowMealPlanner(false);
   setShowShoppingList(false);
+  setShowPantry(false);
   setShowAllRecipes(true);
   setShowImport(false);
   setIsMenuOpen(false);
@@ -504,6 +588,7 @@ function goMealPlanner() {
   setSelectedRecipe(null);
   setShowAllRecipes(false);
   setShowShoppingList(false);
+  setShowPantry(false);
   setShowMealPlanner(true);
   setShowImport(false);
   setIsMenuOpen(false);
@@ -513,7 +598,18 @@ function goShoppingList() {
   setSelectedRecipe(null);
   setShowAllRecipes(false);
   setShowMealPlanner(false);
+  setShowPantry(false);
   setShowShoppingList(true);
+  setShowImport(false);
+  setIsMenuOpen(false);
+}
+
+function goPantry() {
+  setSelectedRecipe(null);
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(true);
   setShowImport(false);
   setIsMenuOpen(false);
 }
@@ -604,9 +700,10 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   Shopping List ({shoppingList.length})
 </button>
 
-  <button onClick={createNewRecipe} className="text-[#a63a0a]">
-    New Recipe
-  </button>
+<button onClick={goPantry} className="text-[#a63a0a]">
+  My Pantry
+</button>
+
 
   <button onClick={logoutUser} className="text-[#a63a0a]">
     Log Out
@@ -641,12 +738,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
         🛒 Shopping List ({shoppingList.length})
       </button>
 
-      <button
-        onClick={createNewRecipe}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ➕ New Recipe
-      </button>
+
 
       <button
         onClick={logoutUser}
@@ -667,8 +759,14 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   ← Back to All Recipes
 </button>
 
-          <div className="mb-6 flex items-center justify-between">
-  <h1 className="text-5xl font-bold">Shopping List</h1>
+          <div className="mb-8 flex items-start justify-between gap-3">
+  <div>
+    <h1 className="text-5xl font-bold">Shopping List</h1>
+
+    <p className="mt-2 text-[#6d5549]">
+      Review ingredients you need and move items into your pantry.
+    </p>
+  </div>
 
   <button
     onClick={() => {
@@ -676,32 +774,98 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
         setShoppingList([]);
       }
     }}
-    className="rounded-full bg-[#fff4ef] px-5 py-2 text-sm text-[#a63a0a]"
+    className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
   >
     🗑 Clear List
   </button>
 </div>
 
-          <div className="rounded-3xl bg-white p-6 shadow">
-            {shoppingList.length === 0 ? (
-              <p className="text-[#6d5549]">Your shopping list is empty.</p>
-            ) : (
-              <div className="space-y-3">
-                {shoppingList.map((item) => (
-                  <div key={item} className="flex items-center justify-between gap-3">
-                    <label className="flex items-center gap-3">
-                      <input type="checkbox" className="h-5 w-5" />
-                      <span>{item}</span>
-                    </label>
+<div className="mb-6 grid gap-3 md:grid-cols-[1fr_auto]">
+  <input
+    value={newShoppingItem}
+    onChange={(e) => setNewShoppingItem(e.target.value)}
+    placeholder="Add grocery item"
+    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+  />
 
-                    <button onClick={() => removeShoppingItem(item)} className="text-sm text-[#a63a0a]">
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+  <button
+    onClick={() => {
+      if (!newShoppingItem.trim()) return;
+
+      setShoppingList([...shoppingList, newShoppingItem.trim()]);
+      setNewShoppingItem("");
+    }}
+    className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+  >
+    Add Item
+  </button>
+</div>
+
+<div className="mb-8 grid gap-3 md:grid-cols-2">
+  <select
+    value={shoppingSort}
+    onChange={(e) => setShoppingSort(e.target.value)}
+    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+  >
+    <option value="az">A–Z</option>
+    <option value="za">Z–A</option>
+  </select>
+
+  <button
+    onClick={() => setHidePantryItems(!hidePantryItems)}
+    className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+  >
+    {hidePantryItems ? "Show Pantry Items" : "Hide Pantry Items"}
+  </button>
+</div>
+
+<div className="rounded-3xl bg-white p-6 shadow">
+  {shoppingList.length === 0 ? (
+    <p className="text-[#6d5549]">Your shopping list is empty.</p>
+  ) : (
+    <div className="space-y-3">
+      {shoppingList
+        .filter((item) => !hidePantryItems || !isItemInPantry(item))
+        .sort((a, b) => {
+          if (shoppingSort === "za") {
+            return cleanForSort(b).localeCompare(cleanForSort(a));
+          }
+
+          return cleanForSort(a).localeCompare(cleanForSort(b));
+        })
+        .map((item) => (
+          <div key={item} className="flex items-center justify-between gap-3">
+            <label className="flex items-center gap-3">
+              <input type="checkbox" className="h-5 w-5" />
+              <span>{item}</span>
+            </label>
+
+            <div className="flex gap-3">
+              {!isItemInPantry(item) && (
+                <div className="flex gap-3">
+  <button
+    onClick={() => addShoppingItemToPantry(item)}
+    className="text-[#a63a0a]"
+  >
+    Add to Pantry
+  </button>
+
+  <button
+    onClick={() => removeShoppingItem(item)}
+    className="text-[#a63a0a]"
+  >
+    Remove
+  </button>
+</div>
+              )}
+
+          
+            </div>
           </div>
+        ))}
+    </div>
+  )}
+</div>
         </section>
       </main>
     );
@@ -742,9 +906,11 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   Shopping List ({shoppingList.length})
 </button>
 
-  <button onClick={createNewRecipe} className="text-[#a63a0a]">
-    New Recipe
-  </button>
+<button onClick={goPantry} className="text-[#a63a0a]">
+  My Pantry
+</button>
+
+  
 
   <button onClick={logoutUser} className="text-[#a63a0a]">
     Log Out
@@ -779,12 +945,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
         🛒 Shopping List ({shoppingList.length})
       </button>
 
-      <button
-        onClick={createNewRecipe}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ➕ New Recipe
-      </button>
+    
 
       <button
         onClick={logoutUser}
@@ -957,6 +1118,316 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     );
   }
 
+  const filteredPantryItems = pantryItems
+  .filter((item) =>
+    pantryCategoryFilter === "all"
+      ? true
+      : item.category === pantryCategoryFilter
+  )
+  .sort((a, b) => {
+    if (pantrySort === "az") {
+      return a.name.localeCompare(b.name);
+    }
+
+    if (pantrySort === "za") {
+      return b.name.localeCompare(a.name);
+    }
+
+    if (pantrySort === "newest") {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+
+if (showPantry) {
+  return (
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+  <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
+        <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div>
+    <button
+      onClick={goHome}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+
+    <p className="text-sm text-[#6d5549]">
+      Logged in as {userEmail}
+    </p>
+  </div>
+
+  <button
+    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
+  >
+    ☰
+  </button>
+
+  <div className="hidden md:flex items-center gap-10 text-lg">
+    <button onClick={goAllRecipes} className="text-[#a63a0a]">
+      Recipes
+    </button>
+
+    <button onClick={goMealPlanner} className="text-[#a63a0a]">
+      Meal Planner ({filledSlots}/21)
+    </button>
+
+    <button onClick={goShoppingList} className="text-[#a63a0a]">
+      Shopping List ({shoppingList.length})
+    </button>
+
+    <button onClick={goPantry} className="text-[#a63a0a]">
+      My Pantry
+    </button>
+
+  
+
+    <button onClick={logoutUser} className="text-[#a63a0a]">
+      Log Out
+    </button>
+  </div>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
+      <button
+        onClick={goMealPlanner}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        📅 Meal Planner ({filledSlots}/21)
+      </button>
+
+      <button
+        onClick={goShoppingList}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🛒 Shopping List ({shoppingList.length})
+      </button>
+
+      <button
+        onClick={goPantry}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🥫 My Pantry
+      </button>
+
+      
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</nav><button
+  onClick={() => {
+    setShowPantry(false);
+    setShowAllRecipes(true);
+  }}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back to Recipes
+</button>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+  <div>
+  <h1 className="text-5xl font-bold">
+    My Pantry
+  </h1>
+
+  <p className="mt-2 text-[#6d5549]">
+    Track ingredients you already have on hand.
+  </p>
+<div className="mt-4 grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto]">
+    <input
+      value={newPantryItem}
+      onChange={(e) => setNewPantryItem(e.target.value)}
+      placeholder="Add pantry item"
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    />
+
+    <input
+      value={newPantryQuantity}
+      onChange={(e) => setNewPantryQuantity(e.target.value)}
+      placeholder="Qty"
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    />
+
+    <select
+      value={newPantryCategory}
+      onChange={(e) => setNewPantryCategory(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="Dairy">Dairy</option>
+            <option value="Produce">Produce</option>
+            <option value="Dry Goods">Dry Goods</option>
+            <option value="Baking">Baking</option>
+            <option value="Frozen">Frozen</option>
+            <option value="Other">Other</option>
+    </select>
+
+    <button
+      onClick={() => {
+        if (!newPantryItem.trim()) return;
+
+        setPantryItems([
+          {
+            id: crypto.randomUUID(),
+            name: newPantryItem.trim(),
+            quantity: newPantryQuantity.trim() || "1",
+            category: newPantryCategory,
+            createdAt: new Date().toISOString(),
+          },
+          ...pantryItems,
+        ]);
+
+        setNewPantryItem("");
+        setNewPantryQuantity("");
+        setNewPantryCategory("Other");
+      }}
+      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+    >
+      Add Item
+    </button>
+</div>
+</div>
+</div>
+
+        <div className="mb-6 mt-6 grid gap-3 md:grid-cols-2">
+          <select
+            value={pantryCategoryFilter}
+            onChange={(e) => setPantryCategoryFilter(e.target.value)}
+            className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+          >
+            <option value="all">All Categories</option>
+            <option value="Dairy">Dairy</option>
+            <option value="Produce">Produce</option>
+            <option value="Dry Goods">Dry Goods</option>
+            <option value="Baking">Baking</option>
+            <option value="Frozen">Frozen</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <select
+            value={pantrySort}
+            onChange={(e) => setPantrySort(e.target.value)}
+            className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+          >
+            <option value="az">A–Z</option>
+            <option value="za">Z–A</option>
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
+
+        {pantryItems.length === 0 ? (
+          <div className="rounded-3xl bg-white p-8 shadow">
+            <p className="text-[#6d5549]">Your pantry is empty.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {["Dairy", "Produce", "Dry Goods", "Baking", "Frozen", "Other"].map(
+              (category) => {
+                const itemsInCategory = filteredPantryItems.filter(
+                  (item) => item.category === category
+                );
+
+                if (itemsInCategory.length === 0) return null;
+
+                return (
+                  <section key={category}>
+                    <h2 className="mb-3 text-2xl font-bold text-[#a63a0a]">
+                      {category}
+                    </h2>
+
+                    <div className="grid gap-3">
+                      {itemsInCategory.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-3xl bg-white p-5 shadow"
+                        >
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <input
+                              value={item.name}
+                              onChange={(e) =>
+                                setPantryItems(
+                                  pantryItems.map((p) =>
+                                    p.id === item.id
+                                      ? { ...p, name: e.target.value }
+                                      : p
+                                  )
+                                )
+                              }
+                              placeholder="Item"
+                              className="rounded-xl border border-[#ead7c8] p-3"
+                            />
+
+                            <input
+                              value={item.quantity}
+                              onChange={(e) =>
+                                setPantryItems(
+                                  pantryItems.map((p) =>
+                                    p.id === item.id
+                                      ? { ...p, quantity: e.target.value }
+                                      : p
+                                  )
+                                )
+                              }
+                              placeholder="Qty"
+                              className="rounded-xl border border-[#ead7c8] p-3"
+                            />
+
+                    
+
+                            <select
+                              value={item.category}
+                              onChange={(e) =>
+                                setPantryItems(
+                                  pantryItems.map((p) =>
+                                    p.id === item.id
+                                      ? { ...p, category: e.target.value }
+                                      : p
+                                  )
+                                )
+                              }
+                              className="rounded-xl border border-[#ead7c8] bg-white p-3"
+                            >
+                              <option value="Dairy">Dairy</option>
+                              <option value="Produce">Produce</option>
+                              <option value="Dry Goods">Dry Goods</option>
+                              <option value="Baking">Baking</option>
+                              <option value="Frozen">Frozen</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={() =>
+                                setPantryItems(
+                                  pantryItems.filter((p) => p.id !== item.id)
+                                )
+                              }
+                              className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm text-[#a63a0a]"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                );
+              }
+            )}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
   if (showAllRecipes) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
@@ -991,11 +1462,10 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   <button onClick={goShoppingList} className="text-[#a63a0a]">
   Shopping List ({shoppingList.length})
 </button>
-
-  <button onClick={createNewRecipe} className="text-[#a63a0a]">
-    New Recipe
-  </button>
-
+<button onClick={goPantry} className="text-[#a63a0a]">
+  My Pantry
+</button>
+ 
   <button onClick={logoutUser} className="text-[#a63a0a]">
     Log Out
   </button>
@@ -1003,7 +1473,15 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
 
   {isMenuOpen && (
     <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl">
+      
       <button
+  onClick={goAllRecipes}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🍳 Recipes
+</button>
+
+<button
   onClick={() => {
     setSelectedRecipe(null);
     setShowShoppingList(false);
@@ -1016,32 +1494,32 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   📅 Meal Planner ({filledSlots}/21)
 </button>
 
-      <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowMealPlanner(false);
-          setShowAllRecipes(false);
-          setShowShoppingList(true);
-          setIsMenuOpen(false);
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({shoppingList.length})
-      </button>
+<button
+  onClick={() => {
+    setSelectedRecipe(null);
+    setShowMealPlanner(false);
+    setShowAllRecipes(false);
+    setShowShoppingList(true);
+    setIsMenuOpen(false);
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🛒 Shopping List ({shoppingList.length})
+</button>
 
-      <button
-        onClick={createNewRecipe}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ➕ New Recipe
-      </button>
+<button
+  onClick={goPantry}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🥫 My Pantry
+</button>
 
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
+<button
+  onClick={logoutUser}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  ↪ Log Out
+</button>
     </div>
   )}
 </nav>
@@ -1056,22 +1534,39 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
           >
             ← Back Home
           </button>
-
-          <button
-            onClick={() => setShowImport(!showImport)}
-            className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow"
-          >
-            {showImport ? "Close Import" : "Import Recipe"}
-          </button>
         </div>
 
-        <h1 className="mb-6 text-5xl font-bold">All Recipes</h1>
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+  <div>
+    <h1 className="text-4xl font-bold md:text-5xl">All Recipes</h1>
+    <p className="mt-2 text-[#6d5549]">
+  Build your personal cookbook with recipes imported from anywhere or created from scratch.
+    </p>
+  </div>
+
+  <div className="flex flex-wrap gap-3">
+  <button
+    onClick={() => setShowImport(true)}
+    className="rounded-full bg-[#a63a0a] px-8 py-4 text-white"
+  >
+    Import Recipe
+  </button>
+
+  <button
+    onClick={createNewRecipe}
+    className="rounded-full bg-white px-8 py-4 text-[#a63a0a]"
+  >
+    Create New Recipe
+  </button>
+</div>
+</div>
+
+<div className="mb-8 grid gap-3 md:grid-cols-2">
   <select
-  value={categoryFilter}
-  onChange={(e) => setCategoryFilter(e.target.value)}
-  className="min-w-[280px] rounded-full border border-[#ead7c8] bg-white px-6 py-4 pr-14 text-[#2b1a12] shadow-sm"
->
+    value={categoryFilter}
+    onChange={(e) => setCategoryFilter(e.target.value)}
+    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+  >
     <option value="all">All Categories</option>
     <option value="Main Dish">Main Dish</option>
     <option value="Side Dish">Side Dish</option>
@@ -1080,6 +1575,17 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     <option value="Soup">Soup</option>
     <option value="Snack">Snack</option>
     <option value="Drink">Drink</option>
+  </select>
+
+  <select
+    value={recipeSort}
+    onChange={(e) => setRecipeSort(e.target.value)}
+    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+  >
+    <option value="newest">Newest</option>
+    <option value="oldest">Oldest</option>
+    <option value="az">A–Z</option>
+    <option value="za">Z–A</option>
   </select>
 </div>
 
@@ -1106,18 +1612,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
                 {isImporting ? "Importing..." : "Import"}
               </button>
             </div>
-            <div className="my-5 flex items-center gap-4">
-  <div className="h-px flex-1 bg-[#ead7c8]" />
-  <span className="text-sm text-[#6d5549]">OR</span>
-  <div className="h-px flex-1 bg-[#ead7c8]" />
-</div>
-
-<button
-  onClick={createNewRecipe}
-  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
->
-  + New Recipe
-</button>
+            
 
             {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
 
@@ -1233,10 +1728,10 @@ Bake for 25 minutes`}
     <button onClick={goShoppingList} className="text-[#a63a0a]">
   Shopping List ({shoppingList.length})
 </button>
-
-    <button onClick={createNewRecipe} className="text-[#a63a0a]">
-      New Recipe
-    </button>
+<button onClick={goPantry} className="text-[#a63a0a]">
+  My Pantry
+</button>
+    
 
     <button onClick={logoutUser} className="text-[#a63a0a]">
       Log Out
@@ -1279,12 +1774,7 @@ Bake for 25 minutes`}
         🛒 Shopping List ({shoppingList.length})
       </button>
 
-      <button
-        onClick={createNewRecipe}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ➕ New Recipe
-      </button>
+    
 
       <button
         onClick={logoutUser}
@@ -1342,34 +1832,7 @@ Bake for 25 minutes`}
   <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
     <h2 className="mb-4 text-xl font-bold">Edit Recipe</h2>
 
-    <div className="mb-6 rounded-2xl border border-[#ead7c8] bg-white p-4">
-      <h3 className="mb-2 font-bold">Import Instead</h3>
-
-      <div className="flex flex-col gap-3 md:flex-row">
-        <input
-          value={recipeUrl}
-          onChange={(e) => setRecipeUrl(e.target.value)}
-          placeholder="https://example.com/recipe"
-          className="flex-1 rounded-xl border border-[#ead7c8] p-3"
-        />
-
-        <button
-          onClick={importRecipe}
-          disabled={isImporting}
-          className="rounded-xl bg-[#a63a0a] px-5 py-3 text-white disabled:opacity-60"
-        >
-          {isImporting ? "Importing..." : "Import Recipe"}
-        </button>
-      </div>
-
-      {importError && (
-        <p className="mt-3 text-sm text-red-700">{importError}</p>
-      )}
-
-      <p className="mt-3 text-sm text-[#6d5549]">
-        If import does not work, fill out the fields below manually.
-      </p>
-    </div>
+    
 
     <label className="mb-2 block font-bold">Title</label>
     <input
@@ -1593,10 +2056,10 @@ Let cool`}
   <button onClick={goShoppingList} className="text-[#a63a0a]">
   Shopping List ({shoppingList.length})
 </button>
+<button onClick={goPantry} className="text-[#a63a0a]">
+  My Pantry
+</button>
 
-  <button onClick={createNewRecipe} className="text-[#a63a0a]">
-    New Recipe
-  </button>
 
   <button onClick={logoutUser} className="text-[#a63a0a]">
     Log Out
@@ -1630,13 +2093,14 @@ Let cool`}
       >
         🛒 Shopping List ({shoppingList.length})
       </button>
-
       <button
-        onClick={createNewRecipe}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        ➕ New Recipe
-      </button>
+  onClick={goPantry}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🥫 My Pantry
+</button>
+
+      
 
       <button
         onClick={logoutUser}
@@ -1764,11 +2228,17 @@ Bake for 25 minutes`}
         <section id="recipes" className="mt-14">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold">{homeSectionTitle}</h2>
-              <p className="text-sm text-[#6d5549]">
-                Star up to 3 recipes to feature them here. If none are starred, your 3 most recent
-                recipes show.
-              </p>
+              <div className="mb-6 flex items-center justify-between">
+  <div>
+    <h2 className="text-3xl font-bold">
+      {homeSectionTitle}
+    </h2>
+
+    <p className="text-[#6d5549]">
+      Star up to 3 recipes to feature them here.
+    </p>
+  </div>
+</div>
             </div>
           </div>
 
