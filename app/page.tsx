@@ -104,7 +104,7 @@ const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
 const [pantrySort, setPantrySort] = useState("az");
 
 const [loginPassword, setLoginPassword] = useState("");
-const [authMode, setAuthMode] = useState<"landing" | "login" | "signup">("landing");
+const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 const [authError, setAuthError] = useState("");
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
@@ -690,7 +690,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
   if (!userEmail) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
-      <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 py-6 md:grid-cols-2 md:py-10">
+      <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 py-6 md:grid-cols-[1.2fr_0.8fr] md:py-10">
         <div>
           <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
             Hey Chef!
@@ -700,87 +700,72 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
             Save recipes from anywhere.
           </h1>
 
-          <p className="mb-8 max-w-md text-lg text-[#6d5549]">
-            Plan meals, build shopping lists, and keep your favorite recipes in one cozy place.
+          <p className="mb-8 max-w-xl text-lg text-[#6d5549]">
+            Import recipes, plan meals, build shopping lists, and keep your favorite meals in one cozy place.
           </p>
 
-          {authMode === "landing" ? (
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => setAuthMode("signup")}
-                className="rounded-full bg-[#a63a0a] px-7 py-4 font-semibold text-white shadow"
-              >
-                Get Started
-              </button>
-
-              <button
-                onClick={() => setAuthMode("login")}
-                className="rounded-full bg-white px-7 py-4 font-semibold text-[#a63a0a] shadow"
-              >
-                Log In
-              </button>
-            </div>
-          ) : (
-            <div className="max-w-md rounded-[2rem] bg-white p-6 shadow-xl">
-              <h2 className="mb-2 text-3xl font-bold">
-                {authMode === "signup" ? "Create your kitchen" : "Welcome back"}
-              </h2>
-
-              <p className="mb-5 text-[#6d5549]">
-                {authMode === "signup"
-                  ? "Create an account to save your recipes and meal plans."
-                  : "Log in to get back to your recipes."}
-              </p>
-
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                placeholder="Email"
-                className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-              />
-
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                placeholder="Password"
-                className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-              />
-
-              {authError && <p className="mb-4 text-red-600">{authError}</p>}
-
-              <button
-                onClick={loginUser}
-                className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-              >
-                {authMode === "signup" ? "Create Account" : "Log In"}
-              </button>
-
-              <button
-                onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
-                className="mt-4 w-full text-[#a63a0a]"
-              >
-                {authMode === "login"
-                  ? "Need an account? Create one"
-                  : "Already have an account? Log in"}
-              </button>
-
-              <button
-                onClick={() => setAuthMode("landing")}
-                className="mt-3 w-full text-sm text-[#6d5549]"
-              >
-                Back
-              </button>
-            </div>
-          )}
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              "Lemon Sheet Cake",
+              "Cozy Veggie Pasta",
+              "Sunday Pancakes",
+            ].map((title) => (
+              <div key={title} className="rounded-3xl bg-white p-4 shadow">
+                <div className="mb-4 h-28 rounded-2xl bg-[#fff4ef]" />
+                <h3 className="font-bold">{title}</h3>
+                <p className="mt-1 text-sm text-[#6d5549]">
+                  Sample recipe
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <img
-          src="https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1200&q=80"
-          alt="Fresh ingredients"
-          className="h-[360px] w-full rounded-[2rem] object-cover shadow-2xl md:h-[580px]"
-        />
+        <div className="rounded-[2rem] bg-white p-6 shadow-xl">
+          <h2 className="mb-2 text-3xl font-bold">
+            {authMode === "signup" ? "Create your kitchen" : "Welcome back"}
+          </h2>
+
+          <p className="mb-5 text-[#6d5549]">
+            {authMode === "signup"
+              ? "Create an account to save your recipes."
+              : "Log in to get back to your recipes."}
+          </p>
+
+          <input
+            type="email"
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="Email"
+            className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+          />
+
+          <input
+            type="password"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            placeholder="Password"
+            className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+          />
+
+          {authError && <p className="mb-4 text-red-600">{authError}</p>}
+
+          <button
+            onClick={loginUser}
+            className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+          >
+            {authMode === "signup" ? "Create Account" : "Log In"}
+          </button>
+
+          <button
+            onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
+            className="mt-4 w-full text-[#a63a0a]"
+          >
+            {authMode === "login"
+              ? "Need an account? Create one"
+              : "Already have an account? Log in"}
+          </button>
+        </div>
       </section>
     </main>
   );
