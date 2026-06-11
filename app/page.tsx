@@ -890,6 +890,25 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     </div>
   );
 }
+async function resetPassword() {
+  const email = prompt("Enter your email address:");
+
+  if (!email) return;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(
+    email.trim().toLowerCase(),
+    {
+      redirectTo: "https://heychef-six.vercel.app",
+    }
+  );
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Password reset email sent.");
+}
 function renderAuthCard() {
   return (
     <>
@@ -967,11 +986,21 @@ function renderAuthCard() {
         onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
         className="mt-4 w-full text-[#a63a0a]"
       >
+        {authMode === "login" && (
+  <button
+    type="button"
+    onClick={resetPassword}
+    className="mt-4 w-full text-sm text-[#a63a0a] underline"
+  >
+    Forgot password?
+  </button>
+)}
         {authMode === "login"
           ? "Need an account? Create one"
           : "Already have an account? Log in"}
       </button>
     </>
+    
   );
 }
   if (!userEmail) {
