@@ -1,0 +1,35 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Hey Chef",
+    short_name: "Hey Chef",
+    description:
+      "Save recipes, plan meals, build shopping lists, and track pantry items.",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    background_color: "#f8efe6",
+    theme_color: "#a63a0a",
+    icons: [
+      {
+        src: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ],
+  };
+}
