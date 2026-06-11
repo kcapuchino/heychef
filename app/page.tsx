@@ -2625,8 +2625,8 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.title}
       onChange={(e) =>
-        updateSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-      }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
@@ -2634,8 +2634,8 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.image || ""}
       onChange={(e) =>
-        updateSelectedRecipe({ ...selectedRecipe, image: e.target.value })
-      }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
@@ -2643,8 +2643,8 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.cookTime || ""}
       onChange={(e) =>
-        updateSelectedRecipe({ ...selectedRecipe, cookTime: e.target.value })
-      }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
       placeholder="30 min"
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
@@ -2653,8 +2653,8 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.servings || ""}
       onChange={(e) =>
-        updateSelectedRecipe({ ...selectedRecipe, servings: e.target.value })
-      }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
       placeholder="4 servings"
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
@@ -2664,11 +2664,8 @@ Bake for 25 minutes`}
 <select
   value={selectedRecipe.category || ""}
   onChange={(e) =>
-    updateSelectedRecipe({
-      ...selectedRecipe,
-      category: e.target.value,
-    })
-  }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
   className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
 >
   <option value="">Select Category</option>
@@ -2685,11 +2682,8 @@ Bake for 25 minutes`}
     <textarea
   value={selectedRecipe.ingredients.join("\n")}
   onChange={(e) =>
-    updateSelectedRecipe({
-      ...selectedRecipe,
-      ingredients: e.target.value.split("\n"),
-    })
-  }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
   rows={10}
   placeholder={`2 eggs
 1 cup flour
@@ -2702,11 +2696,8 @@ Bake for 25 minutes`}
     <textarea
   value={selectedRecipe.steps.join("\n")}
   onChange={(e) =>
-    updateSelectedRecipe({
-      ...selectedRecipe,
-      steps: e.target.value.split("\n"),
-    })
-  }
+  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+}
   rows={12}
   placeholder={`Mix ingredients
 Bake 25 minutes
