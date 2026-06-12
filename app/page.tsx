@@ -1251,6 +1251,7 @@ function renderAuthCard() {
 
   <div className="relative mb-4">
   <input
+    name="password"
     type={showPassword ? "text" : "password"}
     value={loginPassword}
     onChange={(e) => setLoginPassword(e.target.value)}
