@@ -204,7 +204,7 @@ const [pantryModalUnit, setPantryModalUnit] = useState("package");
 const [shoppingSort, setShoppingSort] = useState("az");
 const [showPantry, setShowPantry] = useState(false);
 const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
-const [pantrySort, setPantrySort] = useState("az");
+const [pantrySort, setPantrySort] = useState("newest");
 
 const [loginPassword, setLoginPassword] = useState("");
 const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
