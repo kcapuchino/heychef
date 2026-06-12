@@ -638,57 +638,31 @@ async function changePasswordNow() {
   localStorage.removeItem("hey-chef-current-user");
 }
 
-  async function createNewRecipe() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    alert("Please log in again before creating a recipe.");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("recipes")
-    .insert({
-      user_id: user.id,
-      title: "New Recipe",
-      image_url: "",
-      ingredients: [],
-      steps: [],
-      cook_time: "",
-      servings: "",
-      source_url: "",
-      is_favorite: false,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
+  function createNewRecipe() {
   const newRecipe: Recipe = {
-    id: data.id,
-    title: data.title,
-    image: data.image_url || "",
-    ingredients: data.ingredients || [],
-    steps: data.steps || [],
-    cookTime: data.cook_time || "",
-    servings: data.servings || "",
-    sourceUrl: data.source_url || "",
-    isFavorite: data.is_favorite || false,
-    createdAt: data.created_at,
+    id: "new-recipe",
+    title: "",
+    image: "",
+    ingredients: [],
+    steps: [],
+    cookTime: "",
+    servings: "",
+    category: "",
+    sourceUrl: "",
+    isFavorite: false,
+    isPlanningQueue: false,
+    createdAt: new Date().toISOString(),
   };
 
-  setRecipes([newRecipe, ...recipes]);
   setSelectedRecipe(newRecipe);
+  setEditRecipeDraft(newRecipe);
   setIsEditingRecipe(true);
+
   setShowAllRecipes(false);
   setShowImport(false);
   setShowMealPlanner(false);
   setShowShoppingList(false);
+  setShowPantry(false);
 }
 
   async function importRecipe() {
@@ -1061,11 +1035,6 @@ function addToShoppingList(recipe: Recipe) {
   const key = getMealPlanKey(day, meal);
   const currentRecipes = mealPlan[key] || [];
 
-  if (currentRecipes.length >= 3) {
-    alert("Free plan allows up to 3 recipes per meal slot.");
-    return;
-  }
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -1168,6 +1137,53 @@ week: activePlannerWeek,
 
   async function updateSelectedRecipe(updatedRecipe: Recipe) {
     console.log("Saving recipe:", updatedRecipe);
+    if (updatedRecipe.id === "new-recipe") {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: updatedRecipe.title || "Untitled Recipe",
+      category: updatedRecipe.category || null,
+      image_url: updatedRecipe.image || "",
+      cook_time: updatedRecipe.cookTime || "",
+      servings: updatedRecipe.servings || "",
+      ingredients: updatedRecipe.ingredients,
+      steps: updatedRecipe.steps,
+      source_url: updatedRecipe.sourceUrl || "",
+      is_favorite: updatedRecipe.isFavorite || false,
+      is_planning_queue: updatedRecipe.isPlanningQueue || false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const savedRecipe: Recipe = {
+    ...updatedRecipe,
+    id: data.id,
+    title: data.title,
+    createdAt: data.created_at,
+  };
+
+  setRecipes([savedRecipe, ...recipes]);
+  setSelectedRecipe(savedRecipe);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+
+  return;
+}
   const { error } = await supabase
     .from("recipes")
     .update({
@@ -1335,7 +1351,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
       <span>👥 {recipe.servings || ""}</span>
 
       {recipe.category && (
-        <span className="rounded-full bg-[#fff4ef] px-3 spy-1 text-xs text-[#a63a0a]">
+        <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-xs text-[#a63a0a]">
           {recipe.category}
         </span>
       )}
@@ -1882,6 +1898,17 @@ if (showProfile) {
           </button>
 
           <button
+  onClick={() => {
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
+
+          <button
             onClick={() => {
               setShowSettingsMenu(false);
               logoutUser();
@@ -1921,7 +1948,17 @@ if (showProfile) {
       >
         🔐 Change Password
       </button>
-
+<button
+  onClick={() => {
+    setIsMenuOpen(false);
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -2015,7 +2052,7 @@ setNewShoppingItem("");
     }}
     className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
   >
-    Add Itemf
+    Add Item
   </button>
 </div>
 
@@ -2196,6 +2233,17 @@ setNewShoppingItem("");
           </button>
 
           <button
+  onClick={() => {
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
+
+          <button
             onClick={() => {
               setShowSettingsMenu(false);
               logoutUser();
@@ -2235,7 +2283,17 @@ setNewShoppingItem("");
       >
         🔐 Change Password
       </button>
-
+<button
+  onClick={() => {
+    setIsMenuOpen(false);
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -2400,14 +2458,16 @@ setNewShoppingItem("");
                     <div key={recipe.mealPlanId} className="rounded-xl bg-white p-3 text-sm">
                       <div className="flex items-start justify-between gap-3">
                         <button
-                          onClick={() => {
-                            setSelectedRecipe(recipe);
-                            setShowMealPlanner(false);
-                          }}
-                          className="text-left font-medium text-[#a63a0a] hover:underline"
-                        >
-                          {recipe.title}
-                        </button>
+  onClick={() => {
+    setSelectedRecipe(recipe);
+    setIsEditingRecipe(false);
+    setEditRecipeDraft(null);
+    setShowMealPlanner(false);
+  }}
+  className="text-left font-medium text-[#a63a0a] hover:underline"
+>
+  {recipe.title}
+</button>
 
                         <button
                           onClick={() => removeRecipeFromMealPlan(day, meal, recipe.mealPlanId)}
@@ -2573,6 +2633,17 @@ if (showPantry) {
           </button>
 
           <button
+  onClick={() => {
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
+
+          <button
             onClick={() => {
               setShowSettingsMenu(false);
               logoutUser();
@@ -2612,7 +2683,17 @@ if (showPantry) {
       >
         🔐 Change Password
       </button>
-
+<button
+  onClick={() => {
+    setIsMenuOpen(false);
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -2983,7 +3064,16 @@ if (showPantry) {
           >
             🔐 Change Password
           </button>
-
+<button
+  onClick={() => {
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
           <button
             onClick={() => {
               setShowSettingsMenu(false);
@@ -3024,7 +3114,17 @@ if (showPantry) {
       >
         🔐 Change Password
       </button>
-
+<button
+  onClick={() => {
+    setIsMenuOpen(false);
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -3179,7 +3279,7 @@ Bake for 25 minutes`}
         ) : (
           <div className="grid gap-5 md:grid-cols-3">
             {filteredRecipes.map((recipe) => (
-              <button
+              <div
                 key={recipe.id}
                 onClick={() => {
                   setShowAllRecipes(false);
@@ -3236,7 +3336,7 @@ Bake for 25 minutes`}
 >
   Delete
 </button>
-              </button>
+              </div>
             ))}
           </div>
         )}
@@ -3350,7 +3450,16 @@ Bake for 25 minutes`}
           >
             🔐 Change Password
           </button>
-
+<button
+  onClick={() => {
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
           <button
             onClick={() => {
               setShowSettingsMenu(false);
@@ -3391,7 +3500,17 @@ Bake for 25 minutes`}
       >
         🔐 Change Password
       </button>
-
+<button
+  onClick={() => {
+    setIsMenuOpen(false);
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -3432,6 +3551,7 @@ Bake for 25 minutes`}
   </div>
 <div className="flex flex-col gap-3 md:flex-row">
   {!isEditingRecipe ? (
+  <>
     <button
       onClick={() => {
         setEditRecipeDraft(selectedRecipe);
@@ -3441,38 +3561,46 @@ Bake for 25 minutes`}
     >
       Edit Recipe
     </button>
-  ) : (
-    <>
-     <button
-  onClick={() => {
-    if (!selectedRecipe) return;
 
-    updateSelectedRecipe(selectedRecipe);
-    setIsEditingRecipe(false);
-  }}
-  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
->
-  Save Changes
-</button>
+    <button
+      onClick={() => selectedRecipe && toggleFavorite(selectedRecipe.id)}
+      className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+    >
+      {selectedRecipe?.isFavorite ? "★ Favorite" : "☆ Favorite"}
+    </button>
+  </>
+) : (
+  <>
+    <button
+      onClick={() => {
+        if (!selectedRecipe) return;
 
-      <button
-        onClick={() => {
+        updateSelectedRecipe(selectedRecipe);
+      }}
+      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+    >
+      Save Changes
+    </button>
+
+    <button
+      onClick={() => {
+        if (selectedRecipe?.id === "new-recipe") {
+          setSelectedRecipe(null);
           setEditRecipeDraft(null);
           setIsEditingRecipe(false);
-        }}
-        className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
-      >
-        Cancel
-      </button>
-    </>
-  )}
+          setShowAllRecipes(true);
+          return;
+        }
 
-  <button
-    onClick={() => toggleFavorite(selectedRecipe.id)}
-    className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
-  >
-    {selectedRecipe.isFavorite ? "★ Favorite" : "☆ Favorite"}
-  </button>
+        setEditRecipeDraft(null);
+        setIsEditingRecipe(false);
+      }}
+      className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      Cancel Editing
+    </button>
+  </>
+)}
 </div>
 </div>
 
@@ -3776,7 +3904,16 @@ Bake for 25 minutes`}
           >
             🔐 Change Password
           </button>
-
+<button
+  onClick={() => {
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
           <button
             onClick={() => {
               setShowSettingsMenu(false);
@@ -3817,7 +3954,17 @@ Bake for 25 minutes`}
       >
         🔐 Change Password
       </button>
-
+<button
+  onClick={() => {
+    setIsMenuOpen(false);
+    alert(
+      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
+    );
+  }}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  📱 Install App
+</button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
