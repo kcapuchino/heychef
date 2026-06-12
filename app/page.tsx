@@ -1188,8 +1188,8 @@ function goPantry() {
 function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#6d5549]">
-      <span>⏱ {recipe.cookTime || "Time not listed"}</span>
-      <span>👥 {recipe.servings || "Servings not listed"}</span>
+      <span>⏱ {recipe.cookTime || ""}</span>
+      <span>👥 {recipe.servings || ""}</span>
 
       {recipe.category && (
         <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-xs text-[#a63a0a]">
