@@ -1043,6 +1043,7 @@ function addToShoppingList(recipe: Recipe) {
 }
 
   async function updateSelectedRecipe(updatedRecipe: Recipe) {
+    console.log("Saving recipe:", updatedRecipe);
   const { error } = await supabase
     .from("recipes")
     .update({
@@ -2863,19 +2864,17 @@ Bake for 25 minutes`}
     </button>
   ) : (
     <>
-      <button
-        onClick={() => {
-          if (!editRecipeDraft) return;
+     <button
+  onClick={() => {
+    if (!selectedRecipe) return;
 
-          updateSelectedRecipe(editRecipeDraft);
-          setSelectedRecipe(editRecipeDraft);
-          setEditRecipeDraft(null);
-          setIsEditingRecipe(false);
-        }}
-        className="rounded-full bg-[#a63a0a] px-4 py-2 text-white"
-      >
-        Save Changes
-      </button>
+    updateSelectedRecipe(selectedRecipe);
+    setIsEditingRecipe(false);
+  }}
+  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+>
+  Save Changes
+</button>
 
       <button
         onClick={() => {
