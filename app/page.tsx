@@ -1884,15 +1884,7 @@ if (showProfile) {
             👤 Profile
           </button>
 
-          <button
-            onClick={() => {
-              setShowSettingsMenu(false);
-              changePasswordNow();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔐 Change Password
-          </button>
+      
 
           <button
   onClick={() => {
@@ -1936,15 +1928,7 @@ if (showProfile) {
         👤 Profile
       </button>
 
-      <button
-        onClick={() => {
-          setIsMenuOpen(false);
-          changePasswordNow();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
+      
 <button
   onClick={() => {
     setIsMenuOpen(false);
@@ -2207,15 +2191,7 @@ setNewShoppingItem("");
             👤 Profile
           </button>
 
-          <button
-            onClick={() => {
-              setShowSettingsMenu(false);
-              changePasswordNow();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔐 Change Password
-          </button>
+          
 
           <button
   onClick={() => {
@@ -2259,15 +2235,7 @@ setNewShoppingItem("");
         👤 Profile
       </button>
 
-      <button
-        onClick={() => {
-          setIsMenuOpen(false);
-          changePasswordNow();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
+      
 <button
   onClick={() => {
     setIsMenuOpen(false);
@@ -2595,15 +2563,7 @@ if (showPantry) {
             👤 Profile
           </button>
 
-          <button
-            onClick={() => {
-              setShowSettingsMenu(false);
-              changePasswordNow();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔐 Change Password
-          </button>
+          
 
           <button
   onClick={() => {
@@ -2647,15 +2607,7 @@ if (showPantry) {
         👤 Profile
       </button>
 
-      <button
-        onClick={() => {
-          setIsMenuOpen(false);
-          changePasswordNow();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
+      
 <button
   onClick={() => {
     setIsMenuOpen(false);
@@ -3015,15 +2967,7 @@ if (showPantry) {
             👤 Profile
           </button>
 
-          <button
-            onClick={() => {
-              setShowSettingsMenu(false);
-              changePasswordNow();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔐 Change Password
-          </button>
+          
 <button
   onClick={() => {
     alert(
@@ -3065,15 +3009,7 @@ if (showPantry) {
         👤 Profile
       </button>
 
-      <button
-        onClick={() => {
-          setIsMenuOpen(false);
-          changePasswordNow();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
+      
 <button
   onClick={() => {
     setIsMenuOpen(false);
@@ -3386,15 +3322,7 @@ Bake for 25 minutes`}
             👤 Profile
           </button>
 
-          <button
-            onClick={() => {
-              setShowSettingsMenu(false);
-              changePasswordNow();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔐 Change Password
-          </button>
+        
 <button
   onClick={() => {
     alert(
@@ -3436,15 +3364,7 @@ Bake for 25 minutes`}
         👤 Profile
       </button>
 
-      <button
-        onClick={() => {
-          setIsMenuOpen(false);
-          changePasswordNow();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
+    
 <button
   onClick={() => {
     setIsMenuOpen(false);
@@ -3827,15 +3747,7 @@ Bake for 25 minutes`}
             👤 Profile
           </button>
 
-          <button
-            onClick={() => {
-              setShowSettingsMenu(false);
-              changePasswordNow();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔐 Change Password
-          </button>
+          
 <button
   onClick={() => {
     alert(
@@ -3877,15 +3789,7 @@ Bake for 25 minutes`}
         👤 Profile
       </button>
 
-      <button
-        onClick={() => {
-          setIsMenuOpen(false);
-          changePasswordNow();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
+      
 <button
   onClick={() => {
     setIsMenuOpen(false);
