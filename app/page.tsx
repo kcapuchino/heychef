@@ -2212,20 +2212,30 @@ setNewShoppingItem("");
       </div>
 
       <div className="flex justify-end gap-3">
-        <button
-          onClick={() => setShowPantryModal(false)}
-          className="rounded-full border border-[#ead7c8] px-5 py-3"
-        >
-          Cancel
-        </button>
+  <button
+    onClick={() => setShowPantryModal(false)}
+    className="rounded-full border border-[#ead7c8] px-5 py-3"
+  >
+    Cancel
+  </button>
 
-        <button
-          onClick={savePantryModal}
-          className="rounded-full bg-[#a63a0a] px-5 py-3 text-white"
-        >
-          Add
-        </button>
-      </div>
+  <button
+    onClick={() => {
+      removeShoppingItem(pantryModalItem);
+      setShowPantryModal(false);
+    }}
+    className="rounded-full border border-[#ead7c8] px-5 py-3"
+  >
+    Mark On Hand
+  </button>
+
+  <button
+    onClick={savePantryModal}
+    className="rounded-full bg-[#a63a0a] px-5 py-3 text-white"
+  >
+    Add
+  </button>
+</div>
     </div>
   </div>
 )}
