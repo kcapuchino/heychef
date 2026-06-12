@@ -1192,7 +1192,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
       <span>👥 {recipe.servings || ""}</span>
 
       {recipe.category && (
-        <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-xs text-[#a63a0a]">
+        <span className="rounded-full bg-[#fff4ef] px-3 spy-1 text-xs text-[#a63a0a]">
           {recipe.category}
         </span>
       )}
@@ -2899,21 +2899,16 @@ Bake for 25 minutes`}
 </div>
 
 
-            {isEditingRecipe && (
-  <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
-    <h2 className="mb-4 text-xl font-bold">Edit Recipe</h2>
-
-    
+            {isEditingRecipe && selectedRecipe && (
+  <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
+    <h2 className="mb-5 text-2xl font-bold">Edit Recipe</h2>
 
     <label className="mb-2 block font-bold">Title</label>
     <input
-      value={editRecipeDraft?.title || ""}
+      value={selectedRecipe.title || ""}
       onChange={(e) =>
-  setEditRecipeDraft({
-    ...editRecipeDraft!,
-    title: e.target.value,
-  })
-}
+        setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
+      }
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
@@ -2921,8 +2916,8 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.image || ""}
       onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-}
+        setSelectedRecipe({ ...selectedRecipe, image: e.target.value })
+      }
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
@@ -2930,8 +2925,8 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.cookTime || ""}
       onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-}
+        setSelectedRecipe({ ...selectedRecipe, cookTime: e.target.value })
+      }
       placeholder="30 min"
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
@@ -2940,61 +2935,55 @@ Bake for 25 minutes`}
     <input
       value={selectedRecipe.servings || ""}
       onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-}
+        setSelectedRecipe({ ...selectedRecipe, servings: e.target.value })
+      }
       placeholder="4 servings"
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
     <label className="mb-2 block font-bold">Category</label>
-
-<select
-  value={selectedRecipe.category || ""}
-  onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-}
-  className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
->
-  <option value="">Select Category</option>
-  <option value="Main Dish">Main Dish</option>
-  <option value="Side Dish">Side Dish</option>
-  <option value="Dessert">Dessert</option>
-  <option value="Breakfast">Breakfast</option>
-  <option value="Soup">Soup</option>
-  <option value="Snack">Snack</option>
-  <option value="Drink">Drink</option>
-</select>
+    <select
+      value={selectedRecipe.category || ""}
+      onChange={(e) =>
+        setSelectedRecipe({ ...selectedRecipe, category: e.target.value })
+      }
+      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+    >
+      <option value="">Select Category</option>
+      <option value="Main Dish">Main Dish</option>
+      <option value="Side Dish">Side Dish</option>
+      <option value="Dessert">Dessert</option>
+      <option value="Breakfast">Breakfast</option>
+      <option value="Soup">Soup</option>
+      <option value="Snack">Snack</option>
+      <option value="Drink">Drink</option>
+    </select>
 
     <label className="mb-2 block font-bold">Ingredients</label>
     <textarea
-  value={editRecipeDraft?.ingredients.join("\n") || ""}
-  onChange={(e) =>
-  setEditRecipeDraft({
-    ...editRecipeDraft!,
-    ingredients: e.target.value.split("\n"),
-  })
-}
-  rows={10}
-  placeholder={`2 eggs
-1 cup flour
-1 tsp salt`}
-  className="mb-4 min-h-[250px] w-full rounded-xl border border-[#ead7c8] p-3"
-  enterKeyHint="enter"
-/>
+      value={selectedRecipe.ingredients.join("\n")}
+      onChange={(e) =>
+        setSelectedRecipe({
+          ...selectedRecipe,
+          ingredients: e.target.value.split("\n"),
+        })
+      }
+      rows={10}
+      className="mb-4 min-h-[250px] w-full rounded-xl border border-[#ead7c8] p-3"
+    />
 
     <label className="mb-2 block font-bold">Steps</label>
     <textarea
-  value={editRecipeDraft?.steps.join("\n") || ""}
-  onChange={(e) =>
-  setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-}
-  rows={12}
-  placeholder={`Mix ingredients
-Bake 25 minutes
-Let cool`}
-  className="min-h-[300px] w-full rounded-xl border border-[#ead7c8] p-3"
-  enterKeyHint="enter"
-/>
+      value={selectedRecipe.steps.join("\n")}
+      onChange={(e) =>
+        setSelectedRecipe({
+          ...selectedRecipe,
+          steps: e.target.value.split("\n"),
+        })
+      }
+      rows={12}
+      className="min-h-[300px] w-full rounded-xl border border-[#ead7c8] p-3"
+    />
   </div>
 )}
 {!isEditingRecipe && (
