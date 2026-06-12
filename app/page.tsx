@@ -2205,6 +2205,7 @@ setNewShoppingItem("");
 <option value="carton">carton</option>
 <option value="loaf">loaf</option>
 <option value="bunch">bunch</option>
+<option value="gallon">gallon</option>
 <option value="lb">lb</option>
 <option value="oz">oz</option>
         </select>
@@ -2801,6 +2802,7 @@ if (showPantry) {
   <option value="carton">carton</option>
   <option value="gallon">gallon</option>
   <option value="package">package</option>
+  <option value="gallon">gallon</option>
   <option value="lb">lb</option>
   <option value="oz">oz</option>
 </select>
@@ -2988,6 +2990,7 @@ setNewPantryCategory("Other");
 <option value="carton">carton</option>
 <option value="loaf">loaf</option>
 <option value="bunch">bunch</option>
+<option value="gallon">gallon</option>
 <option value="lb">lb</option>
 <option value="oz">oz</option>
 </select>
@@ -3036,6 +3039,7 @@ setNewPantryCategory("Other");
 <option value="carton">carton</option>
 <option value="loaf">loaf</option>
 <option value="bunch">bunch</option>
+<option value="gallon">gallon</option>
 <option value="lb">lb</option>
 <option value="oz">oz</option>
 </select>
