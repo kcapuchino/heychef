@@ -14,7 +14,8 @@ type Recipe = {
   category?: string;
   sourceUrl?: string;
   isFavorite?: boolean;
-  createdAt: string;
+isPlanningQueue?: boolean;
+createdAt: string;
 };
 type PlannedRecipe = Recipe & {
   mealPlanId: string;
@@ -307,6 +308,7 @@ setPantryItems(
         category: recipe.category || "",
         sourceUrl: recipe.source_url || "",
         isFavorite: recipe.is_favorite || false,
+        isPlanningQueue: recipe.is_planning_queue || false,
         createdAt: recipe.created_at,
       }))
     );
@@ -829,6 +831,40 @@ async function changePasswordNow() {
 
   if (selectedRecipe?.id === recipeId) {
     setSelectedRecipe(updatedSelectedRecipe);
+  }
+}
+
+async function togglePlanningQueue(recipeId: string) {
+  const recipe = recipes.find((item) => item.id === recipeId);
+  if (!recipe) return;
+
+  const newValue = !recipe.isPlanningQueue;
+
+  const { error } = await supabase
+    .from("recipes")
+    .update({
+      is_planning_queue: newValue,
+    })
+    .eq("id", recipeId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  const updatedRecipes = recipes.map((item) =>
+    item.id === recipeId
+      ? { ...item, isPlanningQueue: newValue }
+      : item
+  );
+
+  setRecipes(updatedRecipes);
+
+  if (selectedRecipe?.id === recipeId) {
+    setSelectedRecipe({
+      ...selectedRecipe,
+      isPlanningQueue: newValue,
+    });
   }
 }
 
@@ -1929,7 +1965,9 @@ setNewShoppingItem("");
             className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
           >
             <option value="">Choose a recipe</option>
-            {recipes.map((recipe) => (
+            {recipes
+  .filter((recipe) => recipe.isPlanningQueue)
+  .map((recipe) => (
               <option key={recipe.id} value={recipe.id}>
                 {recipe.title}
               </option>
@@ -2018,7 +2056,7 @@ setNewShoppingItem("");
                   }}
                   className="mt-4 w-full rounded-full bg-white px-4 py-3 text-sm font-semibold text-[#a63a0a] shadow-sm"
                 >
-                  + Add Recipe
+                  + Add from Queue
                 </button>
               )}
             </div>
@@ -2686,12 +2724,36 @@ Bake for 25 minutes`}
 />
 
                 <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-lg font-bold">{recipe.title}</h3>
-                  <span>{recipe.isFavorite ? "★" : ""}</span>
-                </div>
+  <h3 className="text-lg font-bold">{recipe.title}</h3>
+
+  <button
+    type="button"
+    onClick={(e) => {
+      e.stopPropagation();
+      toggleFavorite(recipe.id);
+    }}
+    className="text-xl text-[#2b1a12]"
+  >
+    {recipe.isFavorite ? "★" : "☆"}
+  </button>
+</div>
 
                 <RecipeMeta recipe={recipe} />
-                
+                <button
+  onClick={(e) => {
+    e.stopPropagation();
+    togglePlanningQueue(recipe.id);
+  }}
+  className={`mr-2 rounded-full px-3 py-1.5 font-medium ${
+    recipe.isPlanningQueue
+      ? "bg-[#fff4ef] text-[#a63a0a]"
+      : "bg-[#a63a0a] text-white"
+  }`}
+>
+  {recipe.isPlanningQueue
+    ? "− Meal Plan Queue"
+    : "+ Meal Plan Queue"}
+</button>
                 <button
   onClick={(e) => {
     e.stopPropagation();
@@ -3004,8 +3066,19 @@ Bake for 25 minutes`}
             </div>
 
             <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
-              <h2 className="mb-3 text-xl font-bold">Add to Meal Plan</h2>
+              <h2 className="mb-2 text-xl font-bold">Plan This Recipe</h2>
 
+<p className="mb-4 text-sm text-[#6d5549]">
+  Already know when you're making it? Add it to your meal plan.
+</p>
+<button
+  onClick={() => togglePlanningQueue(selectedRecipe.id)}
+  className="mb-4 rounded-full border border-[#a63a0a] px-5 py-2 text-[#a63a0a]"
+>
+  {selectedRecipe.isPlanningQueue
+    ? "− Remove from Planning Queue"
+    : "+ Add to Planning Queue"}
+</button>
               <div className="mb-4 grid gap-3 md:grid-cols-2">
                 <select
                   value={selectedDay}
@@ -3346,9 +3419,18 @@ Bake for 25 minutes`}
   className="mb-4 h-36 w-full rounded-2xl object-cover"
 />
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-bold">{recipe.title}</h3>
-                    <span>{recipe.isFavorite ? "★" : ""}</span>
-                  </div>
+  <h3 className="text-lg font-bold">{recipe.title}</h3>
+
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      toggleFavorite(recipe.id);
+    }}
+    className="text-xl text-[#2b1a12]"
+  >
+    {recipe.isFavorite ? "★" : "☆"}
+  </button>
+</div>
 
                   <RecipeMeta recipe={recipe} />
                 </button>
