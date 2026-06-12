@@ -2794,6 +2794,7 @@ if (showPantry) {
   className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
 >
   <option value="">Unit</option>
+  <option value="package">package</option>
   <option value="jar">jar</option>
   <option value="bottle">bottle</option>
   <option value="can">can</option>
