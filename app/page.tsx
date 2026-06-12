@@ -153,6 +153,10 @@ const [loginPassword, setLoginPassword] = useState("");
 const [authMode, setAuthMode] = useState<"login" | "signup">("login");
 const [authError, setAuthError] = useState("");
 const [sampleRecipe, setSampleRecipe] = useState<Recipe | null>(null);
+const [showPassword, setShowPassword] = useState(false);
+
+const [isResettingPassword, setIsResettingPassword] = useState(false);
+const [newPassword, setNewPassword] = useState("");
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
@@ -194,6 +198,14 @@ const filledSlots = Object.values(mealPlan).filter(
 const plannerPercent = Math.round(
   (filledSlots / totalSlots) * 100
 );
+
+useEffect(() => {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === "PASSWORD_RECOVERY") {
+      setIsResettingPassword(true);
+    }
+  });
+}, []);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("hey-chef-current-user");
@@ -482,6 +494,43 @@ if (authMode === "signup" && user) {
 
   setUserEmail(cleanEmail);
   setHasLoadedUser(true);
+}
+
+async function updatePassword() {
+  if (!newPassword) {
+    setAuthError("Enter a new password.");
+    return;
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+
+  if (error) {
+    setAuthError(error.message);
+    return;
+  }
+
+  setAuthError("");
+  setIsResettingPassword(false);
+  setNewPassword("");
+  alert("Password updated. You can log in now.");
+}
+async function changePasswordNow() {
+  const password = prompt("Enter your new password:");
+
+  if (!password) return;
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  alert("Password updated.");
 }
 
   async function logoutUser() {
@@ -1200,13 +1249,23 @@ function renderAuthCard() {
     className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
   />
 
+  <div className="relative mb-4">
   <input
-    name="password"
-    type="password"
+    type={showPassword ? "text" : "password"}
+    value={loginPassword}
+    onChange={(e) => setLoginPassword(e.target.value)}
     placeholder="Password"
-    autoComplete={authMode === "signup" ? "new-password" : "current-password"}
-    className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
+    className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
   />
+
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-5 top-1/2 -translate-y-1/2 text-sm text-[#a63a0a]"
+  >
+    {showPassword ? "Hide" : "Show"}
+  </button>
+</div>
 
   {authError && <p className="mb-4 text-red-600">{authError}</p>}
 
@@ -1241,11 +1300,7 @@ function renderAuthCard() {
   📱 Install Hey Chef
 </button>
 
-      <button
-        onClick={() => setAuthMode(authMode === "login" ? "signup" : "login")}
-        className="mt-4 w-full text-[#a63a0a]"
-      >
-        {authMode === "login" && (
+      {authMode === "login" && (
   <button
     type="button"
     onClick={resetPassword}
@@ -1254,15 +1309,56 @@ function renderAuthCard() {
     Forgot password?
   </button>
 )}
-        {authMode === "login"
-          ? "Need an account? Create one"
-          : "Already have an account? Log in"}
-      </button>
+
+<button
+  type="button"
+  onClick={() =>
+    setAuthMode(authMode === "login" ? "signup" : "login")
+  }
+  className="mt-4 w-full text-[#a63a0a]"
+>
+  {authMode === "login"
+    ? "Need an account? Create one"
+    : "Already have an account? Log in"}
+</button>
     </>
     
   );
 }
-  if (!userEmail) {
+  if (isResettingPassword) {
+  return (
+    <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
+      <section className="mx-auto max-w-md rounded-[2rem] bg-white p-6 shadow-xl">
+        <h1 className="mb-3 text-3xl font-bold text-[#a63a0a]">
+          Reset your password
+        </h1>
+
+        <p className="mb-5 text-[#6d5549]">
+          Enter a new password for your Hey Chef account.
+        </p>
+
+        <input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          placeholder="New password"
+          className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+        />
+
+        {authError && <p className="mb-4 text-red-600">{authError}</p>}
+
+        <button
+          onClick={updatePassword}
+          className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        >
+          Save new password
+        </button>
+      </section>
+    </main>
+  );
+}
+
+if (!userEmail) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 py-6 md:grid-cols-[1.2fr_0.8fr] md:py-10">
@@ -1461,6 +1557,12 @@ function renderAuthCard() {
     >
       ↪ Log Out
     </button>
+    <button
+  onClick={changePasswordNow}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🔐 Change Password
+</button>
   </div>
 )}
 </nav>
@@ -1545,7 +1647,7 @@ setNewShoppingItem("");
     }}
     className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
   >
-    Add Item
+    Add Itemf
   </button>
 </div>
 
@@ -1701,6 +1803,12 @@ setNewShoppingItem("");
     >
       ↪ Log Out
     </button>
+    <button
+  onClick={changePasswordNow}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🔐 Change Password
+</button>
   </div>
 )}
 </nav>
@@ -1983,6 +2091,12 @@ if (showPantry) {
     >
       ↪ Log Out
     </button>
+    <button
+  onClick={changePasswordNow}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🔐 Change Password
+</button>
   </div>
 )}
 </nav><button
@@ -2317,6 +2431,12 @@ if (showPantry) {
     >
       ↪ Log Out
     </button>
+    <button
+  onClick={changePasswordNow}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🔐 Change Password
+</button>
   </div>
 )}
 </nav>
@@ -2578,6 +2698,12 @@ Bake for 25 minutes`}
     >
       ↪ Log Out
     </button>
+    <button
+  onClick={changePasswordNow}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🔐 Change Password
+</button>
   </div>
 )}
 </nav>
@@ -2930,6 +3056,12 @@ Let cool`}
     >
       ↪ Log Out
     </button>
+    <button
+  onClick={changePasswordNow}
+  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+>
+  🔐 Change Password
+</button>
   </div>
 )}
 </nav>
