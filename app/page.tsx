@@ -1723,10 +1723,6 @@ if (showProfile) {
           </div>
         </nav>
 
-        <button onClick={goHome} className="mb-6 text-[#a63a0a]">
-          ← Back Home
-        </button>
-
         <section className="rounded-[2rem] bg-white p-6 shadow-xl">
           <h1 className="mb-2 text-4xl font-bold">Profile</h1>
           <p className="mb-6 text-[#6d5549]">
@@ -1971,15 +1967,7 @@ if (showProfile) {
     </div>
   )}
 </nav>
-          <button
-  onClick={() => {
-    setShowShoppingList(false);
-    setShowAllRecipes(true);
-  }}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back to All Recipes
-</button>
+          
 
           <div className="mb-8 flex items-start justify-between gap-3">
   <div>
@@ -2306,15 +2294,7 @@ setNewShoppingItem("");
     </div>
   )}
 </nav>
-          <button
-  onClick={() => {
-    setShowMealPlanner(false);
-    setShowAllRecipes(true);
-  }}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back to All Recipes
-</button>
+  
 
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
   <div>
@@ -2706,15 +2686,6 @@ if (showPantry) {
     </div>
   )}
 </nav>
-<button
-  onClick={() => {
-    setShowPantry(false);
-    setShowAllRecipes(true);
-  }}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back to Recipes
-</button>
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
   <div>
   <h1 className="text-5xl font-bold">
@@ -3138,17 +3109,6 @@ if (showPantry) {
   )}
 </nav>
 
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <button
-            onClick={() => {
-              setShowAllRecipes(false);
-              setShowImport(false);
-            }}
-            className="text-[#a63a0a]"
-          >
-            ← Back Home
-          </button>
-        </div>
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
   <div>
@@ -3523,16 +3483,6 @@ Bake for 25 minutes`}
     </div>
   )}
 </nav>
-
-  <button
-    onClick={() => {
-      setSelectedRecipe(null);
-      setShowAllRecipes(true);
-    }}
-    className="mb-6 text-[#a63a0a]"
-  >
-    ← Back to All Recipes
-  </button>
 
           <div className="rounded-[2rem] bg-white p-5 md:p-6 shadow-xl">
             <img
