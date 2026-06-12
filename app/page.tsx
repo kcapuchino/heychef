@@ -106,6 +106,24 @@ function getCurrentWeekLabel() {
     day: "numeric",
   })}`;
 }
+function cleanPantryDisplayName(text: string) {
+  return text
+    .replace(/\(.*?\)/g, "")
+    .replace(/^\s*[\d¼½¾⅓⅔⅛⅜⅝⅞\s/.-]+/g, "")
+    .replace(/^(cups?|cup|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|g|ml|cans?|can)\s+/i, "")
+    .replace(/^(small|large|medium)\s+/i, "")
+    .trim();
+}
+function normalizeItemName(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/\d+|cups?|tbsp|tablespoons?|teaspoons?|ounces?|oz|grams?|g|ml|cans?|small|large|medium/g, "")
+    .replace(/vegan|dairy-free|plant-based|plant/g, "")
+    .replace(/[^a-z\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function getUpcomingWeekLabel() {
   const today = new Date();
@@ -1258,11 +1276,33 @@ async function addShoppingItemToPantry(shoppingItem: string) {
     return;
   }
 
+  const cleanedShoppingName = normalizeItemName(shoppingItem);
+
+  const alreadyInPantry = pantryItems.find((pantryItem) => {
+    const cleanedPantryName = normalizeItemName(pantryItem.name);
+
+    return (
+      cleanedShoppingName.includes(cleanedPantryName) ||
+      cleanedPantryName.includes(cleanedShoppingName)
+    );
+  });
+
+  if (alreadyInPantry) {
+    alert(`${shoppingItem} already matches ${alreadyInPantry.name} in your pantry.`);
+    return;
+  }
+
+  const cleanedName = cleanPantryDisplayName(shoppingItem);
+
+  const pantryName = prompt("Add to pantry as:", cleanedName);
+
+  if (!pantryName?.trim()) return;
+
   const { data, error } = await supabase
     .from("pantry_items")
     .insert({
       user_id: user.id,
-      name: shoppingItem,
+      name: pantryName.trim(),
       quantity: "1",
       category: "Other",
     })
@@ -1283,12 +1323,6 @@ async function addShoppingItemToPantry(shoppingItem: string) {
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
-  await supabase
-  .from("shopping_items")
-  .delete()
-  .eq("name", shoppingItem);
-
-setShoppingList(shoppingList.filter((item) => item !== shoppingItem));
 }
 
 function goAllRecipes() {
@@ -2071,12 +2105,14 @@ setNewShoppingItem("");
             <div className="flex gap-3">
               {!isItemInPantry(item) && (
                 <div className="flex gap-3">
-  <button
-    onClick={() => addShoppingItemToPantry(item)}
-    className="text-[#a63a0a]"
-  >
-    Add to Pantry
-  </button>
+  {!isItemInPantry(item) && (
+    <button
+      onClick={() => addShoppingItemToPantry(item)}
+      className="text-[#a63a0a]"
+    >
+      Add to Pantry
+    </button>
+  )}
 
   <button
     onClick={() => removeShoppingItem(item)}
@@ -2660,12 +2696,18 @@ if (showPantry) {
       onChange={(e) => setNewPantryCategory(e.target.value)}
       className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
     >
-      <option value="Dairy">Dairy</option>
-            <option value="Produce">Produce</option>
-            <option value="Dry Goods">Dry Goods</option>
-            <option value="Baking">Baking</option>
-            <option value="Frozen">Frozen</option>
-            <option value="Other">Other</option>
+      <option value="Produce">Produce</option>
+<option value="Refrigerated">Refrigerated</option>
+<option value="Frozen">Frozen</option>
+<option value="Meat & Protein">Meat & Protein</option>
+<option value="Canned Goods">Canned Goods</option>
+<option value="Grains & Pasta">Grains & Pasta</option>
+<option value="Baking">Baking</option>
+<option value="Spices">Spices</option>
+<option value="Beverages">Beverages</option>
+<option value="Condiments">Condiments</option>
+<option value="Snacks">Snacks</option>
+<option value="Other">Other</option>
     </select>
 
     <button
@@ -2724,12 +2766,18 @@ if (showPantry) {
             className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
           >
             <option value="all">All Categories</option>
-            <option value="Dairy">Dairy</option>
             <option value="Produce">Produce</option>
-            <option value="Dry Goods">Dry Goods</option>
-            <option value="Baking">Baking</option>
-            <option value="Frozen">Frozen</option>
-            <option value="Other">Other</option>
+<option value="Refrigerated">Refrigerated</option>
+<option value="Frozen">Frozen</option>
+<option value="Meat & Protein">Meat & Protein</option>
+<option value="Canned Goods">Canned Goods</option>
+<option value="Grains & Pasta">Grains & Pasta</option>
+<option value="Baking">Baking</option>
+<option value="Spices">Spices</option>
+<option value="Beverages">Beverages</option>
+<option value="Condiments">Condiments</option>
+<option value="Snacks">Snacks</option>
+<option value="Other">Other</option>
           </select>
 
           <select
@@ -2750,8 +2798,9 @@ if (showPantry) {
           </div>
         ) : (
           <div className="space-y-8">
-            {["Dairy", "Produce", "Dry Goods", "Baking", "Frozen", "Other"].map(
-              (category) => {
+            {[...new Set(pantryItems.map((item) => item.category))]
+  .sort()
+  .map((category) => {
                 const itemsInCategory = filteredPantryItems.filter(
                   (item) => item.category === category
                 );
@@ -2831,12 +2880,18 @@ if (showPantry) {
 }}
                               className="rounded-xl border border-[#ead7c8] bg-white p-3"
                             >
-                              <option value="Dairy">Dairy</option>
                               <option value="Produce">Produce</option>
-                              <option value="Dry Goods">Dry Goods</option>
-                              <option value="Baking">Baking</option>
-                              <option value="Frozen">Frozen</option>
-                              <option value="Other">Other</option>
+<option value="Refrigerated">Refrigerated</option>
+<option value="Frozen">Frozen</option>
+<option value="Meat & Protein">Meat & Protein</option>
+<option value="Canned Goods">Canned Goods</option>
+<option value="Grains & Pasta">Grains & Pasta</option>
+<option value="Baking">Baking</option>
+<option value="Spices">Spices</option>
+<option value="Condiments">Condiments</option>
+<option value="Snacks">Snacks</option>
+<option value="Beverages">Beverages</option>
+<option value="Other">Other</option>
                             </select>
                           </div>
 
