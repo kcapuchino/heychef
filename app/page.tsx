@@ -104,6 +104,8 @@ function getUpcomingWeekLabel() {
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+const [signupName, setSignupName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
 
@@ -151,7 +153,7 @@ const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
 const [pantrySort, setPantrySort] = useState("az");
 
 const [loginPassword, setLoginPassword] = useState("");
-const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
 const [authError, setAuthError] = useState("");
 const [sampleRecipe, setSampleRecipe] = useState<Recipe | null>(null);
 const [showPassword, setShowPassword] = useState(false);
@@ -161,7 +163,10 @@ const [newPassword, setNewPassword] = useState("");
 const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
-  const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
+  const homeRecipes = recipes
+  .filter((recipe) => recipe.isFavorite)
+  .slice(-6)
+  .reverse();
   const homeSectionTitle = favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
   const filteredRecipes = recipes
   .filter((recipe) =>
@@ -216,7 +221,32 @@ useEffect(() => {
       loadUser(savedUser);
     }
   }, []);
+useEffect(() => {
+  async function loadProfile() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setDisplayName(data?.display_name || "");
+  }
+
+  if (userEmail) {
+    loadProfile();
+  }
+}, [userEmail]);
   useEffect(() => {
   async function loadSession() {
     const {
@@ -437,7 +467,7 @@ useEffect(() => {
   }
 }, [userEmail]);
 
-  async function loginUser(email: string, password: string) {
+  async function loginUser(email: string, password: string, name?: string) {
   setAuthError("");
 
   if (!email || !password) {
@@ -483,7 +513,8 @@ if (authMode === "signup" && user) {
   const { error: profileError } = await supabase.from("profiles").insert({
     id: user.id,
     email: cleanEmail,
-    plan: isGovEmail ? "gov_free" : "free",
+display_name: name?.trim() || null,
+plan: isGovEmail ? "gov_free" : "free",
     verified_domain: isGovEmail ? "in.gov" : null,
     domain_verified_at: isGovEmail ? new Date().toISOString() : null,
     domain_expires_at: isGovEmail ? oneYearFromNow.toISOString() : null,
@@ -1259,13 +1290,13 @@ function renderAuthCard() {
   return (
     <>
       <h2 className="mb-2 text-3xl font-bold">
-        {authMode === "signup" ? "Create your kitchen" : "Welcome back"}
+        {authMode === "signup" ? "Ready to cook?" : "Welcome back 👋"}
       </h2>
 
       <p className="mb-5 text-[#6d5549]">
         {authMode === "signup"
           ? "Create an account to save your recipes."
-          : "Log in to get back to your recipes."}
+          : "Log in to see what's on the menu today."}
       </p>
 
       <form
@@ -1274,11 +1305,22 @@ function renderAuthCard() {
 
     const formData = new FormData(e.currentTarget);
     loginUser(
-      String(formData.get("email") || ""),
-      String(formData.get("password") || "")
-    );
+  String(formData.get("email") || ""),
+  String(formData.get("password") || ""),
+  String(formData.get("displayName") || "")
+);
   }}
 >
+  {authMode === "signup" && (
+  <input
+    name="displayName"
+    type="text"
+    value={signupName}
+    onChange={(e) => setSignupName(e.target.value)}
+    placeholder="Name or nickname (optional)"
+    className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
+  />
+)}
   <input
     name="email"
     type="email"
@@ -2641,10 +2683,16 @@ if (showPantry) {
 
         {showImport && (
           <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
-            <h2 className="mb-3 text-2xl font-bold">Import a Recipe</h2>
-            <p className="mb-4 text-[#6d5549]">
-              Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
-            </p>
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="text-2xl font-bold">Import a Recipe</h2>
+
+    <button
+      onClick={() => setShowImport(false)}
+      className="text-2xl text-[#6d5549]"
+    >
+      ✕
+    </button>
+  </div>
 
             <div className="flex gap-3">
               <input
@@ -3267,32 +3315,30 @@ Bake for 25 minutes`}
 )}
 </nav>
 
-        <div className="grid gap-10 md:grid-cols-2 md:items-center">
-  {/* TEXT */}
-  <div className="order-2 md:order-1">
+        <div className="grid gap-8">
+  {/* INTRO */}
+  <section className="mb-8">
     <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
-      What’s for dinner?
+      GOOD EVENING 👋
     </p>
 
-    <h1 className="mb-5 text-4xl font-bold leading-tight md:text-7xl">
-      Save recipes from anywhere.
+    <h1 className="mb-3 text-4xl font-bold leading-tight md:text-6xl">
+      {"Chef"}
     </h1>
 
-    <p className="mb-8 text-lg text-[#6d5549]">
-      Import recipes, clean up the clutter, plan your week, and build your shopping list in
-      one place.
+    <p className="mb-6 text-lg text-[#6d5549]">
+      What's on the menu today?
     </p>
-    
 
-
-
-    <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
+    <div className="mb-6 grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
         onClick={() => setShowImport(true)}
         className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
       >
         Import Recipe
       </button>
+
+      
 
       <button
         onClick={() => setShowAllRecipes(true)}
@@ -3301,66 +3347,69 @@ Bake for 25 minutes`}
         View Recipes
       </button>
     </div>
+    {showImport && (
+  <section className="rounded-3xl bg-white p-6 shadow-lg">
+  <div className="mb-4 flex items-center justify-between">
+    <h2 className="text-2xl font-bold">Import a Recipe</h2>
+
+    <button
+      onClick={() => setShowImport(false)}
+      className="text-2xl text-[#6d5549]"
+    >
+      ✕
+    </button>
   </div>
 
-  {/* IMAGE */}
-  <div className="order-1 rounded-[2rem] bg-white p-5 shadow-2xl md:order-2">
-    <div className="h-72 rounded-[1.5rem] bg-[url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?q=80&w=1200&auto=format&fit=crop')] bg-cover bg-center md:h-80" />
-  </div>
-</div>
+  <p className="mb-4 text-[#6d5549]">
+    Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
+  </p>
 
-        {showImport && (
-          <section className="mt-10 rounded-3xl bg-white p-6 shadow-lg">
-            <h2 className="mb-3 text-2xl font-bold">Import a Recipe</h2>
-            <p className="mb-4 text-[#6d5549]">
-              Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
-            </p>
+    <div className="flex flex-wrap gap-2">
+      <input
+        value={recipeUrl}
+        onChange={(e) => setRecipeUrl(e.target.value)}
+        placeholder="https://example.com/recipe"
+        className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+      />
 
-            <div className="flex flex-wrap gap-2">
-              <input
-                value={recipeUrl}
-                onChange={(e) => setRecipeUrl(e.target.value)}
-                placeholder="https://example.com/recipe"
-                className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
-              />
+      <button
+        onClick={importRecipe}
+        disabled={isImporting}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+      >
+        {isImporting ? "Importing..." : "Import"}
+      </button>
+    </div>
 
-              <button
-                onClick={importRecipe}
-                disabled={isImporting}
-                className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
-              >
-                {isImporting ? "Importing..." : "Import"}
-              </button>
-            </div>
-            <div className="my-5 flex items-center gap-4">
-  <div className="h-px flex-1 bg-[#ead7c8]" />
-  <span className="text-sm text-[#6d5549]">OR</span>
-  <div className="h-px flex-1 bg-[#ead7c8]" />
-</div>
+    <div className="my-5 flex items-center gap-4">
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+      <span className="text-sm text-[#6d5549]">OR</span>
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+    </div>
 
-<button
-  onClick={createNewRecipe}
-  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
->
-  + New Recipe
-</button>
+    <button
+      onClick={createNewRecipe}
+      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      + New Recipe
+    </button>
 
-            {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
+    {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
 
-            {showManualImport && (
-              <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
-                <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
+    {showManualImport && (
+      <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+        <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
 
-                <p className="mb-4 text-[#6d5549]">
-                  Some websites block imports. Paste the recipe below and Hey Chef will organize it
-                  into ingredients and steps.
-                </p>
+        <p className="mb-4 text-[#6d5549]">
+          Some websites block imports. Paste the recipe below and Hey Chef will organize it
+          into ingredients and steps.
+        </p>
 
-                <textarea
-                  value={manualRecipe}
-                  onChange={(e) => setManualRecipe(e.target.value)}
-                  rows={12}
-                  placeholder={`Lemon Texas Sheet Cake
+        <textarea
+          value={manualRecipe}
+          onChange={(e) => setManualRecipe(e.target.value)}
+          rows={12}
+          placeholder={`Lemon Texas Sheet Cake
 
 2 cups flour
 2 cups sugar
@@ -3369,75 +3418,143 @@ Bake for 25 minutes`}
 Directions
 Mix ingredients
 Bake for 25 minutes`}
-                  className="w-full rounded-2xl border border-[#ead7c8] p-4"
-                />
+          className="w-full rounded-2xl border border-[#ead7c8] p-4"
+        />
 
-                <button
-                  onClick={importManualRecipe}
-                  className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-                >
-                  Create Recipe
-                </button>
-              </div>
-            )}
-          </section>
-        )}
+        <button
+          onClick={importManualRecipe}
+          className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        >
+          Create Recipe
+        </button>
+      </div>
+    )}
+  </section>
+)}
+  </section>
+  
 
-        <section id="recipes" className="mt-14">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <div className="mb-6 flex items-center justify-between">
-  <div>
-    <h2 className="text-3xl font-bold">
-      {homeSectionTitle}
-    </h2>
+  {/* TODAY'S MENU */}
+  <section className="rounded-[2rem] bg-white p-6 shadow-lg">
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <div>
+        <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
+          TODAY'S MENU
+        </p>
+        <h2 className="text-3xl font-bold">Today</h2>
+      </div>
+    </div>
 
-    <p className="text-[#6d5549]">
-      Star up to 3 recipes to feature them here.
+    <div className="grid gap-4 md:grid-cols-3">
+      {["Breakfast", "Lunch", "Dinner"].map((meal) => (
+        <div
+          key={meal}
+          className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5"
+        >
+          <h3 className="mb-3 text-xl font-bold">{meal}</h3>
+
+          <p className="text-[#6d5549]">
+            Nothing planned yet.
+          </p>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  {/* MEAL PLAN OVERVIEW */}
+  <section className="rounded-[2rem] bg-white p-6 shadow-lg">
+    <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
+      MEAL PLAN OVERVIEW
     </p>
-  </div>
+
+    <h2 className="mb-5 text-3xl font-bold">This week</h2>
+
+    <div className="grid gap-4 md:grid-cols-2">
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
+          setShowMealPlanner(true);
+        }}
+        className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
+      >
+        <p className="mb-2 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+          Current Week
+        </p>
+        <h3 className="text-2xl font-bold">{filledSlots} / 21</h3>
+        <p className="text-[#6d5549]">meals planned</p>
+      </button>
+
+      <button
+        onClick={() => {
+          setSelectedRecipe(null);
+          setShowShoppingList(false);
+          setShowAllRecipes(false);
+          setShowMealPlanner(true);
+        }}
+        className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
+      >
+        <p className="mb-2 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+          Next Week
+        </p>
+        <h3 className="text-2xl font-bold">0 / 21</h3>
+        <p className="text-[#6d5549]">meals planned</p>
+      </button>
+    </div>
+  </section>
 </div>
-            </div>
+
+
+
+<section id="recipes" className="mt-14">
+  <div className="mb-5 flex items-end justify-between gap-4">
+    <div>
+      <h2 className="text-3xl font-bold">{homeSectionTitle}</h2>
+    </div>
+  </div>
+
+  {recipes.length === 0 ? (
+    <div className="rounded-3xl bg-white p-8 shadow">
+      <h3 className="mb-2 text-xl font-bold">No recipes yet.</h3>
+      <p className="text-[#6d5549]">
+        Import your first recipe to start building your library.
+      </p>
+    </div>
+  ) : (
+    <div className="grid gap-5 md:grid-cols-3">
+      {homeRecipes.map((recipe) => (
+        <button
+          key={recipe.id}
+          onClick={() => setSelectedRecipe(recipe)}
+          className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+        >
+          <img
+            src={recipe.image || placeholderImage}
+            alt={recipe.title}
+            className="mb-4 h-36 w-full rounded-2xl object-cover"
+          />
+
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-lg font-bold">{recipe.title}</h3>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFavorite(recipe.id);
+              }}
+              className="text-xl text-[#2b1a12]"
+            >
+              {recipe.isFavorite ? "★" : "☆"}
+            </button>
           </div>
 
-          {recipes.length === 0 ? (
-            <div className="rounded-3xl bg-white p-8 shadow">
-              <h3 className="mb-2 text-xl font-bold">No recipes yet.</h3>
-              <p className="text-[#6d5549]">Import your first recipe to start building your library.</p>
-            </div>
-          ) : (
-            <div className="grid gap-5 md:grid-cols-3">
-              {homeRecipes.map((recipe) => (
-                <button
-                  key={recipe.id}
-                  onClick={() => setSelectedRecipe(recipe)}
-                  className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                >
-                  <img
-  src={recipe.image || placeholderImage}
-  alt={recipe.title}
-  className="mb-4 h-36 w-full rounded-2xl object-cover"
-/>
-                  <div className="flex items-start justify-between gap-3">
-  <h3 className="text-lg font-bold">{recipe.title}</h3>
-
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      toggleFavorite(recipe.id);
-    }}
-    className="text-xl text-[#2b1a12]"
-  >
-    {recipe.isFavorite ? "★" : "☆"}
-  </button>
-</div>
-
-                  <RecipeMeta recipe={recipe} />
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
+          <RecipeMeta recipe={recipe} />
+        </button>
+      ))}
+    </div>
+  )}
+</section>
       </section>
     </main>
   );
