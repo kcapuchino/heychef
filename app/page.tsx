@@ -157,6 +157,7 @@ const [showPassword, setShowPassword] = useState(false);
 
 const [isResettingPassword, setIsResettingPassword] = useState(false);
 const [newPassword, setNewPassword] = useState("");
+const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = favoriteRecipes.length > 0 ? favoriteRecipes : recipes.slice(0, 3);
@@ -1517,9 +1518,32 @@ if (!userEmail) {
 </button>
 
 
-  <button onClick={logoutUser} className="text-[#a63a0a]">
-    Log Out
+  <div className="relative">
+  <button
+    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+    className="text-[#a63a0a]"
+  >
+    ⚙️ Settings
   </button>
+
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+      <button
+        onClick={changePasswordNow}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</div>
 </div>
 
   {isMenuOpen && (
@@ -1763,9 +1787,32 @@ setNewShoppingItem("");
 
   
 
-  <button onClick={logoutUser} className="text-[#a63a0a]">
-    Log Out
+  <div className="relative">
+  <button
+    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+    className="text-[#a63a0a]"
+  >
+    ⚙️ Settings
   </button>
+
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+      <button
+        onClick={changePasswordNow}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</div>
 </div>
 
   {isMenuOpen && (
@@ -2051,9 +2098,32 @@ if (showPantry) {
 
   
 
-    <button onClick={logoutUser} className="text-[#a63a0a]">
-      Log Out
-    </button>
+    <div className="relative">
+  <button
+    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+    className="text-[#a63a0a]"
+  >
+    ⚙️ Settings
+  </button>
+
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+      <button
+        onClick={changePasswordNow}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</div>
   </div>
 
   {isMenuOpen && (
@@ -2391,9 +2461,32 @@ if (showPantry) {
   My Pantry
 </button>
  
-  <button onClick={logoutUser} className="text-[#a63a0a]">
-    Log Out
+  <div className="relative">
+  <button
+    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+    className="text-[#a63a0a]"
+  >
+    ⚙️ Settings
   </button>
+
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+      <button
+        onClick={changePasswordNow}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</div>
 </div>
 
   {isMenuOpen && (
@@ -2651,9 +2744,32 @@ Bake for 25 minutes`}
 </button>
     
 
-    <button onClick={logoutUser} className="text-[#a63a0a]">
-      Log Out
-    </button>
+    <div className="relative">
+  <button
+    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+    className="text-[#a63a0a]"
+  >
+    ⚙️ Settings
+  </button>
+
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+      <button
+        onClick={changePasswordNow}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</div>
   </div>
 
   <button
@@ -3016,9 +3132,32 @@ Let cool`}
 </button>
 
 
-  <button onClick={logoutUser} className="text-[#a63a0a]">
-    Log Out
+  <div className="relative">
+  <button
+    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+    className="text-[#a63a0a]"
+  >
+    ⚙️ Settings
   </button>
+
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+      <button
+        onClick={changePasswordNow}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={logoutUser}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
+</div>
 </div>
 
   {isMenuOpen && (
