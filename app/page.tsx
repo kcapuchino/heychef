@@ -2794,18 +2794,18 @@ if (showPantry) {
   className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
 >
   <option value="">Unit</option>
-  <option value="package">package</option>
-  <option value="jar">jar</option>
-  <option value="bottle">bottle</option>
-  <option value="can">can</option>
-  <option value="box">box</option>
-  <option value="bag">bag</option>
-  <option value="carton">carton</option>
-  <option value="gallon">gallon</option>
-  <option value="package">package</option>
-  <option value="gallon">gallon</option>
-  <option value="lb">lb</option>
-  <option value="oz">oz</option>
+<option value="package">package</option>
+<option value="bag">bag</option>
+<option value="box">box</option>
+<option value="jar">jar</option>
+<option value="bottle">bottle</option>
+<option value="can">can</option>
+<option value="carton">carton</option>
+<option value="loaf">loaf</option>
+<option value="bunch">bunch</option>
+<option value="gallon">gallon</option>
+<option value="lb">lb</option>
+<option value="oz">oz</option>
 </select>
     <select
       value={newPantryCategory}
