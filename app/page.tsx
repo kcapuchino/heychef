@@ -25,6 +25,7 @@ type PantryItem = {
   id: string;
   name: string;
   quantity: string;
+  unit?: string;
   category: string;
   createdAt: string;
 };
@@ -193,8 +194,13 @@ const [recipeSort, setRecipeSort] = useState("newest");
   const [hidePantryItems, setHidePantryItems] = useState(true);
   const [newShoppingItem, setNewShoppingItem] = useState("");
   const [newPantryItem, setNewPantryItem] = useState("");
-  const [newPantryQuantity, setNewPantryQuantity] = useState("");
+ const [newPantryQuantity, setNewPantryQuantity] = useState("");
 const [newPantryCategory, setNewPantryCategory] = useState("Other");
+const [newPantryUnit, setNewPantryUnit] = useState("");
+const [showPantryModal, setShowPantryModal] = useState(false);
+const [pantryModalItem, setPantryModalItem] = useState("");
+const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
+const [pantryModalUnit, setPantryModalUnit] = useState("package");
 const [shoppingSort, setShoppingSort] = useState("az");
 const [showPantry, setShowPantry] = useState(false);
 const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
@@ -461,14 +467,15 @@ useEffect(() => {
     }
 
     setPantryItems(
-      (data || []).map((item) => ({
-        id: item.id,
-        name: item.name,
-        quantity: item.quantity || "",
-        category: item.category || "Other",
-        createdAt: item.created_at,
-      }))
-    );
+  (data || []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    quantity: item.quantity || "",
+    unit: item.unit || "",
+    category: item.category || "Other",
+    createdAt: item.created_at,
+  }))
+);
   }
 
   if (userEmail) {
@@ -1258,6 +1265,19 @@ week: activePlannerWeek,
   setShowSettingsMenu(false);
 }
 
+function getMatchingPantryItem(shoppingItem: string) {
+  const cleanedShoppingName = normalizeItemName(shoppingItem);
+
+  return pantryItems.find((pantryItem) => {
+    const cleanedPantryName = normalizeItemName(pantryItem.name);
+
+    return (
+      cleanedShoppingName.includes(cleanedPantryName) ||
+      cleanedPantryName.includes(cleanedShoppingName)
+    );
+  });
+}
+
 function isItemInPantry(shoppingItem: string) {
   return pantryItems.some((pantryItem) =>
     shoppingItem.toLowerCase().includes(
@@ -1267,15 +1287,6 @@ function isItemInPantry(shoppingItem: string) {
 }
 
 async function addShoppingItemToPantry(shoppingItem: string) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    alert("Please log in again.");
-    return;
-  }
-
   const cleanedShoppingName = normalizeItemName(shoppingItem);
 
   const alreadyInPantry = pantryItems.find((pantryItem) => {
@@ -1294,16 +1305,31 @@ async function addShoppingItemToPantry(shoppingItem: string) {
 
   const cleanedName = cleanPantryDisplayName(shoppingItem);
 
-  const pantryName = prompt("Add to pantry as:", cleanedName);
+  setPantryModalItem(cleanedName);
+  setPantryModalQuantity("1");
+  setPantryModalUnit("package");
+  setShowPantryModal(true);
+}
 
-  if (!pantryName?.trim()) return;
+async function savePantryModal() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    alert("Please log in again.");
+    return;
+  }
+
+  if (!pantryModalItem.trim()) return;
 
   const { data, error } = await supabase
     .from("pantry_items")
     .insert({
       user_id: user.id,
-      name: pantryName.trim(),
-      quantity: "1",
+      name: pantryModalItem.trim(),
+      quantity: pantryModalQuantity.trim() || "1",
+      unit: pantryModalUnit,
       category: "Other",
     })
     .select()
@@ -1318,11 +1344,16 @@ async function addShoppingItemToPantry(shoppingItem: string) {
     id: data.id,
     name: data.name,
     quantity: data.quantity || "1",
+    unit: data.unit || "",
     category: data.category || "Other",
     createdAt: data.created_at,
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
+  setShowPantryModal(false);
+  setPantryModalItem("");
+  setPantryModalQuantity("1");
+  setPantryModalUnit("package");
 }
 
 function goAllRecipes() {
@@ -2095,43 +2126,106 @@ setNewShoppingItem("");
 
           return cleanForSort(a).localeCompare(cleanForSort(b));
         })
-        .map((item) => (
-          <div key={item} className="flex items-center justify-between gap-3">
-            <label className="flex items-center gap-3">
-              <input type="checkbox" className="h-5 w-5" />
-              <span>{item}</span>
-            </label>
+        .map((item) => {
+          const matchingPantryItem = getMatchingPantryItem(item);
 
-            <div className="flex gap-3">
-              {!isItemInPantry(item) && (
-                <div className="flex gap-3">
-  {!isItemInPantry(item) && (
+          return (
+            <div key={item} className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-3">
+                <input type="checkbox" className="h-5 w-5" />
+                <span>{item}</span>
+              </label>
+
+              <div className="flex items-center gap-3">
+                {matchingPantryItem ? (
+  <span className="text-[#6d5549]">
+   ✓ In pantry:{" "}
+{[matchingPantryItem.quantity, matchingPantryItem.unit]
+  .filter(Boolean)
+  .join(" ") || "on hand"}
+  </span>
+) : (
+  <>
     <button
       onClick={() => addShoppingItemToPantry(item)}
       className="text-[#a63a0a]"
     >
       Add to Pantry
     </button>
-  )}
 
-  <button
-    onClick={() => removeShoppingItem(item)}
-    className="text-[#a63a0a]"
-  >
-    Remove
-  </button>
-</div>
-              )}
-
-          
+    <button
+      onClick={() => removeShoppingItem(item)}
+      className="text-[#a63a0a]"
+    >
+      Remove
+    </button>
+  </>
+)}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
     </div>
   )}
 </div>
         </section>
 <BottomNav />
+{showPantryModal && (
+  <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0">
+    <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
+      <h2 className="mb-4 text-2xl font-bold">Add to Pantry</h2>
+
+      <input
+        value={pantryModalItem}
+        onChange={(e) => setPantryModalItem(e.target.value)}
+        placeholder="Item name"
+        className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <input
+          value={pantryModalQuantity}
+          onChange={(e) => setPantryModalQuantity(e.target.value)}
+          placeholder="Qty"
+          className="rounded-full border border-[#ead7c8] px-5 py-3"
+        />
+
+        <select
+          value={pantryModalUnit}
+          onChange={(e) => setPantryModalUnit(e.target.value)}
+          className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+        >
+          <option value="">Unit</option>
+          <option value="jar">jar</option>
+          <option value="bottle">bottle</option>
+          <option value="can">can</option>
+          <option value="box">box</option>
+          <option value="bag">bag</option>
+          <option value="carton">carton</option>
+          <option value="gallon">gallon</option>
+          <option value="package">package</option>
+          <option value="loaf">loaf</option>
+        </select>
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={() => setShowPantryModal(false)}
+          className="rounded-full border border-[#ead7c8] px-5 py-3"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={savePantryModal}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 text-white"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </main>
     );
   }
@@ -2676,7 +2770,7 @@ if (showPantry) {
   <p className="mt-2 text-[#6d5549]">
     Track ingredients you already have on hand.
   </p>
-<div className="mt-4 grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto]">
+<div className="mt-4 grid gap-3 md:grid-cols-[1.5fr_0.7fr_1fr_1fr_auto]">
     <input
       value={newPantryItem}
       onChange={(e) => setNewPantryItem(e.target.value)}
@@ -2687,10 +2781,27 @@ if (showPantry) {
     <input
       value={newPantryQuantity}
       onChange={(e) => setNewPantryQuantity(e.target.value)}
-      placeholder="Qty"
+      placeholder="On Hand"
       className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
     />
-
+    
+<select
+  value={newPantryUnit}
+  onChange={(e) => setNewPantryUnit(e.target.value)}
+  className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+>
+  <option value="">Unit</option>
+  <option value="jar">jar</option>
+  <option value="bottle">bottle</option>
+  <option value="can">can</option>
+  <option value="box">box</option>
+  <option value="bag">bag</option>
+  <option value="carton">carton</option>
+  <option value="gallon">gallon</option>
+  <option value="package">package</option>
+  <option value="lb">lb</option>
+  <option value="oz">oz</option>
+</select>
     <select
       value={newPantryCategory}
       onChange={(e) => setNewPantryCategory(e.target.value)}
@@ -2726,7 +2837,8 @@ if (showPantry) {
       user_id: user.id,
       name: newPantryItem.trim(),
       quantity: newPantryQuantity.trim() || "1",
-      category: newPantryCategory,
+unit: newPantryUnit,
+category: newPantryCategory,
     })
     .select()
     .single();
@@ -2741,7 +2853,8 @@ if (showPantry) {
       id: data.id,
       name: data.name,
       quantity: data.quantity,
-      category: data.category,
+unit: data.unit || "",
+category: data.category,
       createdAt: data.created_at,
     },
     ...pantryItems,
@@ -2749,7 +2862,8 @@ if (showPantry) {
 
   setNewPantryItem("");
   setNewPantryQuantity("");
-  setNewPantryCategory("Other");
+setNewPantryUnit("");
+setNewPantryCategory("Other");
 }}
       className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
     >
@@ -2819,7 +2933,7 @@ if (showPantry) {
                           key={item.id}
                           className="rounded-3xl bg-white p-5 shadow"
                         >
-                          <div className="grid gap-3 md:grid-cols-3">
+                          <div className="grid gap-3 md:grid-cols-4">
                             <input
                               value={item.name}
                               onChange={async (e) => {
@@ -2844,7 +2958,36 @@ if (showPantry) {
                               value={item.quantity}
                               onChange={async (e) => {
   const newQuantity = e.target.value;
+<select
+  value={item.unit || ""}
+  onChange={async (e) => {
+    const newUnit = e.target.value;
 
+    setPantryItems(
+      pantryItems.map((p) =>
+        p.id === item.id ? { ...p, unit: newUnit } : p
+      )
+    );
+
+    await supabase
+      .from("pantry_items")
+      .update({ unit: newUnit })
+      .eq("id", item.id);
+  }}
+  className="rounded-xl border border-[#ead7c8] bg-white p-3"
+>
+  <option value="">Unit</option>
+  <option value="jar">jar</option>
+  <option value="bottle">bottle</option>
+  <option value="can">can</option>
+  <option value="box">box</option>
+  <option value="bag">bag</option>
+  <option value="carton">carton</option>
+  <option value="gallon">gallon</option>
+  <option value="package">package</option>s
+  <option value="lb">lb</option>
+  <option value="oz">oz</option>
+</select>
   setPantryItems(
     pantryItems.map((p) =>
       p.id === item.id ? { ...p, quantity: newQuantity } : p
@@ -2856,11 +2999,40 @@ if (showPantry) {
     .update({ quantity: newQuantity })
     .eq("id", item.id);
 }}
-                              placeholder="Qty"
+                              placeholder="On Hand"
                               className="rounded-xl border border-[#ead7c8] p-3"
                             />
 
-                    
+               
+
+<select
+  value={item.unit || ""}
+  onChange={async (e) => {
+    const newUnit = e.target.value;
+
+    setPantryItems(
+      pantryItems.map((p) =>
+        p.id === item.id ? { ...p, unit: newUnit } : p
+      )
+    );
+
+    await supabase
+      .from("pantry_items")
+      .update({ unit: newUnit })
+      .eq("id", item.id);
+  }}
+  className="rounded-xl border border-[#ead7c8] bg-white p-3"
+>
+  <option value="">Unit</option>
+  <option value="jar">jar</option>
+  <option value="bottle">bottle</option>
+  <option value="can">can</option>
+  <option value="box">box</option>
+  <option value="bag">bag</option>
+  <option value="carton">carton</option>
+  <option value="gallon">gallon</option>
+  <option value="package">package</option>
+</select>
 
                             <select
                               value={item.category}
