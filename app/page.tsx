@@ -1722,7 +1722,12 @@ if (showProfile) {
             <p className="text-sm text-[#6d5549]">Profile settings</p>
           </div>
         </nav>
-
+<button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
         <section className="rounded-[2rem] bg-white p-6 shadow-xl">
           <h1 className="mb-2 text-4xl font-bold">Profile</h1>
           <p className="mb-6 text-[#6d5549]">
