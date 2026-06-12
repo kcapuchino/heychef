@@ -1800,10 +1800,6 @@ if (showProfile) {
     >
       Hey Chef!
     </button>
-
-    <p className="text-sm text-[#6d5549]">
-      Logged in as {userEmail}
-    </p>
   </div>
 
   <button
@@ -2127,10 +2123,6 @@ setNewShoppingItem("");
     >
       Hey Chef!
     </button>
-
-    <p className="text-sm text-[#6d5549]">
-      Logged in as {userEmail}
-    </p>
   </div>
 
   <button
@@ -2519,10 +2511,6 @@ if (showPantry) {
     >
       Hey Chef!
     </button>
-
-    <p className="text-sm text-[#6d5549]">
-      Logged in as {userEmail}
-    </p>
   </div>
 
   <button
@@ -2943,10 +2931,6 @@ if (showPantry) {
     >
       Hey Chef!
     </button>
-
-    <p className="text-sm text-[#6d5549]">
-      Logged in as {userEmail}
-    </p>
   </div>
 
   <button
@@ -3318,10 +3302,6 @@ Bake for 25 minutes`}
     >
       Hey Chef!
     </button>
-
-    <p className="text-sm text-[#6d5549]">
-      Logged in as {userEmail}
-    </p>
   </div>
 
   <button
@@ -3763,9 +3743,6 @@ Bake for 25 minutes`}
       Hey Chef!
     </button>
 
-    <p className="text-sm text-[#6d5549]">
-      Logged in as {userEmail}
-    </p>
   </div>
 
   <button
@@ -4158,7 +4135,7 @@ Bake for 25 minutes`}
   ) : (
     <div className="grid gap-5 md:grid-cols-3">
       {homeRecipes.map((recipe) => (
-        <button
+        <div
           key={recipe.id}
           onClick={() => setSelectedRecipe(recipe)}
           className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
@@ -4184,7 +4161,7 @@ Bake for 25 minutes`}
           </div>
 
           <RecipeMeta recipe={recipe} />
-        </button>
+        </div>
       ))}
     </div>
   )}
