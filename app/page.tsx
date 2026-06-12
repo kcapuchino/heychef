@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Recipe = {
@@ -81,6 +81,31 @@ const sampleRecipes: Recipe[] = [
     createdAt: new Date().toISOString(),
   },
 ];
+function getTodayLabel() {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+function getCurrentWeekLabel() {
+  const today = new Date();
+
+  const monday = new Date(today);
+  const diff = today.getDay() === 0 ? -6 : 1 - today.getDay();
+  monday.setDate(today.getDate() + diff);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  return `${monday.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })} – ${sunday.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  })}`;
+}
 
 function getUpcomingWeekLabel() {
   const today = new Date();
@@ -109,6 +134,10 @@ const [signupName, setSignupName] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState<
+  "home" | "recipes" | "planner" | "shopping" | "pantry" | "profile"
+>("home");
+
   const [showImport, setShowImport] = useState(false);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -120,6 +149,7 @@ const [signupName, setSignupName] = useState("");
 
   const [showMealPlanner, setShowMealPlanner] = useState(false);
   const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({});
+  const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("current");
 
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState("");
@@ -161,6 +191,8 @@ const [showPassword, setShowPassword] = useState(false);
 const [isResettingPassword, setIsResettingPassword] = useState(false);
 const [newPassword, setNewPassword] = useState("");
 const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+const settingsRef = useRef<HTMLDivElement | null>(null);
+const [showProfile, setShowProfile] = useState(false);
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = recipes
@@ -195,7 +227,9 @@ const [showSettingsMenu, setShowSettingsMenu] = useState(false);
       new Date(b.createdAt).getTime()
     );
   });
-
+function getMealPlanKey(day: string, meal: string, week = activePlannerWeek) {
+  return `${week}-${day}-${meal}`;
+}
   const totalSlots = 21;
 
 const filledSlots = Object.values(mealPlan).filter(
@@ -213,7 +247,22 @@ useEffect(() => {
     }
   });
 }, []);
+useEffect(() => {
+  function handleClickOutside(event: MouseEvent) {
+    if (
+      settingsRef.current &&
+      !settingsRef.current.contains(event.target as Node)
+    ) {
+      setShowSettingsMenu(false);
+    }
+  }
 
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
   useEffect(() => {
     const savedUser = localStorage.getItem("hey-chef-current-user");
 
@@ -422,9 +471,10 @@ useEffect(() => {
       .from("meal_plan")
       .select(`
         id,
-        day,
-        meal,
-        recipes (*)
+day,
+meal,
+week,
+recipes (*)
       `);
 
     if (error) {
@@ -437,7 +487,7 @@ useEffect(() => {
     (data || []).forEach((item: any) => {
       if (!item.recipes) return;
 
-      const key = `${item.day}-${item.meal}`;
+      const key = `${item.week || "current"}-${item.day}-${item.meal}`;
 
       if (!loadedPlan[key]) {
         loadedPlan[key] = [];
@@ -825,17 +875,23 @@ async function changePasswordNow() {
   setImportError("");
   setShowImport(false);
 }
+function getGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) {
+    return "GOOD MORNING 👋";
+  }
+
+  if (hour < 17) {
+    return "GOOD AFTERNOON 👋";
+  }
+
+  return "GOOD EVENING 👋";
+}
 
   async function toggleFavorite(recipeId: string) {
   const recipe = recipes.find((item) => item.id === recipeId);
   if (!recipe) return;
-
-  const currentFavorites = recipes.filter((item) => item.isFavorite);
-
-  if (!recipe.isFavorite && currentFavorites.length >= 3) {
-    alert("You can favorite up to 3 recipes for your homepage.");
-    return;
-  }
 
   const newFavoriteValue = !recipe.isFavorite;
 
@@ -1002,7 +1058,7 @@ function addToShoppingList(recipe: Recipe) {
 }
 
   async function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
-  const key = `${day}-${meal}`;
+  const key = getMealPlanKey(day, meal);
   const currentRecipes = mealPlan[key] || [];
 
   if (currentRecipes.length >= 3) {
@@ -1025,7 +1081,8 @@ function addToShoppingList(recipe: Recipe) {
       user_id: user.id,
       recipe_id: recipe.id,
       day,
-      meal,
+meal,
+week: activePlannerWeek,
     })
     .select()
     .single();
@@ -1072,7 +1129,7 @@ function addToShoppingList(recipe: Recipe) {
     return;
   }
 
-  const key = `${day}-${meal}`;
+  const key = getMealPlanKey(day, meal);
   const currentRecipes = mealPlan[key] || [];
 
   setMealPlan({
@@ -1154,13 +1211,17 @@ function addToShoppingList(recipe: Recipe) {
 }
 
   function goHome() {
+  setCurrentPage("home");
+
   setSelectedRecipe(null);
   setShowAllRecipes(false);
   setShowMealPlanner(false);
   setShowShoppingList(false);
   setShowPantry(false);
+  setShowProfile(false);
   setShowImport(false);
   setIsMenuOpen(false);
+  setShowSettingsMenu(false);
 }
 
 function isItemInPantry(shoppingItem: string) {
@@ -1215,6 +1276,8 @@ setShoppingList(shoppingList.filter((item) => item !== shoppingItem));
 }
 
 function goAllRecipes() {
+  setCurrentPage("recipes");
+
   setSelectedRecipe(null);
   setShowMealPlanner(false);
   setShowShoppingList(false);
@@ -1222,9 +1285,12 @@ function goAllRecipes() {
   setShowAllRecipes(true);
   setShowImport(false);
   setIsMenuOpen(false);
+  setShowSettingsMenu(false);
 }
 
 function goMealPlanner() {
+  setCurrentPage("planner");
+
   setSelectedRecipe(null);
   setShowAllRecipes(false);
   setShowShoppingList(false);
@@ -1232,9 +1298,12 @@ function goMealPlanner() {
   setShowMealPlanner(true);
   setShowImport(false);
   setIsMenuOpen(false);
+  setShowSettingsMenu(false);
 }
 
 function goShoppingList() {
+  setCurrentPage("shopping");
+
   setSelectedRecipe(null);
   setShowAllRecipes(false);
   setShowMealPlanner(false);
@@ -1242,9 +1311,12 @@ function goShoppingList() {
   setShowShoppingList(true);
   setShowImport(false);
   setIsMenuOpen(false);
+  setShowSettingsMenu(false);
 }
 
 function goPantry() {
+  setCurrentPage("pantry");
+
   setSelectedRecipe(null);
   setShowAllRecipes(false);
   setShowMealPlanner(false);
@@ -1252,7 +1324,10 @@ function goPantry() {
   setShowPantry(true);
   setShowImport(false);
   setIsMenuOpen(false);
+  setShowSettingsMenu(false);
 }
+
+
 function RecipeMeta({ recipe }: { recipe: Recipe }) {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#6d5549]">
@@ -1285,6 +1360,67 @@ async function resetPassword() {
   }
 
   alert("Password reset email sent.");
+}
+function BottomNav() {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-[#ead7c8] bg-white px-2 py-2 shadow-xl md:hidden">
+
+      <button
+        onClick={goHome}
+        className={
+          currentPage === "home"
+            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+        }
+      >
+        🏠<br />Home
+      </button>
+
+      <button
+        onClick={goAllRecipes}
+        className={
+          currentPage === "recipes"
+            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+        }
+      >
+        🍳<br />Recipes
+      </button>
+
+      <button
+  onClick={() => {
+    goHome();
+    setShowImport(true);
+  }}
+  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#a63a0a] text-2xl font-bold text-white shadow"
+>
+  +
+</button>
+
+      <button
+        onClick={goMealPlanner}
+        className={
+          currentPage === "planner"
+            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+        }
+      >
+        📅<br />Planner
+      </button>
+
+      <button
+        onClick={goShoppingList}
+        className={
+          currentPage === "shopping"
+            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+        }
+      >
+        🛒<br />Shopping
+      </button>
+
+    </div>
+  );
 }
 function renderAuthCard() {
   return (
@@ -1435,13 +1571,14 @@ function renderAuthCard() {
           Save new password
         </button>
       </section>
+      <BottomNav />
     </main>
   );
 }
 
 if (!userEmail) {
   return (
-    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 py-6 md:grid-cols-[1.2fr_0.8fr] md:py-10">
         <div>
           <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
@@ -1557,118 +1694,245 @@ if (!userEmail) {
   );
 }
 
+if (showProfile) {
+  return (
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-24 text-[#2b1a12] md:p-8">
+      <section className="mx-auto max-w-3xl py-6 md:px-6 md:py-10">
+        <nav className="relative mb-8 flex items-start justify-between gap-3">
+          <div>
+            <button onClick={goHome} className="text-3xl font-bold text-[#a63a0a]">
+              Hey Chef!
+            </button>
+            <p className="text-sm text-[#6d5549]">Profile settings</p>
+          </div>
+        </nav>
+
+        <button onClick={goHome} className="mb-6 text-[#a63a0a]">
+          ← Back Home
+        </button>
+
+        <section className="rounded-[2rem] bg-white p-6 shadow-xl">
+          <h1 className="mb-2 text-4xl font-bold">Profile</h1>
+          <p className="mb-6 text-[#6d5549]">
+            Update your name and account settings.
+          </p>
+
+          <label className="mb-2 block font-semibold">Display name</label>
+          <input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Chef"
+            className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+          />
+
+          <label className="mb-2 block font-semibold">Email</label>
+          <input
+            value={userEmail}
+            disabled
+            className="mb-5 w-full rounded-full border border-[#ead7c8] bg-[#f8efe6] px-5 py-3 text-[#6d5549]"
+          />
+
+          <button
+            onClick={async () => {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+
+              if (!user) {
+                alert("Please log in again.");
+                return;
+              }
+
+              const { error } = await supabase
+                .from("profiles")
+                .update({
+                  display_name: displayName.trim() || null,
+                })
+                .eq("id", user.id);
+
+              if (error) {
+                alert(error.message);
+                return;
+              }
+
+              alert("Profile saved.");
+            }}
+            className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+          >
+            Save Profile
+          </button>
+
+          <button
+            onClick={changePasswordNow}
+            className="mt-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+          >
+            Change Password
+          </button>
+        </section>
+      </section>
+
+      <BottomNav />
+    </main>
+  );
+}
+
   if (showShoppingList) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-  onClick={goHome}
-  className="text-3xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+      onClick={goHome}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+
+    <p className="text-sm text-[#6d5549]">
+      Logged in as {userEmail}
+    </p>
   </div>
 
   <button
-  onClick={() => setIsMenuOpen(!isMenuOpen)}
-  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
->
-  ☰
-</button>
-
-<div className="hidden md:flex items-center gap-10 text-lg">
-  <button onClick={goAllRecipes} className="text-[#a63a0a]">
-    Recipes
-  </button>
-
-  <button onClick={goMealPlanner} className="text-[#a63a0a]">
-  Meal Planner ({filledSlots}/21)
-</button>
-
-  <button onClick={goShoppingList} className="text-[#a63a0a]">
-  Shopping List ({shoppingList.length})
-</button>
-
-<button onClick={goPantry} className="text-[#a63a0a]">
-  My Pantry
-</button>
-
-
-  <div className="relative">
-  <button
-    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-    className="text-[#a63a0a]"
+    onClick={() => setIsMenuOpen((open) => !open)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
-    ⚙️ Settings
+    ☰
   </button>
 
-  {showSettingsMenu && (
-    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+  <div className="hidden items-center gap-10 text-lg md:flex">
+    <button
+      onClick={goAllRecipes}
+      className={
+        currentPage === "recipes"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Recipes
+    </button>
+
+    <button
+      onClick={goMealPlanner}
+      className={
+        currentPage === "planner"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Meal Planner 
+    </button>
+
+    <button
+      onClick={goShoppingList}
+      className={
+        currentPage === "shopping"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Shopping List ({shoppingList.length})
+    </button>
+
+    <button
+      onClick={goPantry}
+      className={
+        currentPage === "pantry"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      My Pantry
+    </button>
+
+    <div ref={settingsRef} className="relative">
       <button
-        onClick={changePasswordNow}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => setShowSettingsMenu((open) => !open)}
+        className={
+          currentPage === "profile"
+            ? "font-bold text-[#a63a0a] underline underline-offset-8"
+            : "text-[#a63a0a]"
+        }
+      >
+        ⚙️ Settings
+      </button>
+
+      {showSettingsMenu && (
+        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              setCurrentPage("profile");
+              setShowProfile(true);
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              changePasswordNow();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔐 Change Password
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              logoutUser();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            ↪ Log Out
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+      <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
+        Settings
+      </p>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          setCurrentPage("profile");
+          setShowProfile(true);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          changePasswordNow();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         🔐 Change Password
       </button>
 
       <button
-        onClick={logoutUser}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => {
+          setIsMenuOpen(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
     </div>
   )}
-</div>
-</div>
-
-  {isMenuOpen && (
-  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
-    <button
-      onClick={goAllRecipes}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🍳 Recipes
-    </button>
-
-    <button
-      onClick={goMealPlanner}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      📅 Meal Planner ({filledSlots}/21)
-    </button>
-
-    <button
-      onClick={goShoppingList}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🛒 Shopping List ({shoppingList.length})
-    </button>
-
-    <button
-      onClick={goPantry}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🥫 My Pantry
-    </button>
-
-    <button
-      onClick={logoutUser}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      ↪ Log Out
-    </button>
-    <button
-  onClick={changePasswordNow}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🔐 Change Password
-</button>
-  </div>
-)}
 </nav>
           <button
   onClick={() => {
@@ -1821,123 +2085,168 @@ setNewShoppingItem("");
   )}
 </div>
         </section>
+<BottomNav />
       </main>
     );
   }
 
   if (showMealPlanner) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
         <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-  onClick={goHome}
-  className="text-3xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+      onClick={goHome}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+
+    <p className="text-sm text-[#6d5549]">
+      Logged in as {userEmail}
+    </p>
   </div>
 
   <button
-  onClick={() => setIsMenuOpen(!isMenuOpen)}
-  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
->
-  ☰
-</button>
-
-<div className="hidden md:flex items-center gap-10 text-lg">
-  <button onClick={goAllRecipes} className="text-[#a63a0a]">
-    Recipes
-  </button>
-
-  <button onClick={goMealPlanner} className="text-[#a63a0a]">
-  Meal Planner ({filledSlots}/21)
-</button>
-
-  <button onClick={goShoppingList} className="text-[#a63a0a]">
-  Shopping List ({shoppingList.length})
-</button>
-
-<button onClick={goPantry} className="text-[#a63a0a]">
-  My Pantry
-</button>
-
-  
-
-  <div className="relative">
-  <button
-    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-    className="text-[#a63a0a]"
+    onClick={() => setIsMenuOpen((open) => !open)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
-    ⚙️ Settings
+    ☰
   </button>
 
-  {showSettingsMenu && (
-    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+  <div className="hidden items-center gap-10 text-lg md:flex">
+    <button
+      onClick={goAllRecipes}
+      className={
+        currentPage === "recipes"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Recipes
+    </button>
+
+    <button
+      onClick={goMealPlanner}
+      className={
+        currentPage === "planner"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Meal Planner
+    </button>
+
+    <button
+      onClick={goShoppingList}
+      className={
+        currentPage === "shopping"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Shopping List ({shoppingList.length})
+    </button>
+
+    <button
+      onClick={goPantry}
+      className={
+        currentPage === "pantry"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      My Pantry
+    </button>
+
+    <div ref={settingsRef} className="relative">
       <button
-        onClick={changePasswordNow}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => setShowSettingsMenu((open) => !open)}
+        className={
+          currentPage === "profile"
+            ? "font-bold text-[#a63a0a] underline underline-offset-8"
+            : "text-[#a63a0a]"
+        }
+      >
+        ⚙️ Settings
+      </button>
+
+      {showSettingsMenu && (
+        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              setCurrentPage("profile");
+              setShowProfile(true);
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              changePasswordNow();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔐 Change Password
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              logoutUser();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            ↪ Log Out
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+      <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
+        Settings
+      </p>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          setCurrentPage("profile");
+          setShowProfile(true);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          changePasswordNow();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         🔐 Change Password
       </button>
 
       <button
-        onClick={logoutUser}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => {
+          setIsMenuOpen(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
     </div>
   )}
-</div>
-</div>
-
-  {isMenuOpen && (
-  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
-    <button
-      onClick={goAllRecipes}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🍳 Recipes
-    </button>
-
-    <button
-      onClick={goMealPlanner}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      📅 Meal Planner ({filledSlots}/21)
-    </button>
-
-    <button
-      onClick={goShoppingList}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🛒 Shopping List ({shoppingList.length})
-    </button>
-
-    <button
-      onClick={goPantry}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🥫 My Pantry
-    </button>
-
-    <button
-      onClick={logoutUser}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      ↪ Log Out
-    </button>
-    <button
-  onClick={changePasswordNow}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🔐 Change Password
-</button>
-  </div>
-)}
 </nav>
           <button
   onClick={() => {
@@ -1970,8 +2279,8 @@ setNewShoppingItem("");
   if (confirm("Clear your meal plan and start fresh?")) {
     const { error } = await supabase
       .from("meal_plan")
-      .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000");
+  .delete()
+  .eq("week", activePlannerWeek);
 
     if (error) {
       alert(error.message);
@@ -2034,7 +2343,29 @@ setNewShoppingItem("");
     </div>
   </section>
 )}
+<div className="mb-6 grid grid-cols-2 gap-3 rounded-full bg-white p-2 shadow">
+  <button
+    onClick={() => setActivePlannerWeek("current")}
+    className={`rounded-full px-5 py-3 font-semibold transition ${
+      activePlannerWeek === "current"
+        ? "bg-[#a63a0a] text-white shadow"
+        : "text-[#a63a0a]"
+    }`}
+  >
+    This Week
+  </button>
 
+  <button
+    onClick={() => setActivePlannerWeek("next")}
+    className={`rounded-full px-5 py-3 font-semibold transition ${
+      activePlannerWeek === "next"
+        ? "bg-[#a63a0a] text-white shadow"
+        : "text-[#a63a0a]"
+    }`}
+  >
+    Next Week
+  </button>
+</div>
 <div className="grid gap-4">
   {days.map((day) => (
     <div
@@ -2045,7 +2376,7 @@ setNewShoppingItem("");
 
       <div className="grid gap-4 md:grid-cols-3">
         {meals.map((meal) => {
-          const key = `${day}-${meal}`;
+          const key = getMealPlanKey(day, meal);
           const plannedRecipes = mealPlan[key] || [];
 
           return (
@@ -2109,6 +2440,7 @@ setNewShoppingItem("");
   ))}
 </div>
         </section>
+<BottomNav />
       </main>
     );
   }
@@ -2137,7 +2469,7 @@ setNewShoppingItem("");
 
 if (showPantry) {
   return (
-    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
   <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
         <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
@@ -2154,104 +2486,146 @@ if (showPantry) {
   </div>
 
   <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    onClick={() => setIsMenuOpen((open) => !open)}
     className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
     ☰
   </button>
 
-  <div className="hidden md:flex items-center gap-10 text-lg">
-    <button onClick={goAllRecipes} className="text-[#a63a0a]">
+  <div className="hidden items-center gap-10 text-lg md:flex">
+    <button
+      onClick={goAllRecipes}
+      className={
+        currentPage === "recipes"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
       Recipes
     </button>
 
-    <button onClick={goMealPlanner} className="text-[#a63a0a]">
-      Meal Planner ({filledSlots}/21)
+    <button
+      onClick={goMealPlanner}
+      className={
+        currentPage === "planner"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Meal Planner 
     </button>
 
-    <button onClick={goShoppingList} className="text-[#a63a0a]">
+    <button
+      onClick={goShoppingList}
+      className={
+        currentPage === "shopping"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
       Shopping List ({shoppingList.length})
     </button>
 
-    <button onClick={goPantry} className="text-[#a63a0a]">
+    <button
+      onClick={goPantry}
+      className={
+        currentPage === "pantry"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
       My Pantry
     </button>
 
-  
-
-    <div className="relative">
-  <button
-    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-    className="text-[#a63a0a]"
-  >
-    ⚙️ Settings
-  </button>
-
-  {showSettingsMenu && (
-    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+    <div ref={settingsRef} className="relative">
       <button
-        onClick={changePasswordNow}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => setShowSettingsMenu((open) => !open)}
+        className={
+          currentPage === "profile"
+            ? "font-bold text-[#a63a0a] underline underline-offset-8"
+            : "text-[#a63a0a]"
+        }
+      >
+        ⚙️ Settings
+      </button>
+
+      {showSettingsMenu && (
+        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              setCurrentPage("profile");
+              setShowProfile(true);
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              changePasswordNow();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔐 Change Password
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              logoutUser();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            ↪ Log Out
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+      <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
+        Settings
+      </p>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          setCurrentPage("profile");
+          setShowProfile(true);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          changePasswordNow();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         🔐 Change Password
       </button>
 
       <button
-        onClick={logoutUser}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => {
+          setIsMenuOpen(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
     </div>
   )}
-</div>
-  </div>
-
-  {isMenuOpen && (
-  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
-    <button
-      onClick={goAllRecipes}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🍳 Recipes
-    </button>
-
-    <button
-      onClick={goMealPlanner}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      📅 Meal Planner ({filledSlots}/21)
-    </button>
-
-    <button
-      onClick={goShoppingList}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🛒 Shopping List ({shoppingList.length})
-    </button>
-
-    <button
-      onClick={goPantry}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🥫 My Pantry
-    </button>
-
-    <button
-      onClick={logoutUser}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      ↪ Log Out
-    </button>
-    <button
-  onClick={changePasswordNow}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🔐 Change Password
-</button>
-  </div>
-)}
-</nav><button
+</nav>
+<button
   onClick={() => {
     setShowPantry(false);
     setShowAllRecipes(true);
@@ -2501,119 +2875,167 @@ if (showPantry) {
           </div>
         )}
       </section>
+      <BottomNav />
     </main>
   );
 }
   if (showAllRecipes) {
   return (
-    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
         <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-  onClick={goHome}
-  className="text-3xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+      onClick={goHome}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+
+    <p className="text-sm text-[#6d5549]">
+      Logged in as {userEmail}
+    </p>
   </div>
 
   <button
-  onClick={() => setIsMenuOpen(!isMenuOpen)}
-  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
->
-  ☰
-</button>
-
-<div className="hidden md:flex items-center gap-10 text-lg">
-  <button onClick={goAllRecipes} className="text-[#a63a0a]">
-    Recipes
-  </button>
-
-  <button onClick={goMealPlanner} className="text-[#a63a0a]">
-  Meal Planner ({filledSlots}/21)
-</button>
-
-  <button onClick={goShoppingList} className="text-[#a63a0a]">
-  Shopping List ({shoppingList.length})
-</button>
-<button onClick={goPantry} className="text-[#a63a0a]">
-  My Pantry
-</button>
- 
-  <div className="relative">
-  <button
-    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-    className="text-[#a63a0a]"
+    onClick={() => setIsMenuOpen((open) => !open)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
-    ⚙️ Settings
+    ☰
   </button>
 
-  {showSettingsMenu && (
-    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+  <div className="hidden items-center gap-10 text-lg md:flex">
+    <button
+      onClick={goAllRecipes}
+      className={
+        currentPage === "recipes"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Recipes
+    </button>
+
+    <button
+      onClick={goMealPlanner}
+      className={
+        currentPage === "planner"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Meal Planner 
+    </button>
+
+    <button
+      onClick={goShoppingList}
+      className={
+        currentPage === "shopping"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Shopping List ({shoppingList.length})
+    </button>
+
+    <button
+      onClick={goPantry}
+      className={
+        currentPage === "pantry"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      My Pantry
+    </button>
+
+   <div ref={settingsRef} className="relative">
       <button
-        onClick={changePasswordNow}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => setShowSettingsMenu((open) => !open)}
+        className={
+          currentPage === "profile"
+            ? "font-bold text-[#a63a0a] underline underline-offset-8"
+            : "text-[#a63a0a]"
+        }
+      >
+        ⚙️ Settings
+      </button>
+
+      {showSettingsMenu && (
+        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              setCurrentPage("profile");
+              setShowProfile(true);
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              changePasswordNow();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔐 Change Password
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              logoutUser();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            ↪ Log Out
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+      <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
+        Settings
+      </p>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          setCurrentPage("profile");
+          setShowProfile(true);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          changePasswordNow();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         🔐 Change Password
       </button>
 
       <button
-        onClick={logoutUser}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => {
+          setIsMenuOpen(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
     </div>
   )}
-</div>
-</div>
-
-  {isMenuOpen && (
-  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
-    <button
-      onClick={goAllRecipes}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🍳 Recipes
-    </button>
-
-    <button
-      onClick={goMealPlanner}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      📅 Meal Planner ({filledSlots}/21)
-    </button>
-
-    <button
-      onClick={goShoppingList}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🛒 Shopping List ({shoppingList.length})
-    </button>
-
-    <button
-      onClick={goPantry}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🥫 My Pantry
-    </button>
-
-    <button
-      onClick={logoutUser}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      ↪ Log Out
-    </button>
-    <button
-  onClick={changePasswordNow}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🔐 Change Password
-</button>
-  </div>
-)}
 </nav>
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -2819,13 +3241,14 @@ Bake for 25 minutes`}
           </div>
         )}
       </section>
+      <BottomNav />
     </main>
   );
 }
 
   if (selectedRecipe) {
     return (
-      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+      <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
        <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
@@ -2835,105 +3258,151 @@ Bake for 25 minutes`}
     >
       Hey Chef!
     </button>
-    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
-  </div>
 
-  <div className="hidden items-center gap-10 text-lg md:flex">
-    <button onClick={goAllRecipes} className="text-[#a63a0a]">
-      Recipes
-    </button>
-
-    <button onClick={goMealPlanner} className="text-[#a63a0a]">
-  Meal Planner ({filledSlots}/21)
-</button>
-
-    <button onClick={goShoppingList} className="text-[#a63a0a]">
-  Shopping List ({shoppingList.length})
-</button>
-<button onClick={goPantry} className="text-[#a63a0a]">
-  My Pantry
-</button>
-    
-
-    <div className="relative">
-  <button
-    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-    className="text-[#a63a0a]"
-  >
-    ⚙️ Settings
-  </button>
-
-  {showSettingsMenu && (
-    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
-      <button
-        onClick={changePasswordNow}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔐 Change Password
-      </button>
-
-      <button
-        onClick={logoutUser}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
-    </div>
-  )}
-</div>
+    <p className="text-sm text-[#6d5549]">
+      Logged in as {userEmail}
+    </p>
   </div>
 
   <button
-    onClick={() => setIsMenuOpen(!isMenuOpen)}
+    onClick={() => setIsMenuOpen((open) => !open)}
     className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
     ☰
   </button>
 
-  {isMenuOpen && (
-  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div className="hidden items-center gap-10 text-lg md:flex">
     <button
       onClick={goAllRecipes}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      className={
+        currentPage === "recipes"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
     >
-      🍳 Recipes
+      Recipes
     </button>
 
     <button
       onClick={goMealPlanner}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      className={
+        currentPage === "planner"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
     >
-      📅 Meal Planner ({filledSlots}/21)
+      Meal Planner 
     </button>
 
     <button
       onClick={goShoppingList}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      className={
+        currentPage === "shopping"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
     >
-      🛒 Shopping List ({shoppingList.length})
+      Shopping List ({shoppingList.length})
     </button>
 
     <button
       onClick={goPantry}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      className={
+        currentPage === "pantry"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
     >
-      🥫 My Pantry
+      My Pantry
     </button>
 
-    <button
-      onClick={logoutUser}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      ↪ Log Out
-    </button>
-    <button
-  onClick={changePasswordNow}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🔐 Change Password
-</button>
+   <div ref={settingsRef} className="relative">
+      <button
+        onClick={() => setShowSettingsMenu((open) => !open)}
+        className={
+          currentPage === "profile"
+            ? "font-bold text-[#a63a0a] underline underline-offset-8"
+            : "text-[#a63a0a]"
+        }
+      >
+        ⚙️ Settings
+      </button>
+
+      {showSettingsMenu && (
+        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              setCurrentPage("profile");
+              setShowProfile(true);
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              changePasswordNow();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔐 Change Password
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              logoutUser();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            ↪ Log Out
+          </button>
+        </div>
+      )}
+    </div>
   </div>
-)}
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+      <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
+        Settings
+      </p>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          setCurrentPage("profile");
+          setShowProfile(true);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          changePasswordNow();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        🔐 Change Password
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
+    </div>
+  )}
 </nav>
 
   <button
@@ -3199,6 +3668,7 @@ Bake for 25 minutes`}
 )}
           </div>
         </section>
+        <BottomNav />
       </main>
     );
   }
@@ -3209,127 +3679,172 @@ Bake for 25 minutes`}
        <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div>
     <button
-  onClick={goHome}
-  className="text-3xl font-bold text-[#a63a0a]"
->
-  Hey Chef!
-</button>
-    <p className="text-sm text-[#6d5549]">Logged in as {userEmail}</p>
+      onClick={goHome}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+
+    <p className="text-sm text-[#6d5549]">
+      Logged in as {userEmail}
+    </p>
   </div>
 
   <button
-  onClick={() => setIsMenuOpen(!isMenuOpen)}
-  className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
->
-  ☰
-</button>
-
-<div className="hidden md:flex items-center gap-10 text-lg">
-  <button onClick={goAllRecipes} className="text-[#a63a0a]">
-    Recipes
-  </button>
-
-  <button onClick={goMealPlanner} className="text-[#a63a0a]">
-  Meal Planner ({filledSlots}/21)
-</button>
-
-  <button onClick={goShoppingList} className="text-[#a63a0a]">
-  Shopping List ({shoppingList.length})
-</button>
-<button onClick={goPantry} className="text-[#a63a0a]">
-  My Pantry
-</button>
-
-
-  <div className="relative">
-  <button
-    onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-    className="text-[#a63a0a]"
+    onClick={() => setIsMenuOpen((open) => !open)}
+    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
   >
-    ⚙️ Settings
+    ☰
   </button>
 
-  {showSettingsMenu && (
-    <div className="absolute right-0 top-10 z-50 w-48 rounded-2xl bg-white p-2 shadow-xl">
+  <div className="hidden items-center gap-10 text-lg md:flex">
+    <button
+      onClick={goAllRecipes}
+      className={
+        currentPage === "recipes"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Recipes
+    </button>
+
+    <button
+      onClick={goMealPlanner}
+      className={
+        currentPage === "planner"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Meal Planner 
+    </button>
+
+    <button
+      onClick={goShoppingList}
+      className={
+        currentPage === "shopping"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      Shopping List ({shoppingList.length})
+    </button>
+
+    <button
+      onClick={goPantry}
+      className={
+        currentPage === "pantry"
+          ? "font-bold text-[#a63a0a] underline underline-offset-8"
+          : "text-[#a63a0a]"
+      }
+    >
+      My Pantry
+    </button>
+
+    <div ref={settingsRef} className="relative">
       <button
-        onClick={changePasswordNow}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => setShowSettingsMenu((open) => !open)}
+        className={
+          currentPage === "profile"
+            ? "font-bold text-[#a63a0a] underline underline-offset-8"
+            : "text-[#a63a0a]"
+        }
+      >
+        ⚙️ Settings
+      </button>
+
+      {showSettingsMenu && (
+        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              setCurrentPage("profile");
+              setShowProfile(true);
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              changePasswordNow();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔐 Change Password
+          </button>
+
+          <button
+            onClick={() => {
+              setShowSettingsMenu(false);
+              logoutUser();
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            ↪ Log Out
+          </button>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {isMenuOpen && (
+    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+      <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
+        Settings
+      </p>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          setCurrentPage("profile");
+          setShowProfile(true);
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        onClick={() => {
+          setIsMenuOpen(false);
+          changePasswordNow();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         🔐 Change Password
       </button>
 
       <button
-        onClick={logoutUser}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        onClick={() => {
+          setIsMenuOpen(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
     </div>
   )}
-</div>
-</div>
-
-  {isMenuOpen && (
-  <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
-    <button
-      onClick={goAllRecipes}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🍳 Recipes
-    </button>
-
-    <button
-      onClick={goMealPlanner}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      📅 Meal Planner ({filledSlots}/21)
-    </button>
-
-    <button
-      onClick={goShoppingList}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🛒 Shopping List ({shoppingList.length})
-    </button>
-
-    <button
-      onClick={goPantry}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      🥫 My Pantry
-    </button>
-
-    <button
-      onClick={logoutUser}
-      className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
-    >
-      ↪ Log Out
-    </button>
-    <button
-  onClick={changePasswordNow}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  🔐 Change Password
-</button>
-  </div>
-)}
 </nav>
 
         <div className="grid gap-8">
   {/* INTRO */}
   <section className="mb-8">
     <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
-      GOOD EVENING 👋
+      {getGreeting()}
     </p>
 
     <h1 className="mb-3 text-4xl font-bold leading-tight md:text-6xl">
-      {"Chef"}
+      {displayName || "Chef"}
     </h1>
 
     <p className="mb-6 text-lg text-[#6d5549]">
       What's on the menu today?
     </p>
-
     <div className="mb-6 grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
         onClick={() => setShowImport(true)}
@@ -3442,6 +3957,10 @@ Bake for 25 minutes`}
           TODAY'S MENU
         </p>
         <h2 className="text-3xl font-bold">Today</h2>
+
+<p className="mt-1 text-[#6d5549]">
+  {getTodayLabel()}
+</p>
       </div>
     </div>
 
@@ -3471,36 +3990,54 @@ Bake for 25 minutes`}
 
     <div className="grid gap-4 md:grid-cols-2">
       <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-        }}
-        className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
-      >
-        <p className="mb-2 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
-          Current Week
-        </p>
-        <h3 className="text-2xl font-bold">{filledSlots} / 21</h3>
-        <p className="text-[#6d5549]">meals planned</p>
-      </button>
+    onClick={() => {
+      setActivePlannerWeek("current");
+      setCurrentPage("planner");
+      setSelectedRecipe(null);
+      setShowShoppingList(false);
+      setShowAllRecipes(false);
+      setShowPantry(false);
+      setShowMealPlanner(true);
+      setShowImport(false);
+    }}
+    className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
+  >
+    <p className="mb-2 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+  Current Week
+</p>
 
-      <button
-        onClick={() => {
-          setSelectedRecipe(null);
-          setShowShoppingList(false);
-          setShowAllRecipes(false);
-          setShowMealPlanner(true);
-        }}
-        className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
-      >
-        <p className="mb-2 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
-          Next Week
-        </p>
-        <h3 className="text-2xl font-bold">0 / 21</h3>
-        <p className="text-[#6d5549]">meals planned</p>
-      </button>
+<p className="mb-3 text-sm text-[#6d5549]">
+  {getCurrentWeekLabel()}
+</p>
+
+<h3 className="text-2xl font-bold">{filledSlots} / 21</h3>
+<p className="text-[#6d5549]">meals planned</p>
+  </button>
+
+  <button
+    onClick={() => {
+      setActivePlannerWeek("next");
+      setCurrentPage("planner");
+      setSelectedRecipe(null);
+      setShowShoppingList(false);
+      setShowAllRecipes(false);
+      setShowPantry(false);
+      setShowMealPlanner(true);
+      setShowImport(false);
+    }}
+    className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
+  >
+    <p className="mb-2 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+  Next Week
+</p>
+
+<p className="mb-3 text-sm text-[#6d5549]">
+  {getUpcomingWeekLabel()}
+</p>
+
+<h3 className="text-2xl font-bold">0 / 21</h3>
+<p className="text-[#6d5549]">meals planned</p>
+  </button>
     </div>
   </section>
 </div>
@@ -3556,6 +4093,7 @@ Bake for 25 minutes`}
   )}
 </section>
       </section>
+      <BottomNav />
     </main>
   );
 }
