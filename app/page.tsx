@@ -569,6 +569,21 @@ recipes (*)
   }
 }, [userEmail]);
 
+useEffect(() => {
+  const saved = localStorage.getItem("hey-chef-added-meal-plan-slots");
+
+  if (saved) {
+    setAddedMealPlanSlots(JSON.parse(saved));
+  }
+}, []);
+
+useEffect(() => {
+  localStorage.setItem(
+    "hey-chef-added-meal-plan-slots",
+    JSON.stringify(addedMealPlanSlots)
+  );
+}, [addedMealPlanSlots]);
+
   async function loginUser(email: string, password: string, name?: string) {
   setAuthError("");
 
