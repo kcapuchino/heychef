@@ -296,29 +296,38 @@ const neededShoppingListCount = shoppingList.filter((item) => {
       : recipe.category === categoryFilter
   )
   .sort((a, b) => {
-    if (a.isFavorite !== b.isFavorite) {
-  return a.isFavorite ? -1 : 1;
-}
-    if (recipeSort === "az") {
-      return a.title.localeCompare(b.title);
-    }
+  if (recipeSort === "az") {
+    return a.title.localeCompare(b.title);
+  }
 
-    if (recipeSort === "za") {
-      return b.title.localeCompare(a.title);
-    }
+  if (recipeSort === "za") {
+    return b.title.localeCompare(a.title);
+  }
 
-    if (recipeSort === "newest") {
-      return (
-        new Date(b.createdAt).getTime() -
-        new Date(a.createdAt).getTime()
-      );
-    }
+  if (recipeSort === "newest") {
+    return (
+      new Date(b.createdAt).getTime() -
+      new Date(a.createdAt).getTime()
+    );
+  }
 
+   if (recipeSort === "oldest") {
     return (
       new Date(a.createdAt).getTime() -
       new Date(b.createdAt).getTime()
     );
-  });
+  }
+
+  // Default: favorites first
+  if (a.isFavorite !== b.isFavorite) {
+    return a.isFavorite ? -1 : 1;
+  }
+
+  return (
+    new Date(b.createdAt).getTime() -
+    new Date(a.createdAt).getTime()
+  );
+});
 function getMealPlanKey(day: string, meal: string, week = activePlannerWeek) {
   return `${week}-${day}-${meal}`;
 }
@@ -3745,6 +3754,7 @@ setNewPantryCategory("Other");
     onChange={(e) => setRecipeSort(e.target.value)}
     className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
   >
+    <option value="favorites">Favorites</option>
     <option value="newest">Newest</option>
     <option value="oldest">Oldest</option>
     <option value="az">A–Z</option>
