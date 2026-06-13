@@ -1264,17 +1264,32 @@ week: activePlannerWeek,
 }
 
   async function removeShoppingItem(item: string) {
+  const { data: row } = await supabase
+    .from("shopping_items")
+    .select("id")
+    .eq("name", item)
+    .limit(1)
+    .single();
+
+  if (!row) return;
+
   const { error } = await supabase
     .from("shopping_items")
     .delete()
-    .eq("name", item);
+    .eq("id", row.id);
 
   if (error) {
     alert(error.message);
     return;
   }
 
-  setShoppingList(shoppingList.filter((listItem) => listItem !== item));
+  const index = shoppingList.indexOf(item);
+
+  if (index !== -1) {
+    const updated = [...shoppingList];
+    updated.splice(index, 1);
+    setShoppingList(updated);
+  }
 }
 
   function goHome() {
