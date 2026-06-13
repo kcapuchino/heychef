@@ -3632,24 +3632,24 @@ setNewPantryCategory("Other");
 
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-  <div className="w-full">
+  <div>
     <h1 className="text-4xl font-bold md:text-5xl">All Recipes</h1>
     <p className="mt-2 text-[#6d5549]">
   Build your personal cookbook with recipes imported from anywhere or created from scratch.
     </p>
   </div>
 
-  <div className="flex flex-wrap gap-3">
+  <div className="flex flex-col gap-3 md:flex-row">
   <button
     onClick={() => setShowImport(true)}
-    className="rounded-full bg-[#a63a0a] px-8 py-4 text-white"
+    className="w-full rounded-full bg-[#a63a0a] px-8 py-4 text-white md:w-auto"
   >
     Import Recipe
   </button>
 
   <button
     onClick={createNewRecipe}
-    className="rounded-full bg-white px-8 py-4 text-[#a63a0a]"
+    className="w-full rounded-full bg-white px-8 py-4 text-[#a63a0a] md:w-auto"
   >
     Create New Recipe
   </button>
