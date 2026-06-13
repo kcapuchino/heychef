@@ -44,7 +44,7 @@ type SavedUserData = {
   pantryItems: PantryItem[];
 };
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
 const meals = ["Breakfast", "Lunch", "Dinner"];
 const placeholderImage = "https://placehold.co/1200x800/f8efe6/a63a0a?text=Hey+Chef";
 
@@ -133,6 +133,12 @@ function getTodayLabel() {
     day: "numeric",
   });
 }
+function addDays(dateString: string, days: number) {
+  const date = new Date(dateString + "T00:00:00");
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split("T")[0];
+}
+
 function getCurrentWeekLabel() {
   const today = new Date();
 
@@ -193,6 +199,7 @@ function getUpcomingWeekLabel() {
 }
 
 export default function Home() {
+  
   const [userEmail, setUserEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
 const [signupName, setSignupName] = useState("");
@@ -225,7 +232,7 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [selectedMeal, setSelectedMeal] = useState("Dinner");
-  const [plannerDay, setPlannerDay] = useState("Monday");
+  const [plannerDay, setPlannerDay] = useState("");
   const [plannerMeal, setPlannerMeal] = useState("Dinner");
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
   const [plannerPopup, setPlannerPopup] = useState<{
@@ -313,13 +320,53 @@ function getMealPlanKey(day: string, meal: string, week = activePlannerWeek) {
 }
   const totalSlots = 21;
 
-const filledSlots = Object.values(mealPlan).filter(
-  (recipes) => recipes.length > 0
+const currentWeekFilledSlots = Object.entries(mealPlan).filter(
+  ([key, recipes]) =>
+    key.startsWith("current-") && recipes.length > 0
 ).length;
+
+const nextWeekFilledSlots = Object.entries(mealPlan).filter(
+  ([key, recipes]) =>
+    key.startsWith("next-") && recipes.length > 0
+).length;
+
+const filledSlots =
+  activePlannerWeek === "next"
+    ? nextWeekFilledSlots
+    : currentWeekFilledSlots;
 
 const plannerPercent = Math.round(
   (filledSlots / totalSlots) * 100
 );
+
+const currentWeekStart = getWeekStartDate("current");
+const nextWeekStart = getWeekStartDate("next");
+
+const selectedWeekStart =
+  activePlannerWeek === "next" ? nextWeekStart : currentWeekStart;
+
+const plannerDays = [
+  { label: "Monday", date: addDays(selectedWeekStart, 0) },
+  { label: "Tuesday", date: addDays(selectedWeekStart, 1) },
+  { label: "Wednesday", date: addDays(selectedWeekStart, 2) },
+  { label: "Thursday", date: addDays(selectedWeekStart, 3) },
+  { label: "Friday", date: addDays(selectedWeekStart, 4) },
+  { label: "Saturday", date: addDays(selectedWeekStart, 5) },
+  { label: "Sunday", date: addDays(selectedWeekStart, 6) },
+];
+
+const todayLocal = new Date();
+const localDateString = `${todayLocal.getFullYear()}-${String(
+  todayLocal.getMonth() + 1
+).padStart(2, "0")}-${String(todayLocal.getDate()).padStart(2, "0")}`;
+
+const homeMenuDate = addDays(
+  localDateString,
+  showTomorrow ? 1 : 0
+);
+
+const homeMenuWeek =
+  homeMenuDate >= nextWeekStart ? "next" : "current";
 
 useEffect(() => {
   const saved = localStorage.getItem("hey-chef-on-hand-items");
@@ -568,6 +615,7 @@ useEffect(() => {
       .from("meal_plan")
       .select(`
   id,
+  date,
   day,
   meal,
   week,
@@ -583,16 +631,13 @@ useEffect(() => {
     const loadedPlan: Record<string, PlannedRecipe[]> = {};
 
     (data || []).forEach((item: any) => {
+      console.log(item.week_start);
       if (!item.recipes) return;
 
-      const currentWeekStart = getWeekStartDate("current");
+const currentWeekStart = getWeekStartDate("current");
 const nextWeekStart = getWeekStartDate("next");
 
 let plannerWeek = item.week || "current";
-
-if (item.week_start === currentWeekStart) {
-  plannerWeek = "current";
-}
 
 if (item.week_start === currentWeekStart) {
   plannerWeek = "current";
@@ -600,7 +645,8 @@ if (item.week_start === currentWeekStart) {
   plannerWeek = "next";
 }
 
-const key = `${plannerWeek}-${item.day}-${item.meal}`;
+const mealDate = item.date || item.day;
+const key = `${plannerWeek}-${mealDate}-${item.meal}`;
 
       if (!loadedPlan[key]) {
         loadedPlan[key] = [];
@@ -1193,13 +1239,16 @@ function addToShoppingList(recipe: Recipe) {
   const { data, error } = await supabase
     .from("meal_plan")
     .insert({
-      user_id: user.id,
-      recipe_id: recipe.id,
-      day,
-meal,
-week: activePlannerWeek,
-week_start: getWeekStartDate(activePlannerWeek),
-    })
+  user_id: user.id,
+  recipe_id: recipe.id,
+  date: day,
+  day: new Date(day + "T00:00:00").toLocaleDateString("en-US", {
+    weekday: "long",
+  }),
+  meal,
+  week: activePlannerWeek,
+  week_start: getWeekStartDate(activePlannerWeek),
+})
     .select()
     .single();
 
@@ -1238,7 +1287,7 @@ week_start: getWeekStartDate(activePlannerWeek),
   const { error } = await supabase
   .from("meal_plan")
   .delete()
-  .eq("week_start", getWeekStartDate(activePlannerWeek));
+  .eq("id", mealPlanId);
 
   if (error) {
     alert(error.message);
@@ -2612,14 +2661,22 @@ setNewShoppingItem("");
     const { error } = await supabase
       .from("meal_plan")
   .delete()
-  .eq("week", activePlannerWeek);
+  .eq("week_start", getWeekStartDate(activePlannerWeek));
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    setMealPlan({});
+    const updatedMealPlan = { ...mealPlan };
+
+Object.keys(updatedMealPlan).forEach((key) => {
+  if (key.startsWith(`${activePlannerWeek}-`)) {
+    delete updatedMealPlan[key];
+  }
+});
+
+setMealPlan(updatedMealPlan);
   }
 }}
       className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
@@ -2699,17 +2756,19 @@ setNewShoppingItem("");
   </button>
 </div>
 <div className="grid gap-4">
-  {days.map((day) => (
-    <div
-  key={day}
-  className="rounded-3xl bg-white p-4 shadow md:p-5"
->
-      <h2 className="mb-4 text-2xl font-bold text-[#a63a0a]">{day}</h2>
+  {plannerDays.map((day: { label: string; date: string }) => (
+  <div
+    key={day.date}
+    className="rounded-3xl bg-white p-4 shadow md:p-5"
+  >
+    <h2 className="mb-4 text-2xl font-bold text-[#a63a0a]">
+      {day.label}
+    </h2>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {meals.map((meal) => {
-          const key = getMealPlanKey(day, meal);
-          const plannedRecipes = mealPlan[key] || [];
+    <div className="grid gap-4 md:grid-cols-3">
+      {meals.map((meal) => {
+        const key = getMealPlanKey(day.date, meal);
+        const plannedRecipes = mealPlan[key] || [];
 
           return (
            <div
@@ -2731,20 +2790,28 @@ setNewShoppingItem("");
                   {plannedRecipes.map((recipe) => (
                     <div key={recipe.mealPlanId} className="rounded-xl bg-white p-3 text-sm">
                       <div className="flex items-start justify-between gap-3">
-                        <button
-  onClick={() => {
-    setSelectedRecipe(recipe);
-    setIsEditingRecipe(false);
-    setEditRecipeDraft(null);
-    setShowMealPlanner(false);
-  }}
-  className="text-left font-medium text-[#a63a0a] hover:underline"
->
-  {recipe.title}
-</button>
+                        <div className="flex items-center gap-3">
+  <img
+    src={recipe.image || placeholderImage}
+    alt={recipe.title}
+    className="h-10 w-10 rounded-lg object-cover"
+  />
+
+  <button
+    onClick={() => {
+      setSelectedRecipe(recipe);
+      setIsEditingRecipe(false);
+      setEditRecipeDraft(null);
+      setShowMealPlanner(false);
+    }}
+    className="text-left font-medium text-[#a63a0a] hover:underline"
+  >
+    {recipe.title}
+  </button>
+</div>
 
                         <button
-                          onClick={() => removeRecipeFromMealPlan(day, meal, recipe.mealPlanId)}
+                          onClick={() => removeRecipeFromMealPlan(day.date, meal, recipe.mealPlanId)}
                           className="shrink-0 text-[#a63a0a]"
                         >
                           Remove
@@ -2758,7 +2825,7 @@ setNewShoppingItem("");
               {plannedRecipes.length < 3 && (
                 <button
                   onClick={() => {
-                    setPlannerPopup({ day, meal });
+                    setPlannerPopup({ day: day.date, meal });
                     setPlannerRecipeId(recipes[0]?.id || "");
                   }}
                   className="mt-4 w-full rounded-full bg-white px-4 py-3 text-sm font-semibold text-[#a63a0a] shadow-sm"
@@ -4019,11 +4086,11 @@ Bake for 25 minutes`}
                   onChange={(e) => setSelectedDay(e.target.value)}
                   className="rounded-full border border-[#ead7c8] bg-white px-4 py-3"
                 >
-                  {days.map((day) => (
-                    <option key={day} value={day}>
-                      {day}
-                    </option>
-                  ))}
+                  {plannerDays.map((day: { label: string; date: string }) => (
+  <option key={day.date} value={day.date}>
+    {day.label}
+  </option>
+))}
                 </select>
 
                 <select
@@ -4407,9 +4474,37 @@ Bake for 25 minutes`}
         >
           <h3 className="mb-3 text-xl font-bold">{meal}</h3>
 
-          <p className="text-[#6d5549]">
-            Nothing planned yet.
-          </p>
+          {(
+  mealPlan[`${homeMenuWeek}-${homeMenuDate}-${meal}`] ||
+  mealPlan[`${homeMenuWeek}-${getHomeMenuLabel(showTomorrow ? "tomorrow" : "today").split(",")[0]}-${meal}`] ||
+  []
+).length > 0 ? (
+  <div className="space-y-2">
+    {(
+  mealPlan[`${homeMenuWeek}-${homeMenuDate}-${meal}`] ||
+  mealPlan[`${homeMenuWeek}-${getHomeMenuLabel(showTomorrow ? "tomorrow" : "today").split(",")[0]}-${meal}`] ||
+  []
+).map((recipe) => (
+      <div
+  key={recipe.mealPlanId}
+  onClick={() => setSelectedRecipe(recipe)}
+  className="flex cursor-pointer items-center gap-3"
+>
+  <img
+    src={recipe.image || placeholderImage}
+    alt={recipe.title}
+    className="h-12 w-12 rounded-xl object-cover"
+  />
+
+  <span className="font-semibold text-[#a63a0a]">
+    {recipe.title}
+  </span>
+</div>
+    ))}
+  </div>
+) : (
+  <p className="text-[#6d5549]">Nothing planned yet.</p>
+)}
         </div>
       ))}
     </div>
@@ -4445,7 +4540,7 @@ Bake for 25 minutes`}
   {getCurrentWeekLabel()}
 </p>
 
-<h3 className="text-2xl font-bold">{filledSlots} / 21</h3>
+<h3 className="text-2xl font-bold">{currentWeekFilledSlots}  / 21</h3>
 <p className="text-[#6d5549]">meals planned</p>
   </button>
 
@@ -4470,7 +4565,7 @@ Bake for 25 minutes`}
   {getUpcomingWeekLabel()}
 </p>
 
-<h3 className="text-2xl font-bold">0 / 21</h3>
+<h3 className="text-2xl font-bold">{nextWeekFilledSlots} / 21</h3>
 <p className="text-[#6d5549]">meals planned</p>
   </button>
     </div>
