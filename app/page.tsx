@@ -2146,13 +2146,21 @@ setNewShoppingItem("");
     <p className="text-[#6d5549]">Your shopping list is empty.</p>
   ) : (
     <div className="space-y-3">
-      {Object.entries(
-  shoppingList.reduce<Record<string, number>>((counts, item) => {
-    counts[item] = (counts[item] || 0) + 1;
-    return counts;
-  }, {})
+      {Object.values(
+  shoppingList.reduce<Record<string, { item: string; count: number }>>(
+    (groups, item) => {
+      const key = cleanForSort(item);
+
+      if (!groups[key]) {
+        groups[key] = { item, count: 0 };
+      }
+
+      groups[key].count += 1;
+      return groups;
+    },
+    {}
+  )
 )
-  .map(([item, count]) => ({ item, count }))
   .filter(({ item }) => {
     const matchingPantryItem = getMatchingPantryItem(item);
     const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
