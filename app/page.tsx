@@ -2020,19 +2020,23 @@ if (showProfile) {
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-24 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-3xl py-6 md:px-6 md:py-10">
         <nav className="relative mb-8 flex items-start justify-between gap-3">
-          <div>
-            <button onClick={goHome} className="text-3xl font-bold text-[#a63a0a]">
-              Hey Chef!
-            </button>
-            <p className="text-sm text-[#6d5549]">Profile settings</p>
-          </div>
-        </nav>
+  <div>
+    <button
+      onClick={goHome}
+      className="text-3xl font-bold text-[#a63a0a]"
+    >
+      Hey Chef!
+    </button>
+  </div>
+</nav>
+
 <button
   onClick={goHome}
   className="mb-6 text-[#a63a0a]"
 >
   ← Back Home
 </button>
+
         <section className="rounded-[2rem] bg-white p-6 shadow-xl">
           <h1 className="mb-2 text-4xl font-bold">Profile</h1>
           <p className="mb-6 text-[#6d5549]">
@@ -2110,6 +2114,13 @@ if (showProfile) {
     >
       Hey Chef!
     </button>
+
+    <button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
   </div>
 
   <button
@@ -2542,6 +2553,13 @@ setNewShoppingItem("");
     >
       Hey Chef!
     </button>
+
+  <button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
   </div>
 
   <button
@@ -2935,6 +2953,13 @@ if (showPantry) {
     >
       Hey Chef!
     </button>
+
+    <button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
   </div>
 
   <button
@@ -3447,6 +3472,12 @@ setNewPantryCategory("Other");
     >
       Hey Chef!
     </button>
+    <button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
   </div>
 
   <button
@@ -3805,6 +3836,12 @@ Bake for 25 minutes`}
     >
       Hey Chef!
     </button>
+    <button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
   </div>
 
   <button
@@ -4232,6 +4269,12 @@ Bake for 25 minutes`}
     >
       Hey Chef!
     </button>
+    <button
+  onClick={goHome}
+  className="mb-6 text-[#a63a0a]"
+>
+  ← Back Home
+</button>
 
   </div>
 
