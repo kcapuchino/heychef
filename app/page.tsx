@@ -1197,7 +1197,6 @@ function addToShoppingList(recipe: Recipe) {
   const rows = newIngredients.map((item) => ({
   user_id: user.id,
   name: item.name,
-  source_meal_plan_id: item.mealPlanId,
   store_section: "Other",
 }));
 
