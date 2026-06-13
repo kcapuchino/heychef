@@ -1036,14 +1036,28 @@ function getGreeting() {
   const hour = new Date().getHours();
 
   if (hour < 12) {
-    return "GOOD MORNING 👋";
+    return "GOOD MORNING ☀️";
   }
 
   if (hour < 17) {
-    return "GOOD AFTERNOON 👋";
+    return "GOOD AFTERNOON 🌤️";
   }
 
-  return "GOOD EVENING 👋";
+  return "GOOD EVENING 🌙";
+}
+
+function getKitchenGreeting() {
+  const hour = new Date().getHours();
+
+  if (hour < 12) {
+    return "☕ Espresso yourself";
+  }
+
+  if (hour < 17) {
+    return "🌮 Taco 'bout lunch";
+  }
+
+  return "🥄 Whisking you a good night";
 }
 
   async function toggleFavorite(recipeId: string) {
@@ -4551,8 +4565,8 @@ Bake for 25 minutes`}
     </h1>
 
     <p className="mb-6 text-lg text-[#6d5549]">
-      What's on the menu today?
-    </p>
+  {getKitchenGreeting()}
+</p>
     <div className="mb-6 grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
         onClick={() => setShowImport(true)}
@@ -4685,7 +4699,7 @@ Bake for 25 minutes`}
 </div>
 
 <h2 className="text-3xl font-bold">
-  {showTomorrow ? "Tomorrow" : "Today"}
+  {showTomorrow ? "Ready for tomorrow?" : "Ready for today?"}
 </h2>
 
 <p className="mt-1 text-[#6d5549]">
