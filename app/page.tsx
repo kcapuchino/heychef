@@ -2330,11 +2330,11 @@ if (showProfile) {
 
           <div className="mb-8 flex items-start justify-between gap-3">
   <div>
-    <h1 className="text-5xl font-bold">Shopping List</h1>
+    <h1 className="text-4xl font-bold md:text-5xl">Shopping List</h1>
 
-    <p className="mt-2 text-[#6d5549]">
-      Review ingredients you need and move items into your pantry.
-    </p>
+   <p className="mt-2 max-w-xs text-[#6d5549]">
+  Review ingredients you need and move items into your pantry.
+</p>
   </div>
 
   <button
@@ -3213,7 +3213,7 @@ if (showPantry) {
 </nav>
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
   <div className="w-full">
-  <h1 className="text-5xl font-bold">
+  <h1 className="text-4xl font-bold md:text-5xl">
     My Pantry
   </h1>
 
