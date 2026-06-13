@@ -296,6 +296,9 @@ const neededShoppingListCount = shoppingList.filter((item) => {
       : recipe.category === categoryFilter
   )
   .sort((a, b) => {
+    if (a.isFavorite !== b.isFavorite) {
+  return a.isFavorite ? -1 : 1;
+}
     if (recipeSort === "az") {
       return a.title.localeCompare(b.title);
     }
@@ -1457,7 +1460,10 @@ setMealPlan(updatedMealPlan);
 
   setRecipes(updatedRecipes);
   setSelectedRecipe(updatedRecipe);
+  setIsEditingRecipe(false);
+setEditRecipeDraft(null);
 }
+
 
   async function removeShoppingItem(item: string) {
   const { data: row } = await supabase
@@ -1500,6 +1506,11 @@ setMealPlan(updatedMealPlan);
   setShowImport(false);
   setIsMenuOpen(false);
   setShowSettingsMenu(false);
+  
+  window.scrollTo({
+  top: 0,
+  behavior: "smooth",
+});
 }
 
 function getMatchingPantryItem(shoppingItem: string) {
@@ -1607,6 +1618,11 @@ function goAllRecipes() {
   setShowImport(false);
   setIsMenuOpen(false);
   setShowSettingsMenu(false);
+
+  window.scrollTo({
+  top: 0,
+  behavior: "smooth",
+});
 }
 
 function goMealPlanner() {
@@ -1620,6 +1636,11 @@ function goMealPlanner() {
   setShowImport(false);
   setIsMenuOpen(false);
   setShowSettingsMenu(false);
+
+  window.scrollTo({
+  top: 0,
+  behavior: "smooth",
+});
 }
 
 function goShoppingList() {
@@ -1633,6 +1654,11 @@ function goShoppingList() {
   setShowImport(false);
   setIsMenuOpen(false);
   setShowSettingsMenu(false);
+
+  window.scrollTo({
+  top: 0,
+  behavior: "smooth",
+});
 }
 
 function goPantry() {
@@ -1646,6 +1672,11 @@ function goPantry() {
   setShowImport(false);
   setIsMenuOpen(false);
   setShowSettingsMenu(false);
+
+  window.scrollTo({
+  top: 0,
+  behavior: "smooth",
+});
 }
 
 
@@ -1789,13 +1820,16 @@ function renderAuthCard() {
 
   <div className="relative mb-4">
   <input
-    name="password"
-    type={showPassword ? "text" : "password"}
-    value={loginPassword}
-    onChange={(e) => setLoginPassword(e.target.value)}
-    placeholder="Password"
-    className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
-  />
+  name="password"
+  type={showPassword ? "text" : "password"}
+  placeholder="Password"
+  autoComplete={
+    authMode === "signup"
+      ? "new-password"
+      : "current-password"
+  }
+  className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
+/>
 
   <button
     type="button"
@@ -2901,11 +2935,17 @@ setMealPlan(updatedMealPlan);
 
   <button
     onClick={() => {
-      setSelectedRecipe(recipe);
-      setIsEditingRecipe(false);
-      setEditRecipeDraft(null);
-      setShowMealPlanner(false);
-    }}
+  setSelectedRecipe(recipe);
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+  }, 0);
+}}
     className="text-left font-medium text-[#a63a0a] hover:underline"
   >
     {recipe.title}
@@ -3791,9 +3831,17 @@ Bake for 25 minutes`}
               <div
                 key={recipe.id}
                 onClick={() => {
-                  setShowAllRecipes(false);
-                  setSelectedRecipe(recipe);
-                }}
+  setSelectedRecipe(recipe);
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+  }, 0);
+}}
                 className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
                 <img
@@ -4042,7 +4090,9 @@ Bake for 25 minutes`}
   {!isEditingRecipe ? (
   <>
     <button
-      onClick={() => {
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
         setEditRecipeDraft(selectedRecipe);
         setIsEditingRecipe(true);
       }}
@@ -4052,7 +4102,11 @@ Bake for 25 minutes`}
     </button>
 
     <button
-      onClick={() => selectedRecipe && toggleFavorite(selectedRecipe.id)}
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        selectedRecipe && toggleFavorite(selectedRecipe.id);
+      }}
       className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
     >
       {selectedRecipe?.isFavorite ? "★ Favorite" : "☆ Favorite"}
@@ -4061,9 +4115,10 @@ Bake for 25 minutes`}
 ) : (
   <>
     <button
-      onClick={() => {
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
         if (!selectedRecipe) return;
-
         updateSelectedRecipe(selectedRecipe);
       }}
       className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
@@ -4730,7 +4785,15 @@ Bake for 25 minutes`}
       {homeRecipes.map((recipe) => (
         <div
           key={recipe.id}
-          onClick={() => setSelectedRecipe(recipe)}
+          onClick={() => {
+  setSelectedRecipe(recipe);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+
+  setTimeout(() => {
+    window.scrollTo(0, 0);
+  }, 0);
+}}
           className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <img
