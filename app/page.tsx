@@ -2509,7 +2509,7 @@ setNewShoppingItem("");
       }}
       className="text-[#a63a0a]"
     >
-      Move Back to List
+      Move Back
     </button>
   </>
 ) : (
