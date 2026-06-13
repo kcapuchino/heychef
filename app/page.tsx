@@ -1301,7 +1301,14 @@ function addToShoppingList(recipe: Recipe) {
   .delete()
   .eq("source_meal_plan_id", mealPlanId);
 
-setShoppingList((currentList) => currentList);
+setShoppingList((currentList) =>
+  currentList.filter(
+    (item) =>
+      !currentRecipes
+        .find((recipe) => recipe.mealPlanId === mealPlanId)
+        ?.ingredients.includes(item)
+  )
+);
 
 setMealPlan({
   ...mealPlan,
