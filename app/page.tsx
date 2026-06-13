@@ -269,6 +269,21 @@ const plannerPercent = Math.round(
 );
 
 useEffect(() => {
+  const saved = localStorage.getItem("hey-chef-on-hand-items");
+
+  if (saved) {
+    setManuallyMarkedOnHand(JSON.parse(saved));
+  }
+}, []);
+
+useEffect(() => {
+  localStorage.setItem(
+    "hey-chef-on-hand-items",
+    JSON.stringify(manuallyMarkedOnHand)
+  );
+}, [manuallyMarkedOnHand]);
+
+useEffect(() => {
   supabase.auth.onAuthStateChange((event) => {
     if (event === "PASSWORD_RECOVERY") {
       setIsResettingPassword(true);
