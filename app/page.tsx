@@ -2017,25 +2017,27 @@ if (!userEmail) {
 
 if (showProfile) {
   return (
-    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-24 text-[#2b1a12] md:p-8">
-      <section className="mx-auto max-w-3xl py-6 md:px-6 md:py-10">
-        <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
-  </div>
+    <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
+      <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
+  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
+
+  <button
+    onClick={goHome}
+    className="mt-1 text-left text-sm text-[#a63a0a]"
+  >
+    ← Back Home
+  </button>
+</div>
 </nav>
 
-<button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
+
 
         <section className="rounded-[2rem] bg-white p-6 shadow-xl">
           <h1 className="mb-2 text-4xl font-bold">Profile</h1>
@@ -2107,21 +2109,21 @@ if (showProfile) {
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
 
-    <button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
-  </div>
+  <button
+    onClick={goHome}
+    className="mt-1 text-left text-sm text-[#a63a0a]"
+  >
+    ← Back Home
+  </button>
+</div>
 
   <button
     onClick={() => setIsMenuOpen((open) => !open)}
@@ -2546,21 +2548,21 @@ setNewShoppingItem("");
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
         <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
 
   <button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
-  </div>
+    onClick={goHome}
+    className="mt-1 text-left text-sm text-[#a63a0a]"
+  >
+    ← Back Home
+  </button>
+</div>
 
   <button
     onClick={() => setIsMenuOpen((open) => !open)}
@@ -2716,8 +2718,8 @@ setNewShoppingItem("");
   <div>
     <h1 className="text-4xl font-bold md:text-5xl">Weekly Meal Planner</h1>
     <p className="mt-2 text-[#6d5549]">
-      Add up to 3 recipes per meal slot. Resets Weekly
-    </p>
+  Add up to 3 recipes per meal slot. Weeks automatically roll forward.
+</p>
   </div>
 
   <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
@@ -2946,21 +2948,21 @@ if (showPantry) {
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
   <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
         <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
 
-    <button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
-  </div>
+  <button
+    onClick={goHome}
+    className="mt-1 text-left text-sm text-[#a63a0a]"
+  >
+    ← Back Home
+  </button>
+</div>
 
   <button
     onClick={() => setIsMenuOpen((open) => !open)}
@@ -3465,20 +3467,21 @@ setNewPantryCategory("Other");
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
         <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
-    <button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
-  </div>
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
+
+  <button
+    onClick={goHome}
+    className="mt-1 text-left text-sm text-[#a63a0a]"
+  >
+    ← Back Home
+  </button>
+</div>
 
   <button
     onClick={() => setIsMenuOpen((open) => !open)}
@@ -3829,20 +3832,21 @@ Bake for 25 minutes`}
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
        <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
   <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
-    <button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
-  </div>
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
+
+  <button
+    onClick={goHome}
+    className="mt-1 text-left text-sm text-[#a63a0a]"
+  >
+    ← Back Home
+  </button>
+</div>
 
   <button
     onClick={() => setIsMenuOpen((open) => !open)}
@@ -4262,21 +4266,16 @@ Bake for 25 minutes`}
   <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
     <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
        <nav className="relative mb-8 flex items-start justify-between gap-3">
-  <div>
-    <button
-      onClick={goHome}
-      className="text-3xl font-bold text-[#a63a0a]"
-    >
-      Hey Chef!
-    </button>
-    <button
-  onClick={goHome}
-  className="mb-6 text-[#a63a0a]"
->
-  ← Back Home
-</button>
+  <div className="flex flex-col">
+  <button
+    onClick={goHome}
+    className="text-3xl font-bold text-[#a63a0a]"
+  >
+    Hey Chef!
+  </button>
 
-  </div>
+
+</div>
 
   <button
     onClick={() => setIsMenuOpen((open) => !open)}
