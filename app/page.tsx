@@ -2072,7 +2072,7 @@ if (showProfile) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -2161,7 +2161,7 @@ if (showProfile) {
     return (
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -2626,7 +2626,7 @@ setNewShoppingItem("");
     return (
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
         <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -3046,7 +3046,7 @@ if (showPantry) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
   <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-        <nav className="relative mb-8 flex items-start justify-between gap-3">
+        <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -3565,7 +3565,7 @@ setNewPantryCategory("Other");
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-        <nav className="relative mb-8 flex items-start justify-between gap-3">
+        <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -3939,7 +3939,7 @@ Bake for 25 minutes`}
     return (
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
        <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-  <nav className="relative mb-8 flex items-start justify-between gap-3">
+  <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -4380,7 +4380,7 @@ Bake for 25 minutes`}
   return (
   <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
     <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-       <nav className="relative mb-8 flex items-start justify-between gap-3">
+       <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -4555,20 +4555,11 @@ Bake for 25 minutes`}
     </p>
     <div className="mb-6 grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
-  onClick={() => {
-    setShowImport(true);
-
-    setTimeout(() => {
-      importSectionRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
-  }}
-  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
->
-  Create New Recipe
-</button>
+        onClick={() => setShowImport(true)}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
+      >
+        Create NEW Recipe
+      </button>
 
       
 
@@ -4734,16 +4725,9 @@ Bake for 25 minutes`}
   []
 ).map((recipe) => (
       <div
- key={recipe.mealPlanId}
-onClick={() => {
-  setSelectedRecipe(recipe);
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
-}}
-className="flex cursor-pointer items-center gap-3"
+  key={recipe.mealPlanId}
+  onClick={() => setSelectedRecipe(recipe)}
+  className="flex cursor-pointer items-center gap-3"
 >
   <img
     src={recipe.image || placeholderImage}
