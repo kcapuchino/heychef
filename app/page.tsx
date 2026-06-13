@@ -119,7 +119,7 @@ function normalizeItemName(text: string) {
   return text
     .toLowerCase()
     .replace(/\(.*?\)/g, "")
-    .replace(/\d+|cups?|tbsp|tablespoons?|teaspoons?|ounces?|oz|grams?|g|ml|cans?|small|large|medium/g, "")
+    .replace(/\d+|cups?|tbsp|tablespoons?|teaspoons?|tsp|ounces?|oz|grams?|g|ml|cans?|small|large|medium|arrowroot|powder/g, "")
     .replace(/vegan|dairy-free|plant-based|plant/g, "")
     .replace(/[^a-z\s]/g, "")
     .replace(/\s+/g, " ")
@@ -199,8 +199,10 @@ const [newPantryCategory, setNewPantryCategory] = useState("Other");
 const [newPantryUnit, setNewPantryUnit] = useState("");
 const [showPantryModal, setShowPantryModal] = useState(false);
 const [pantryModalItem, setPantryModalItem] = useState("");
+const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
 const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
 const [pantryModalUnit, setPantryModalUnit] = useState("package");
+const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
 const [shoppingSort, setShoppingSort] = useState("az");
 const [showPantry, setShowPantry] = useState(false);
 const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
@@ -1306,9 +1308,11 @@ async function addShoppingItemToPantry(shoppingItem: string) {
   const cleanedName = cleanPantryDisplayName(shoppingItem);
 
   setPantryModalItem(cleanedName);
-  setPantryModalQuantity("1");
-  setPantryModalUnit("package");
-  setShowPantryModal(true);
+setPantryModalShoppingItem(shoppingItem);
+setPantryModalQuantity("1");
+setPantryModalUnit("package");
+setPantryModalUnit("package");
+setShowPantryModal(true);
 }
 
 async function savePantryModal() {
@@ -2118,7 +2122,15 @@ setNewShoppingItem("");
   ) : (
     <div className="space-y-3">
       {shoppingList
-        .filter((item) => !hidePantryItems || !isItemInPantry(item))
+        .filter((item) => {
+  const matchingPantryItem = getMatchingPantryItem(item);
+  const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+
+  return (
+    !hidePantryItems ||
+    (!matchingPantryItem && !isManuallyMarkedOnHand)
+  );
+})
         .sort((a, b) => {
           if (shoppingSort === "za") {
             return cleanForSort(b).localeCompare(cleanForSort(a));
@@ -2128,6 +2140,7 @@ setNewShoppingItem("");
         })
         .map((item) => {
           const matchingPantryItem = getMatchingPantryItem(item);
+          const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
 
           return (
             <div key={item} className="flex items-center justify-between gap-3">
@@ -2139,11 +2152,28 @@ setNewShoppingItem("");
               <div className="flex items-center gap-3">
                 {matchingPantryItem ? (
   <span className="text-[#6d5549]">
-   ✓ In pantry:{" "}
-{[matchingPantryItem.quantity, matchingPantryItem.unit]
-  .filter(Boolean)
-  .join(" ") || "on hand"}
+    ✓ In pantry:{" "}
+    {[matchingPantryItem.quantity, matchingPantryItem.unit]
+      .filter(Boolean)
+      .join(" ") || "on hand"}
   </span>
+) : isManuallyMarkedOnHand ? (
+  <>
+    <span className="text-[#6d5549]">✓ On hand</span>
+
+    <button
+      onClick={() =>
+        setManuallyMarkedOnHand(
+          manuallyMarkedOnHand.filter(
+            (savedItem) => savedItem !== item
+          )
+        )
+      }
+      className="text-[#a63a0a]"
+    >
+      Move Back to List
+    </button>
+  </>
 ) : (
   <>
     <button
@@ -2221,9 +2251,12 @@ setNewShoppingItem("");
 
   <button
     onClick={() => {
-      removeShoppingItem(pantryModalItem);
-      setShowPantryModal(false);
-    }}
+  setManuallyMarkedOnHand([
+    ...manuallyMarkedOnHand,
+    pantryModalShoppingItem,
+  ]);
+  setShowPantryModal(false);
+}}
     className="rounded-full border border-[#ead7c8] px-5 py-3"
   >
     Mark On Hand
