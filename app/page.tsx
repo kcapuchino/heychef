@@ -4771,7 +4771,7 @@ Bake for 25 minutes`}
       MEAL PLAN OVERVIEW
     </p>
 
-    <h2 className="mb-5 text-3xl font-bold">This week</h2>
+    <h2 className="mb-5 text-3xl font-bold">Weekly Progress</h2>
 
     <div className="grid gap-4 md:grid-cols-2">
       <button
