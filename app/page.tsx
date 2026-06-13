@@ -212,6 +212,7 @@ const [signupName, setSignupName] = useState("");
 
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const importSectionRef = useRef<HTMLElement>(null);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
@@ -1753,8 +1754,15 @@ function BottomNav() {
   onClick={() => {
     goHome();
     setShowImport(true);
+
+    setTimeout(() => {
+      importSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 300);
   }}
-  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#a63a0a] text-2xl font-bold text-white shadow"
+  className="flex h-14 w-14 items-center justify-center rounded-full bg-[#a63a0a] text-white shadow-lg"
 >
   +
 </button>
@@ -2880,26 +2888,40 @@ setMealPlan(updatedMealPlan);
 )}
 <div className="mb-6 grid grid-cols-2 gap-3 rounded-full bg-white p-2 shadow">
   <button
-    onClick={() => setActivePlannerWeek("current")}
-    className={`rounded-full px-5 py-3 font-semibold transition ${
-      activePlannerWeek === "current"
-        ? "bg-[#a63a0a] text-white shadow"
-        : "text-[#a63a0a]"
-    }`}
-  >
-    This Week
-  </button>
+  onClick={() => {
+    setActivePlannerWeek("current");
 
-  <button
-    onClick={() => setActivePlannerWeek("next")}
-    className={`rounded-full px-5 py-3 font-semibold transition ${
-      activePlannerWeek === "next"
-        ? "bg-[#a63a0a] text-white shadow"
-        : "text-[#a63a0a]"
-    }`}
-  >
-    Next Week
-  </button>
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }}
+  className={`rounded-full px-5 py-3 font-semibold transition ${
+    activePlannerWeek === "current"
+      ? "bg-[#a63a0a] text-white shadow"
+      : "text-[#a63a0a]"
+  }`}
+>
+  This Week
+</button>
+
+<button
+  onClick={() => {
+    setActivePlannerWeek("next");
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }}
+  className={`rounded-full px-5 py-3 font-semibold transition ${
+    activePlannerWeek === "next"
+      ? "bg-[#a63a0a] text-white shadow"
+      : "text-[#a63a0a]"
+  }`}
+>
+  Next Week
+</button>
 </div>
 <div className="grid gap-4">
   {plannerDays.map((day: { label: string; date: string }) => (
@@ -4356,7 +4378,7 @@ Bake for 25 minutes`}
   }
 
   return (
-  <main className="min-h-screen bg-[#f8efe6] px-5 py-6 text-[#2b1a12] md:p-8">
+  <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
     <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
        <nav className="relative mb-8 flex items-start justify-between gap-3">
   <div className="flex flex-col">
@@ -4549,7 +4571,10 @@ Bake for 25 minutes`}
       </button>
     </div>
     {showImport && (
-  <section className="rounded-3xl bg-white p-6 shadow-lg">
+  <section
+    ref={importSectionRef}
+    className="rounded-3xl bg-white p-6 shadow-lg"
+  >
   <div className="mb-4 flex items-center justify-between">
     <h2 className="text-2xl font-bold">Import a Recipe</h2>
 
@@ -4574,12 +4599,14 @@ Bake for 25 minutes`}
       />
 
       <button
-        onClick={importRecipe}
-        disabled={isImporting}
-        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
-      >
-        {isImporting ? "Importing..." : "Import"}
-      </button>
+  onClick={() => {
+  setShowImport(true);
+}}
+  disabled={isImporting}
+  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+>
+  {isImporting ? "Importing..." : "Import"}
+</button>
     </div>
 
     <div className="my-5 flex items-center gap-4">
@@ -4588,12 +4615,19 @@ Bake for 25 minutes`}
       <div className="h-px flex-1 bg-[#ead7c8]" />
     </div>
 
-    <button
-      onClick={createNewRecipe}
-      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-    >
-      + New Recipe
-    </button>
+   <button
+  onClick={() => {
+    createNewRecipe();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }}
+  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  + New Recipe
+</button>
 
     {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
 
