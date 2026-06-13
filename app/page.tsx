@@ -2032,7 +2032,7 @@ if (showProfile) {
     onClick={goHome}
     className="mt-1 text-left text-sm text-[#a63a0a]"
   >
-    ← Back Home
+   ← Return to Dashboard
   </button>
 </div>
 </nav>
@@ -2121,7 +2121,7 @@ if (showProfile) {
     onClick={goHome}
     className="mt-1 text-left text-sm text-[#a63a0a]"
   >
-    ← Back Home
+    ← Return to Dashboard
   </button>
 </div>
 
@@ -2560,7 +2560,7 @@ setNewShoppingItem("");
     onClick={goHome}
     className="mt-1 text-left text-sm text-[#a63a0a]"
   >
-    ← Back Home
+    ← Return to Dashboard
   </button>
 </div>
 
@@ -2960,7 +2960,7 @@ if (showPantry) {
     onClick={goHome}
     className="mt-1 text-left text-sm text-[#a63a0a]"
   >
-    ← Back Home
+    ← Return to Dashboard
   </button>
 </div>
 
@@ -3479,7 +3479,7 @@ setNewPantryCategory("Other");
     onClick={goHome}
     className="mt-1 text-left text-sm text-[#a63a0a]"
   >
-    ← Back Home
+    ← Return to Dashboard
   </button>
 </div>
 
@@ -3844,7 +3844,7 @@ Bake for 25 minutes`}
     onClick={goHome}
     className="mt-1 text-left text-sm text-[#a63a0a]"
   >
-    ← Back Home
+    ← Return to Dashboard
   </button>
 </div>
 
