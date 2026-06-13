@@ -1296,12 +1296,19 @@ function addToShoppingList(recipe: Recipe) {
   const key = getMealPlanKey(day, meal);
   const currentRecipes = mealPlan[key] || [];
 
-  setMealPlan({
-    ...mealPlan,
-    [key]: currentRecipes.filter(
-      (recipe) => recipe.mealPlanId !== mealPlanId
-    ),
-  });
+  await supabase
+  .from("shopping_items")
+  .delete()
+  .eq("source_meal_plan_id", mealPlanId);
+
+setShoppingList((currentList) => currentList);
+
+setMealPlan({
+  ...mealPlan,
+  [key]: currentRecipes.filter(
+    (recipe) => recipe.mealPlanId !== mealPlanId
+  ),
+});
 }
 
   async function deleteRecipe(recipeId: string) {
