@@ -272,6 +272,7 @@ const [isResettingPassword, setIsResettingPassword] = useState(false);
 const [newPassword, setNewPassword] = useState("");
 const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 const settingsRef = useRef<HTMLDivElement | null>(null);
+const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 const [showProfile, setShowProfile] = useState(false);
 
 const neededShoppingListCount = shoppingList.filter((item) => {
@@ -391,11 +392,20 @@ useEffect(() => {
 }, []);
 useEffect(() => {
   function handleClickOutside(event: MouseEvent) {
+    const target = event.target as Node;
+
     if (
       settingsRef.current &&
-      !settingsRef.current.contains(event.target as Node)
+      !settingsRef.current.contains(target)
     ) {
       setShowSettingsMenu(false);
+    }
+
+    if (
+      mobileMenuRef.current &&
+      !mobileMenuRef.current.contains(target)
+    ) {
+      setIsMenuOpen(false);
     }
   }
 
@@ -1675,16 +1685,6 @@ function BottomNav() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-[#ead7c8] bg-white px-2 py-2 shadow-xl md:hidden">
 
-      <button
-        onClick={goHome}
-        className={
-          currentPage === "home"
-            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
-            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
-        }
-      >
-        🏠<br />Home
-      </button>
 
       <button
         onClick={goAllRecipes}
@@ -1698,16 +1698,6 @@ function BottomNav() {
       </button>
 
       <button
-  onClick={() => {
-    goHome();
-    setShowImport(true);
-  }}
-  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#a63a0a] text-2xl font-bold text-white shadow"
->
-  +
-</button>
-
-      <button
         onClick={goMealPlanner}
         className={
           currentPage === "planner"
@@ -1719,6 +1709,16 @@ function BottomNav() {
       </button>
 
       <button
+  onClick={() => {
+    goHome();
+    setShowImport(true);
+  }}
+  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#a63a0a] text-2xl font-bold text-white shadow"
+>
+  +
+</button>
+
+      <button
         onClick={goShoppingList}
         className={
           currentPage === "shopping"
@@ -1728,6 +1728,17 @@ function BottomNav() {
       >
         🛒<br />Shopping
       </button>
+
+      <button
+  onClick={goPantry}
+  className={
+    currentPage === "pantry"
+      ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
+      : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+  }
+>
+  🥫<br />Pantry
+</button>
 
     </div>
   );
@@ -2206,7 +2217,10 @@ if (showProfile) {
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
       <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
       </p>
@@ -2635,7 +2649,10 @@ setNewShoppingItem("");
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
       <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
       </p>
@@ -3025,7 +3042,10 @@ if (showPantry) {
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
       <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
       </p>
@@ -3532,7 +3552,10 @@ setNewPantryCategory("Other");
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
       <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
       </p>
@@ -3887,7 +3910,10 @@ Bake for 25 minutes`}
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
       <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
       </p>
@@ -4312,7 +4338,10 @@ Bake for 25 minutes`}
   </div>
 
   {isMenuOpen && (
-    <div className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden">
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
       <p className="mb-2 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
       </p>
