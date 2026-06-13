@@ -103,6 +103,20 @@ function getHomeMenuLabel(day: "today" | "tomorrow") {
     day: "numeric",
   });
 }
+function getWeekStartDate(week: "current" | "next") {
+  const today = new Date();
+  const monday = new Date(today);
+  const diff = today.getDay() === 0 ? -6 : 1 - today.getDay();
+
+  monday.setDate(today.getDate() + diff);
+
+  if (week === "next") {
+    monday.setDate(monday.getDate() + 7);
+  }
+
+  return monday.toISOString().split("T")[0];
+}
+
 function getTodayLabel() {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -544,12 +558,13 @@ useEffect(() => {
     const { data, error } = await supabase
       .from("meal_plan")
       .select(`
-        id,
-day,
-meal,
-week,
-recipes (*)
-      `);
+  id,
+  day,
+  meal,
+  week,
+  week_start,
+  recipes (*)
+`);
 
     if (error) {
       console.error(error);
@@ -561,7 +576,20 @@ recipes (*)
     (data || []).forEach((item: any) => {
       if (!item.recipes) return;
 
-      const key = `${item.week || "current"}-${item.day}-${item.meal}`;
+      const currentWeekStart = getWeekStartDate("current");
+const nextWeekStart = getWeekStartDate("next");
+
+let plannerWeek = item.week || "current";
+
+if (item.week_start === currentWeekStart) {
+  plannerWeek = "current";
+}
+
+if (item.week_start === nextWeekStart) {
+  plannerWeek = "next";
+}
+
+const key = `${plannerWeek}-${item.day}-${item.meal}`;
 
       if (!loadedPlan[key]) {
         loadedPlan[key] = [];
@@ -1159,6 +1187,7 @@ function addToShoppingList(recipe: Recipe) {
       day,
 meal,
 week: activePlannerWeek,
+week_start: getWeekStartDate(activePlannerWeek),
     })
     .select()
     .single();
