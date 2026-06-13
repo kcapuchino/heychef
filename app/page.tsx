@@ -2166,9 +2166,7 @@ setNewShoppingItem("");
     <button
       onClick={() =>
         setManuallyMarkedOnHand(
-          manuallyMarkedOnHand.filter(
-            (savedItem) => savedItem !== item
-          )
+          manuallyMarkedOnHand.filter((savedItem) => savedItem !== item)
         )
       }
       className="text-[#a63a0a]"
