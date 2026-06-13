@@ -89,6 +89,20 @@ const sampleRecipes: Recipe[] = [
     createdAt: new Date().toISOString(),
   },
 ];
+
+function getHomeMenuLabel(day: "today" | "tomorrow") {
+  const date = new Date();
+
+  if (day === "tomorrow") {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
 function getTodayLabel() {
   return new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -166,6 +180,7 @@ const [signupName, setSignupName] = useState("");
   "home" | "recipes" | "planner" | "shopping" | "pantry" | "profile"
 >("home");
 
+  const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -4313,9 +4328,32 @@ Bake for 25 minutes`}
   <section className="rounded-[2rem] bg-white p-6 shadow-lg">
     <div className="mb-5 flex items-end justify-between gap-4">
       <div>
-        <p className="mb-2 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
-          TODAY'S MENU
-        </p>
+        <div className="flex items-center gap-3">
+  <p className="text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
+    {showTomorrow ? "TOMORROW'S MENU" : "TODAY'S MENU"}
+  </p>
+
+  <button
+    onClick={() => setShowTomorrow(!showTomorrow)}
+    className="rounded-full border border-[#ead7c8] px-3 py-1 text-xs text-[#a63a0a]"
+  >
+    {showTomorrow ? "Today" : "Tomorrow"}
+  </button>
+</div>
+
+<h2 className="text-3xl font-bold">
+  {showTomorrow ? "Tomorrow" : "Today"}
+</h2>
+
+<p className="mt-1 text-[#6d5549]">
+  {new Date(
+    Date.now() + (showTomorrow ? 86400000 : 0)
+  ).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  })}
+</p>
         <h2 className="text-3xl font-bold">Today</h2>
 
 <p className="mt-1 text-[#6d5549]">
