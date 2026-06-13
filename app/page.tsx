@@ -1825,6 +1825,7 @@ function renderAuthCard() {
   placeholder="Password"
   autoComplete={
     authMode === "signup"
+
       ? "new-password"
       : "current-password"
   }
@@ -3730,7 +3731,6 @@ setNewPantryCategory("Other");
     className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
   >
     <option value="all">All Categories</option>
-    <option value="favorites">Favorites First</option>
     <option value="Main Dish">Main Dish</option>
     <option value="Side Dish">Side Dish</option>
     <option value="Dessert">Dessert</option>
