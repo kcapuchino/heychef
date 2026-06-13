@@ -4354,11 +4354,6 @@ Bake for 25 minutes`}
     day: "numeric",
   })}
 </p>
-        <h2 className="text-3xl font-bold">Today</h2>
-
-<p className="mt-1 text-[#6d5549]">
-  {getTodayLabel()}
-</p>
       </div>
     </div>
 
