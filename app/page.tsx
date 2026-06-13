@@ -1280,7 +1280,7 @@ function getMatchingPantryItem(shoppingItem: string) {
 
     return cleanedShoppingName.includes(cleanedPantryName);
   });
-}s
+}
 
 function isItemInPantry(shoppingItem: string) {
   return pantryItems.some((pantryItem) =>
