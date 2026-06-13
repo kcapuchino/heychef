@@ -2072,7 +2072,7 @@ if (showProfile) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-  <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
+ <nav className="sticky top-0 z-50 -mx-5 mb-8 flex items-start justify-between gap-3 bg-[#f8efe6] px-5 py-4 md:-mx-6 md:px-6">
   <div className="flex flex-col">
   <button
     onClick={goHome}
@@ -2161,7 +2161,7 @@ if (showProfile) {
     return (
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-  <nav className="relative mb-8 flex items-start justify-between gap-3 md:sticky md:top-0 md:z-50 md:-mx-6 md:bg-[#f8efe6] md:px-6 md:py-4">
+  <nav className="sticky top-0 z-50 -mx-5 mb-8 flex items-start justify-between gap-3 bg-[#f8efe6] px-5 py-4 md:-mx-6 md:px-6">
   <div className="flex flex-col">
   <button
     onClick={goHome}
