@@ -4558,7 +4558,7 @@ Bake for 25 minutes`}
         onClick={() => setShowImport(true)}
         className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
       >
-        Create NEW Recipe
+        Create New Recipe
       </button>
 
       
@@ -4624,7 +4624,7 @@ Bake for 25 minutes`}
   }}
   className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
 >
-  + New Recipe
+  + Create from Scratch
 </button>
 
     {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
