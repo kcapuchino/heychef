@@ -2146,24 +2146,30 @@ setNewShoppingItem("");
     <p className="text-[#6d5549]">Your shopping list is empty.</p>
   ) : (
     <div className="space-y-3">
-      {shoppingList
-        .filter((item) => {
-  const matchingPantryItem = getMatchingPantryItem(item);
-  const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+      {Object.entries(
+  shoppingList.reduce<Record<string, number>>((counts, item) => {
+    counts[item] = (counts[item] || 0) + 1;
+    return counts;
+  }, {})
+)
+  .map(([item, count]) => ({ item, count }))
+  .filter(({ item }) => {
+    const matchingPantryItem = getMatchingPantryItem(item);
+    const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
 
-  return (
-    !hidePantryItems ||
-    (!matchingPantryItem && !isManuallyMarkedOnHand)
-  );
-})
-        .sort((a, b) => {
-          if (shoppingSort === "za") {
-            return cleanForSort(b).localeCompare(cleanForSort(a));
-          }
+    return (
+      !hidePantryItems ||
+      (!matchingPantryItem && !isManuallyMarkedOnHand)
+    );
+  })
+  .sort((a, b) => {
+    if (shoppingSort === "za") {
+      return cleanForSort(b.item).localeCompare(cleanForSort(a.item));
+    }
 
-          return cleanForSort(a).localeCompare(cleanForSort(b));
-        })
-        .map((item) => {
+    return cleanForSort(a.item).localeCompare(cleanForSort(b.item));
+  })
+  .map(({ item, count }) => {
           const matchingPantryItem = getMatchingPantryItem(item);
           const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
 
@@ -2171,7 +2177,10 @@ setNewShoppingItem("");
             <div key={item} className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-3">
                 <input type="checkbox" className="h-5 w-5" />
-                <span>{item}</span>
+                <span>
+  {item}
+  {count > 1 ? ` ×${count}` : ""}
+</span>
               </label>
 
               <div className="flex items-center gap-3">
