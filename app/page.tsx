@@ -118,7 +118,8 @@ function cleanPantryDisplayName(text: string) {
 function normalizeItemName(text: string) {
   return text
     .toLowerCase()
-    .replace(/\(.*?\)/g, " ")
+    .replace(/[()]/g, " ")
+.replace(/\bor\b/g, " ")
     .replace(/\d+|cups?|tbsp|tablespoons?|teaspoons?|tsp|ounces?|oz|grams?|g|ml|cans?|small|large|medium/g, " ")
     .replace(/vegan|dairy-free|plant-based|plant/g, " ")
     .replace(/[^a-z\s]/g, " ")
