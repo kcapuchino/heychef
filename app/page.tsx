@@ -30,6 +30,13 @@ type PantryItem = {
   createdAt: string;
 };
 
+type ShoppingItem = {
+  id: string;
+  name: string;
+  storeSection?: string;
+  sourceMealPlanId?: string;
+};
+
 type SavedUserData = {
   recipes: Recipe[];
   shoppingList: string[];
@@ -1064,15 +1071,20 @@ function addToShoppingList(recipe: Recipe) {
     return;
   }
 
-  const newIngredients: string[] = [];
+  const newIngredients: { name: string; mealPlanId: string }[] = [];
   const newlyAddedSlots: string[] = [];
 
   Object.entries(mealPlan).forEach(([slotKey, plannedRecipes]) => {
     if (addedMealPlanSlots.includes(slotKey)) return;
 
     plannedRecipes.forEach((recipe) => {
-      newIngredients.push(...recipe.ingredients);
+  recipe.ingredients.forEach((ingredient) => {
+    newIngredients.push({
+      name: ingredient,
+      mealPlanId: recipe.mealPlanId,
     });
+  });
+});
 
     newlyAddedSlots.push(slotKey);
   });
@@ -1083,9 +1095,11 @@ function addToShoppingList(recipe: Recipe) {
   }
 
   const rows = newIngredients.map((item) => ({
-    user_id: user.id,
-    name: item,
-  }));
+  user_id: user.id,
+  name: item.name,
+  source_meal_plan_id: item.mealPlanId,
+  store_section: "Other",
+}));
 
   const { data, error } = await supabase
     .from("shopping_items")
