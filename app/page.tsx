@@ -118,10 +118,10 @@ function cleanPantryDisplayName(text: string) {
 function normalizeItemName(text: string) {
   return text
     .toLowerCase()
-    .replace(/\(.*?\)/g, "")
-    .replace(/\d+|cups?|tbsp|tablespoons?|teaspoons?|tsp|ounces?|oz|grams?|g|ml|cans?|small|large|medium/g, "")
-    .replace(/vegan|dairy-free|plant-based|plant/g, "")
-    .replace(/[^a-z\s]/g, "")
+    .replace(/\(.*?\)/g, " ")
+    .replace(/\d+|cups?|tbsp|tablespoons?|teaspoons?|tsp|ounces?|oz|grams?|g|ml|cans?|small|large|medium/g, " ")
+    .replace(/vegan|dairy-free|plant-based|plant/g, " ")
+    .replace(/[^a-z\s]/g, " ")
     .replace(/\bleaves\b/g, "leaf")
     .replace(/\s+/g, " ")
     .trim();
@@ -1280,7 +1280,7 @@ function getMatchingPantryItem(shoppingItem: string) {
 
     return cleanedShoppingName.includes(cleanedPantryName);
   });
-}
+}s
 
 function isItemInPantry(shoppingItem: string) {
   return pantryItems.some((pantryItem) =>
