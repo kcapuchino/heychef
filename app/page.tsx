@@ -221,8 +221,7 @@ const [signupName, setSignupName] = useState("");
   const [showShoppingList, setShowShoppingList] = useState(false);
 
   const [showMealPlanner, setShowMealPlanner] = useState(false);
-const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({});
-const [addedMealPlanSlots, setAddedMealPlanSlots] = useState<string[]>([]);
+const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({})
 const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("current");
 
   const [isImporting, setIsImporting] = useState(false);
@@ -676,20 +675,6 @@ const key = `${plannerWeek}-${mealDate}-${item.meal}`;
   }
 }, [userEmail]);
 
-useEffect(() => {
-  const saved = localStorage.getItem("hey-chef-added-meal-plan-slots");
-
-  if (saved) {
-    setAddedMealPlanSlots(JSON.parse(saved));
-  }
-}, []);
-
-useEffect(() => {
-  localStorage.setItem(
-    "hey-chef-added-meal-plan-slots",
-    JSON.stringify(addedMealPlanSlots)
-  );
-}, [addedMealPlanSlots]);
 
   async function loginUser(email: string, password: string, name?: string) {
   setAuthError("");
@@ -1171,34 +1156,37 @@ function addToShoppingList(recipe: Recipe) {
     return;
   }
 
-  const newIngredients: { name: string; mealPlanId: string }[] = [];
-  const newlyAddedSlots: string[] = [];
+  const currentMealPlanIngredients = Object.values(mealPlan)
+    .flat()
+    .flatMap((recipe) =>
+      recipe.ingredients.map((ingredient) => ({
+        name: ingredient,
+        mealPlanId: recipe.mealPlanId,
+      }))
+    );
 
-  Object.entries(mealPlan).forEach(([slotKey, plannedRecipes]) => {
-    if (addedMealPlanSlots.includes(slotKey)) return;
-
-    plannedRecipes.forEach((recipe) => {
-  recipe.ingredients.forEach((ingredient) => {
-    newIngredients.push({
-      name: ingredient,
-      mealPlanId: recipe.mealPlanId,
-    });
-  });
-});
-
-    newlyAddedSlots.push(slotKey);
-  });
-
-  if (newIngredients.length === 0) {
-    alert("No new meal plan items to add.");
+  if (currentMealPlanIngredients.length === 0) {
+    alert("No meal plan items to add.");
     return;
   }
 
-  const rows = newIngredients.map((item) => ({
-  user_id: user.id,
-  name: item.name,
-  store_section: "Other",
-}));
+  const { error: deleteError } = await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("user_id", user.id)
+    .not("source_meal_plan_id", "is", null);
+
+  if (deleteError) {
+    alert(deleteError.message);
+    return;
+  }
+
+  const rows = currentMealPlanIngredients.map((item) => ({
+    user_id: user.id,
+    name: item.name,
+    source_meal_plan_id: item.mealPlanId,
+    store_section: "Other",
+  }));
 
   const { data, error } = await supabase
     .from("shopping_items")
@@ -1210,16 +1198,28 @@ function addToShoppingList(recipe: Recipe) {
     return;
   }
 
-  const newItems = (data || []).map((item) => item.name);
+  const { data: manualData, error: manualError } = await supabase
+  .from("shopping_items")
+  .select("*")
+  .eq("user_id", user.id)
+  .is("source_meal_plan_id", null);
 
-  const sorted = [...shoppingList, ...newItems].sort((a, b) =>
+if (manualError) {
+  alert(manualError.message);
+  return;
+}
+
+const manualItems = (manualData || []).map((item) => item.name);
+
+  const newMealPlanItems = (data || []).map((item) => item.name);
+
+  const sorted = [...manualItems, ...newMealPlanItems].sort((a, b) =>
     cleanForSort(a).localeCompare(cleanForSort(b))
   );
 
   setShoppingList(sorted);
-  setAddedMealPlanSlots([...addedMealPlanSlots, ...newlyAddedSlots]);
 
-  alert("New meal plan items added to your shopping list.");
+  alert("Shopping list updated from your meal plan.");
 }
 
   async function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
@@ -1283,39 +1283,64 @@ function addToShoppingList(recipe: Recipe) {
   meal: string,
   mealPlanId: string
 ) {
+  const key = getMealPlanKey(day, meal);
+  const currentRecipes = mealPlan[key] || [];
+
+  const removedRecipe = currentRecipes.find(
+    (recipe) => recipe.mealPlanId === mealPlanId
+  );
+
   const { error } = await supabase
-  .from("meal_plan")
-  .delete()
-  .eq("id", mealPlanId);
+    .from("meal_plan")
+    .delete()
+    .eq("id", mealPlanId);
 
   if (error) {
     alert(error.message);
     return;
   }
 
-  const key = getMealPlanKey(day, meal);
-  const currentRecipes = mealPlan[key] || [];
+  if (removedRecipe) {
+    const uniqueIngredients = Array.from(new Set(removedRecipe.ingredients));
 
-  await supabase
-  .from("shopping_items")
-  .delete()
-  .eq("source_meal_plan_id", mealPlanId);
+    for (const ingredient of uniqueIngredients) {
+      const { data: row } = await supabase
+        .from("shopping_items")
+        .select("id")
+        .eq("name", ingredient)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-setShoppingList((currentList) =>
-  currentList.filter(
-    (item) =>
-      !currentRecipes
-        .find((recipe) => recipe.mealPlanId === mealPlanId)
-        ?.ingredients.includes(item)
-  )
-);
+      if (row) {
+        await supabase
+          .from("shopping_items")
+          .delete()
+          .eq("id", row.id);
+      }
+    }
 
-setMealPlan({
-  ...mealPlan,
-  [key]: currentRecipes.filter(
-    (recipe) => recipe.mealPlanId !== mealPlanId
-  ),
-});
+    setShoppingList((currentList) => {
+      const updatedList = [...currentList];
+
+      uniqueIngredients.forEach((ingredient) => {
+        const index = updatedList.indexOf(ingredient);
+
+        if (index !== -1) {
+          updatedList.splice(index, 1);
+        }
+      });
+
+      return updatedList;
+    });
+  }
+
+  setMealPlan({
+    ...mealPlan,
+    [key]: currentRecipes.filter(
+      (recipe) => recipe.mealPlanId !== mealPlanId
+    ),
+  });
 }
 
   async function deleteRecipe(recipeId: string) {
@@ -2802,8 +2827,8 @@ setMealPlan(updatedMealPlan);
                 <div className="space-y-2">
                   {plannedRecipes.map((recipe) => (
                     <div key={recipe.mealPlanId} className="rounded-xl bg-white p-3 text-sm">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center justify-between gap-3">
   <img
     src={recipe.image || placeholderImage}
     alt={recipe.title}
