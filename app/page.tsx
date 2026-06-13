@@ -3632,7 +3632,7 @@ setNewPantryCategory("Other");
 
 
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-  <div>
+  <div className="w-full">
     <h1 className="text-4xl font-bold md:text-5xl">All Recipes</h1>
     <p className="mt-2 text-[#6d5549]">
   Build your personal cookbook with recipes imported from anywhere or created from scratch.
