@@ -3639,7 +3639,7 @@ setNewPantryCategory("Other");
     </p>
   </div>
 
-  <div className="flex flex-col gap-3 md:flex-row">
+  <div className="w-full flex flex-col gap-3 md:w-auto md:flex-row">
   <button
     onClick={() => setShowImport(true)}
     className="w-full rounded-full bg-[#a63a0a] px-8 py-4 text-white md:w-auto"
