@@ -4615,18 +4615,13 @@ Bake for 25 minutes`}
 
    <button
   onClick={() => {
-  setShowImport(true);
-  setShowAllRecipes(false);
-  setSelectedRecipe(null);
-  setShowMealPlanner(false);
-  setShowShoppingList(false);
-  setShowPantry(false);
+    createNewRecipe();
 
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
-}}
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }}
   className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
 >
   + New Recipe
