@@ -4555,11 +4555,20 @@ Bake for 25 minutes`}
     </p>
     <div className="mb-6 grid w-full gap-3 md:w-auto md:grid-cols-2">
       <button
-        onClick={() => setShowImport(true)}
-        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
-      >
-        Import Recipe
-      </button>
+  onClick={() => {
+    setShowImport(true);
+
+    setTimeout(() => {
+      importSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  }}
+  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white shadow-lg"
+>
+  Create New Recipe
+</button>
 
       
 
