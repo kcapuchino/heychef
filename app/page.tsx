@@ -296,6 +296,13 @@ const neededShoppingListCount = shoppingList.filter((item) => {
       : recipe.category === categoryFilter
   )
   .sort((a, b) => {
+    if (recipeSort === "favorites") {
+  filteredRecipes.sort((a, b) => {
+    if (a.isFavorite === b.isFavorite) return 0;
+    return a.isFavorite ? -1 : 1;
+  });
+}
+
     if (recipeSort === "az") {
       return a.title.localeCompare(b.title);
     }
@@ -1780,22 +1787,29 @@ function renderAuthCard() {
   />
 )}
   <input
-    name="email"
-    type="email"
-    placeholder="Email"
-    autoComplete="email"
-    className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
-  />
+  name="email"
+  type="email"
+  value={loginEmail}
+  onChange={(e) => setLoginEmail(e.target.value)}
+  placeholder="Email"
+  autoComplete="email"
+  className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
+/>
 
   <div className="relative mb-4">
   <input
-    name="password"
-    type={showPassword ? "text" : "password"}
-    value={loginPassword}
-    onChange={(e) => setLoginPassword(e.target.value)}
-    placeholder="Password"
-    className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
-  />
+  name="password"
+  type={showPassword ? "text" : "password"}
+  value={loginPassword}
+  onChange={(e) => setLoginPassword(e.target.value)}
+  placeholder="Password"
+  autoComplete={
+    authMode === "signup"
+      ? "new-password"
+      : "current-password"
+  }
+  className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
+/>
 
   <button
     type="button"
@@ -3690,6 +3704,7 @@ setNewPantryCategory("Other");
     className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
   >
     <option value="all">All Categories</option>
+    <option value="favorites">Favorites First</option>
     <option value="Main Dish">Main Dish</option>
     <option value="Side Dish">Side Dish</option>
     <option value="Dessert">Dessert</option>
