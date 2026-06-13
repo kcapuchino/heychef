@@ -169,8 +169,9 @@ const [signupName, setSignupName] = useState("");
   const [showShoppingList, setShowShoppingList] = useState(false);
 
   const [showMealPlanner, setShowMealPlanner] = useState(false);
-  const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({});
-  const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("current");
+const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({});
+const [addedMealPlanSlots, setAddedMealPlanSlots] = useState<string[]>([]);
+const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("current");
 
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState("");
@@ -1048,16 +1049,25 @@ function addToShoppingList(recipe: Recipe) {
     return;
   }
 
-  const allIngredients = Object.values(mealPlan)
-    .flat()
-    .flatMap((recipe) => recipe.ingredients);
+  const newIngredients: string[] = [];
+  const newlyAddedSlots: string[] = [];
 
-  if (allIngredients.length === 0) {
-    alert("No meal plan items to add.");
+  Object.entries(mealPlan).forEach(([slotKey, plannedRecipes]) => {
+    if (addedMealPlanSlots.includes(slotKey)) return;
+
+    plannedRecipes.forEach((recipe) => {
+      newIngredients.push(...recipe.ingredients);
+    });
+
+    newlyAddedSlots.push(slotKey);
+  });
+
+  if (newIngredients.length === 0) {
+    alert("No new meal plan items to add.");
     return;
   }
 
-  const rows = allIngredients.map((item) => ({
+  const rows = newIngredients.map((item) => ({
     user_id: user.id,
     name: item,
   }));
@@ -1079,7 +1089,9 @@ function addToShoppingList(recipe: Recipe) {
   );
 
   setShoppingList(sorted);
-  alert("Shopping list updated from your meal plan.");
+  setAddedMealPlanSlots([...addedMealPlanSlots, ...newlyAddedSlots]);
+
+  alert("New meal plan items added to your shopping list.");
 }
 
   async function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
