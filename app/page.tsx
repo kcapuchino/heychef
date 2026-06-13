@@ -2420,12 +2420,17 @@ setNewShoppingItem("");
 
               <div className="flex items-center gap-3">
                 {matchingPantryItem ? (
-  <span className="text-[#6d5549]">
-    ✓ In pantry:{" "}
-    {[matchingPantryItem.quantity, matchingPantryItem.unit]
-      .filter(Boolean)
-      .join(" ") || "on hand"}
-  </span>
+  <div className="flex items-center gap-3">
+    <span className="text-[#6d5549]">
+      ✓ In pantry: {matchingPantryItem.quantity || "on hand"}
+    </span>
+
+    <button
+      className="text-[#a63a0a]"
+    >
+      Buy Anyway
+    </button>
+  </div>
 ) : isManuallyMarkedOnHand ? (
   <>
     <span className="text-[#6d5549]">✓ On hand</span>
@@ -2433,12 +2438,14 @@ setNewShoppingItem("");
     <button
       onClick={() =>
         setManuallyMarkedOnHand(
-          manuallyMarkedOnHand.filter((savedItem) => savedItem !== item)
+          manuallyMarkedOnHand.filter(
+            (savedItem) => savedItem !== item
+          )
         )
       }
       className="text-[#a63a0a]"
     >
-      Move Back to List
+      Move Back
     </button>
   </>
 ) : (
@@ -2454,7 +2461,7 @@ setNewShoppingItem("");
       onClick={() => removeShoppingItem(item)}
       className="text-[#a63a0a]"
     >
-      Remove
+      Remove Item
     </button>
   </>
 )}
