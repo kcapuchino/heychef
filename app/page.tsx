@@ -4734,9 +4734,16 @@ Bake for 25 minutes`}
   []
 ).map((recipe) => (
       <div
-  key={recipe.mealPlanId}
-  onClick={() => setSelectedRecipe(recipe)}
-  className="flex cursor-pointer items-center gap-3"
+ key={recipe.mealPlanId}
+onClick={() => {
+  setSelectedRecipe(recipe);
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}}
+className="flex cursor-pointer items-center gap-3"
 >
   <img
     src={recipe.image || placeholderImage}
