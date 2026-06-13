@@ -1732,8 +1732,8 @@ function BottomNav() {
         onClick={goAllRecipes}
         className={
           currentPage === "recipes"
-            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
-            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+            ? "rounded-2xl px-2 py-2 font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2  text-[#a63a0a]"
         }
       >
         🍳<br />Recipes
@@ -1743,8 +1743,8 @@ function BottomNav() {
         onClick={goMealPlanner}
         className={
           currentPage === "planner"
-            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
-            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+            ? "rounded-2xl px-2 py-2 font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2  text-[#a63a0a]"
         }
       >
         📅<br />Planner
@@ -1762,7 +1762,7 @@ function BottomNav() {
       });
     }, 300);
   }}
-  className="flex h-14 w-14 items-center justify-center rounded-full bg-[#a63a0a] text-white shadow-lg"
+  className="flex h-12 w-12 items-center justify-center rounded-full bg-[#a63a0a] text-4xl leading-none text-white shadow-lg"
 >
   +
 </button>
@@ -1771,8 +1771,8 @@ function BottomNav() {
         onClick={goShoppingList}
         className={
           currentPage === "shopping"
-            ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
-            : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+            ? "rounded-2xl px-2 py-2 font-bold text-[#a63a0a]"
+            : "rounded-2xl px-2 py-2 text-[#a63a0a]"
         }
       >
         🛒<br />Shopping
@@ -1782,8 +1782,8 @@ function BottomNav() {
   onClick={goPantry}
   className={
     currentPage === "pantry"
-      ? "rounded-2xl px-2 py-2 text-sm font-bold text-[#a63a0a]"
-      : "rounded-2xl px-2 py-2 text-sm text-[#a63a0a]"
+      ? "rounded-2xl px-2 py-2 font-bold text-[#a63a0a]"
+      : "rounded-2xl px-2 py-2 text-[#a63a0a]"
   }
 >
   🥫<br />Pantry
@@ -4765,6 +4765,10 @@ Bake for 25 minutes`}
       setShowPantry(false);
       setShowMealPlanner(true);
       setShowImport(false);
+
+      setTimeout(() => {
+  window.scrollTo(0, 0);
+}, 0);
     }}
     className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
   >
@@ -4790,6 +4794,10 @@ Bake for 25 minutes`}
       setShowPantry(false);
       setShowMealPlanner(true);
       setShowImport(false);
+
+      setTimeout(() => {
+  window.scrollTo(0, 0);
+}, 0);
     }}
     className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-left"
   >
