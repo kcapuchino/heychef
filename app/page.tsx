@@ -222,6 +222,13 @@ const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 const settingsRef = useRef<HTMLDivElement | null>(null);
 const [showProfile, setShowProfile] = useState(false);
 
+const neededShoppingListCount = shoppingList.filter((item) => {
+  const matchingPantryItem = getMatchingPantryItem(item);
+  const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+
+  return !matchingPantryItem && !isManuallyMarkedOnHand;
+}).length;
+
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = recipes
   .filter((recipe) => recipe.isFavorite)
@@ -1932,7 +1939,7 @@ if (showProfile) {
           : "text-[#a63a0a]"
       }
     >
-      Shopping List ({shoppingList.length})
+      Shopping List ({neededShoppingListCount})
     </button>
 
     <button
@@ -2344,7 +2351,7 @@ setNewShoppingItem("");
           : "text-[#a63a0a]"
       }
     >
-      Shopping List ({shoppingList.length})
+      Shopping List ({neededShoppingListCount})
     </button>
 
     <button
@@ -2716,7 +2723,7 @@ if (showPantry) {
           : "text-[#a63a0a]"
       }
     >
-      Shopping List ({shoppingList.length})
+      Shopping List ({neededShoppingListCount})
     </button>
 
     <button
@@ -3225,7 +3232,7 @@ setNewPantryCategory("Other");
           : "text-[#a63a0a]"
       }
     >
-      Shopping List ({shoppingList.length})
+      Shopping List ({neededShoppingListCount})
     </button>
 
     <button
@@ -3580,7 +3587,7 @@ Bake for 25 minutes`}
           : "text-[#a63a0a]"
       }
     >
-      Shopping List ({shoppingList.length})
+      Shopping List ({neededShoppingListCount})
     </button>
 
     <button
@@ -4005,7 +4012,7 @@ Bake for 25 minutes`}
           : "text-[#a63a0a]"
       }
     >
-      Shopping List ({shoppingList.length})
+      Shopping List ({neededShoppingListCount})
     </button>
 
     <button
