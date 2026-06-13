@@ -257,6 +257,7 @@ const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
 const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
 const [pantryModalUnit, setPantryModalUnit] = useState("package");
 const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
+const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
 const [shoppingSort, setShoppingSort] = useState("az");
 const [showPantry, setShowPantry] = useState(false);
 const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
@@ -2393,9 +2394,10 @@ setNewShoppingItem("");
     const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
 
     return (
-      !hidePantryItems ||
-      (!matchingPantryItem && !isManuallyMarkedOnHand)
-    );
+  !hidePantryItems ||
+  (!matchingPantryItem && !isManuallyMarkedOnHand) ||
+  buyAnywayItems.includes(item)
+);
   })
   .sort((a, b) => {
     if (shoppingSort === "za") {
@@ -2419,13 +2421,33 @@ setNewShoppingItem("");
               </label>
 
               <div className="flex items-center gap-3">
-                {matchingPantryItem ? (
+                {buyAnywayItems.includes(item) ? (
+  <>
+    <span className="text-[#6d5549]">
+      ✓ In pantry: {matchingPantryItem?.quantity || "on hand"}
+    </span>
+
+    <button
+      onClick={() => {
+        setBuyAnywayItems(
+          buyAnywayItems.filter((savedItem) => savedItem !== item)
+        );
+      }}
+      className="text-[#a63a0a]"
+    >
+      Move Back
+    </button>
+  </>
+) : matchingPantryItem ? (
   <div className="flex items-center gap-3">
     <span className="text-[#6d5549]">
       ✓ In pantry: {matchingPantryItem.quantity || "on hand"}
     </span>
 
     <button
+      onClick={() => {
+        setBuyAnywayItems([...buyAnywayItems, item]);
+      }}
       className="text-[#a63a0a]"
     >
       Buy Anyway
@@ -2436,16 +2458,14 @@ setNewShoppingItem("");
     <span className="text-[#6d5549]">✓ On hand</span>
 
     <button
-      onClick={() =>
+      onClick={() => {
         setManuallyMarkedOnHand(
-          manuallyMarkedOnHand.filter(
-            (savedItem) => savedItem !== item
-          )
-        )
-      }
+          manuallyMarkedOnHand.filter((savedItem) => savedItem !== item)
+        );
+      }}
       className="text-[#a63a0a]"
     >
-      Move Back
+      Move Back to List
     </button>
   </>
 ) : (
