@@ -105,16 +105,25 @@ function getHomeMenuLabel(day: "today" | "tomorrow") {
 }
 function getWeekStartDate(week: "current" | "next") {
   const today = new Date();
-  const monday = new Date(today);
-  const diff = today.getDay() === 0 ? -6 : 1 - today.getDay();
 
-  monday.setDate(today.getDate() + diff);
+  const monday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+
+  const diff = monday.getDay() === 0 ? -6 : 1 - monday.getDay();
+  monday.setDate(monday.getDate() + diff);
 
   if (week === "next") {
     monday.setDate(monday.getDate() + 7);
   }
 
-  return monday.toISOString().split("T")[0];
+  const year = monday.getFullYear();
+  const month = String(monday.getMonth() + 1).padStart(2, "0");
+  const day = String(monday.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 function getTodayLabel() {
@@ -585,7 +594,9 @@ if (item.week_start === currentWeekStart) {
   plannerWeek = "current";
 }
 
-if (item.week_start === nextWeekStart) {
+if (item.week_start === currentWeekStart) {
+  plannerWeek = "current";
+} else if (item.week_start === nextWeekStart) {
   plannerWeek = "next";
 }
 
@@ -1225,9 +1236,9 @@ week_start: getWeekStartDate(activePlannerWeek),
   mealPlanId: string
 ) {
   const { error } = await supabase
-    .from("meal_plan")
-    .delete()
-    .eq("id", mealPlanId);
+  .from("meal_plan")
+  .delete()
+  .eq("week_start", getWeekStartDate(activePlannerWeek));
 
   if (error) {
     alert(error.message);
@@ -1258,13 +1269,15 @@ week_start: getWeekStartDate(activePlannerWeek),
 
   setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
 
-  const updatedMealPlan: Record<string, PlannedRecipe[]> = {};
+  const updatedMealPlan = { ...mealPlan };
 
-  Object.entries(mealPlan).forEach(([key, plannedRecipes]) => {
-    updatedMealPlan[key] = plannedRecipes.filter(
-      (recipe) => recipe.id !== recipeId
-    );
-  });
+Object.keys(updatedMealPlan).forEach((key) => {
+  if (key.startsWith(`${activePlannerWeek}-`)) {
+    delete updatedMealPlan[key];
+  }
+});
+
+setMealPlan(updatedMealPlan);
 
   setMealPlan(updatedMealPlan);
   setSelectedRecipe(null);
