@@ -1762,7 +1762,7 @@ function BottomNav() {
       });
     }, 300);
   }}
-  className="flex h-12 w-12 items-center justify-center rounded-full bg-[#a63a0a] text-4xl leading-none text-white shadow-lg"
+   className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#a63a0a] text-4xl leading-none text-white shadow-lg"
 >
   +
 </button>
@@ -4599,9 +4599,7 @@ Bake for 25 minutes`}
       />
 
       <button
-  onClick={() => {
-  setShowImport(true);
-}}
+  onClick={importRecipe}
   disabled={isImporting}
   className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
 >
@@ -4617,13 +4615,18 @@ Bake for 25 minutes`}
 
    <button
   onClick={() => {
-    createNewRecipe();
+  setShowImport(true);
+  setShowAllRecipes(false);
+  setSelectedRecipe(null);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }}
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}}
   className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
 >
   + New Recipe
