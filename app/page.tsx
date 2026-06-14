@@ -1810,7 +1810,7 @@ function renderAuthCard() {
   return (
     <>
       <h2 className="mb-2 text-3xl font-bold">
-        {authMode === "signup" ? "Ready to cook?" : "Welcome back 👋"}
+        {authMode === "signup" ? "Ready to cook?" : "Let's get cookin'"}
       </h2>
 
       <p className="mb-5 text-[#6d5549]">
