@@ -292,6 +292,30 @@ const neededShoppingListCount = shoppingList.filter((item) => {
   .slice(-6)
   .reverse();
   const homeSectionTitle = favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
+  const ingredientCounts = recipes
+  .flatMap((recipe) => recipe.ingredients)
+  .map((ingredient) => cleanPantryDisplayName(ingredient))
+  .filter(Boolean)
+  .reduce((counts: Record<string, number>, ingredient) => {
+    counts[ingredient] = (counts[ingredient] || 0) + 1;
+    return counts;
+  }, {});
+
+const mostUsedIngredients = Object.entries(ingredientCounts)
+  .sort((a, b) => b[1] - a[1])
+  .slice(0, 3)
+  .map(([name]) => name);
+
+const readyToCookRecipes = recipes.filter((recipe) =>
+  recipe.ingredients.some((ingredient) => getMatchingPantryItem(ingredient))
+).length;
+
+const missingFromFavorites = favoriteRecipes
+  .flatMap((recipe) => recipe.ingredients)
+  .map((ingredient) => cleanPantryDisplayName(ingredient))
+  .filter((ingredient) => !getMatchingPantryItem(ingredient))
+  .filter((ingredient, index, array) => array.indexOf(ingredient) === index)
+  .slice(0, 2);
   const filteredRecipes = recipes
   .filter((recipe) =>
     categoryFilter === "all"
@@ -4896,6 +4920,82 @@ Bake for 25 minutes`}
   </button>
     </div>
   </section>
+
+  <section className="mb-8 rounded-[2rem] border border-[#cfe3bf] bg-[#fbfff7] p-6 shadow-lg">
+  <p className="mb-5 text-sm uppercase tracking-[0.3em] text-[#3f7f32]">
+    Pantry Snapshot
+  </p>
+
+  <div className="grid gap-6 md:grid-cols-3">
+    <div className="flex gap-4">
+      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#e4f1dc] text-3xl">
+  🥫
+</div>
+
+      <div>
+        <h2 className="mb-2 text-2xl font-bold">
+          Your kitchen looks good!
+        </h2>
+        <p className="text-[#6d5549]">
+  You have pantry matches across {readyToCookRecipes} saved recipes.
+</p>
+
+<p className="mt-2 text-sm text-[#3f7f32]">
+  🛒 {neededShoppingListCount} items still needed.
+</p>
+      </div>
+    </div>
+
+    <div className="border-t border-[#d8e8ce] pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+      <h3 className="mb-3 text-sm uppercase tracking-[0.2em] text-[#3f7f32]">
+        Most Used Ingredients
+      </h3>
+
+      <ul className="space-y-2 font-semibold">
+        {mostUsedIngredients.length > 0 ? (
+          mostUsedIngredients.map((ingredient, index) => (
+            <li key={ingredient} className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
+                {index === 0 ? "🍅" : index === 1 ? "🧄" : "🍚"}
+              </span>
+              <span>{ingredient}</span>
+            </li>
+          ))
+        ) : (
+          <li className="text-[#6d5549]">Add recipes to see trends.</li>
+        )}
+      </ul>
+    </div>
+
+    <div className="border-t border-[#d8e8ce] pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+      <h3 className="mb-3 text-sm uppercase tracking-[0.2em] text-[#3f7f32]">
+        Missing From Favorites
+      </h3>
+
+      <ul className="mb-4 space-y-2 font-semibold">
+        {missingFromFavorites.length > 0 ? (
+          missingFromFavorites.map((ingredient, index) => (
+            <li key={ingredient} className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
+                {index === 0 ? "🛒" : "✨"}
+              </span>
+              <span>{ingredient}</span>
+            </li>
+          ))
+        ) : (
+          <li className="text-[#6d5549]">Your favorites are looking stocked.</li>
+        )}
+      </ul>
+
+      <button
+        onClick={goPantry}
+        className="rounded-full border border-[#3f7f32] bg-white px-5 py-2 font-semibold text-[#3f7f32]"
+      >
+        View Pantry
+      </button>
+    </div>
+  </div>
+</section>
 </div>
 
 
