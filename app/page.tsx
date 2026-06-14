@@ -1050,14 +1050,14 @@ function getKitchenGreeting() {
   const hour = new Date().getHours();
 
   if (hour < 12) {
-    return "☕ Espresso yourself";
+    return "☕ Espresso yourself.";
   }
 
   if (hour < 17) {
-    return "🌮 Taco 'bout lunch";
+    return "🌮 Taco 'bout lunch!";
   }
 
-  return "🥄 Whisking you a good night";
+  return "🥄 Whisking you a good night.";
 }
 
   async function toggleFavorite(recipeId: string) {
