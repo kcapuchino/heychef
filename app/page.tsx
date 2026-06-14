@@ -3189,7 +3189,7 @@ if (showProfile) {
 ) : (
   <div className="space-y-3">
     {cookingQueue
-  .slice(0, showAllCookingQueue ? cookingQueue.length : 5)
+  .slice(0, showAllCookingQueue ? cookingQueue.length : 3)
   .map((recipe) => (
     
       <div
@@ -3263,7 +3263,7 @@ if (showProfile) {
         className="mx-auto mt-4 block font-bold text-[#a63a0a]"
       >
         {showAllCookingQueue
-  ? "Show top 5 recipes"
+  ? "Show top 3 recipes"
   : `View all ${cookingQueue.length} recipes`
 }
       </button>
