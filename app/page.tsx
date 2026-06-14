@@ -1418,6 +1418,7 @@ function addToShoppingList(recipe: Recipe) {
     showToast("Please log in again.");
     return;
   }
+  showToast("Updating grocery list...");
 
   const currentMealPlanIngredients = Object.values(mealPlan)
   .flat()
@@ -1471,7 +1472,7 @@ const manualItems = (manualData || []).map((item) => item.name);
 
   setShoppingList(sorted);
 
- showToast("Grocery list updated.");
+ alert("Grocery list updated.");
 }
 
   async function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
