@@ -3079,7 +3079,7 @@ setMealPlan(updatedMealPlan);
 }}
       className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
     >
-      Reset Meal Plan
+      Reset Week
     </button>
   </div>
 </div>
