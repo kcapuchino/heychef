@@ -1057,7 +1057,7 @@ function getKitchenGreeting() {
     return "🌮 Taco 'bout lunch!";
   }
 
-  return "🥄 Whisking you a good night.";
+  return "🥄 Whisk up something good.";
 }
 
   async function toggleFavorite(recipeId: string) {
