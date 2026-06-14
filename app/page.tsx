@@ -284,6 +284,7 @@ const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 const settingsRef = useRef<HTMLDivElement | null>(null);
 const mobileMenuRef = useRef<HTMLDivElement | null>(null);
 const [showProfile, setShowProfile] = useState(false);
+const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
 
 const neededShoppingListCount = shoppingList.filter((item) => {
   const matchingPantryItem = getMatchingPantryItem(item);
@@ -384,6 +385,7 @@ const smartRestockItems = [
 
     return !alreadyInPantry && !alreadyInShoppingList;
   })
+  .filter((item) => !dismissedRestockItems.includes(item))
   .slice(0, 8);
   
   const filteredRecipes = recipes
@@ -3539,15 +3541,27 @@ if (showPantry) {
       ) : (
         <>
           {smartRestockItems.map((item) => (
-  <button
+  <div
     key={item}
-    onClick={() => addItemsToShoppingList([item])}
-    className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium transition hover:bg-[#f6e7dc]"
+    className="flex items-center overflow-hidden rounded-full bg-[#fff4ef] text-sm font-medium"
   >
-    + {item}
-  </button>
-))}
+    <button
+      onClick={() => addItemsToShoppingList([item])}
+      className="px-4 py-2 hover:bg-[#f6e7dc]"
+    >
+      Add {item}
+    </button>
 
+    <button
+  onClick={() =>
+    setDismissedRestockItems((current) => [...current, item])
+  }
+  className="px-3 py-2 text-[#a63a0a] hover:bg-[#f6e7dc]"
+>
+  ✕
+</button>
+  </div>
+))}
           <button
             onClick={() => addItemsToShoppingList(smartRestockItems)}
             className="rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
