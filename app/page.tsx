@@ -301,10 +301,26 @@ const neededShoppingListCount = shoppingList.filter((item) => {
     return counts;
   }, {});
 
+  function cleanIngredientName(name: string) {
+  return name
+    .replace(/^packed\s+/i, "")
+    .replace(/^light\s+/i, "")
+    .replace(/^dark\s+/i, "")
+    .replace(/^table\s+/i, "")
+    .replace(/^freshly baked\s+/i, "")
+    .replace(/^thick-cut\s+/i, "")
+    .replace(/^loaf\s+/i, "")
+    .replace(/^to\s+\d+\s+slices?\s+/i, "")
+    .replace(/\)/g, "")
+    .replace(/\(/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 const mostUsedIngredients = Object.entries(ingredientCounts)
   .sort((a, b) => b[1] - a[1])
-  .slice(0, 3)
-  .map(([name]) => name);
+  .slice(0, 3);
 
 const readyToCookRecipes = recipes.filter((recipe) =>
   recipe.ingredients.some((ingredient) => getMatchingPantryItem(ingredient))
@@ -315,7 +331,7 @@ const missingFromFavorites = favoriteRecipes
   .map((ingredient) => cleanPantryDisplayName(ingredient))
   .filter((ingredient) => !getMatchingPantryItem(ingredient))
   .filter((ingredient, index, array) => array.indexOf(ingredient) === index)
-  .slice(0, 2);
+  .slice(0, 3);
   const filteredRecipes = recipes
   .filter((recipe) =>
     categoryFilter === "all"
@@ -4953,33 +4969,46 @@ Bake for 25 minutes`}
 
       <ul className="space-y-2 font-semibold">
         {mostUsedIngredients.length > 0 ? (
-          mostUsedIngredients.map((ingredient, index) => (
-            <li key={ingredient} className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
-                {index === 0 ? "🍅" : index === 1 ? "🧄" : "🍚"}
-              </span>
-              <span>{ingredient}</span>
-            </li>
-          ))
-        ) : (
-          <li className="text-[#6d5549]">Add recipes to see trends.</li>
-        )}
+  mostUsedIngredients.map(([ingredient, count], index) => (
+    <li
+      key={ingredient}
+      className="flex items-center justify-between border-b border-[#d8e8ce] py-2 last:border-0"
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white font-bold shadow-sm">
+          {index + 1}
+        </span>
+
+        <span>{cleanIngredientName(ingredient)}</span>
+      </div>
+
+      <span className="text-sm text-[#6d5549]">
+        Used in {count} recipes
+      </span>
+    </li>
+  ))
+) : (
+  <li className="text-[#6d5549]">
+    Add recipes to see trends.
+  </li>
+)}
+      
       </ul>
     </div>
 
     <div className="border-t border-[#d8e8ce] pt-5 md:border-l md:border-t-0 md:pl-6 md:pt-0">
       <h3 className="mb-3 text-sm uppercase tracking-[0.2em] text-[#3f7f32]">
-        Missing From Favorites
+        Pantry Gaps
       </h3>
 
       <ul className="mb-4 space-y-2 font-semibold">
         {missingFromFavorites.length > 0 ? (
           missingFromFavorites.map((ingredient, index) => (
             <li key={ingredient} className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm">
-                {index === 0 ? "🛒" : "✨"}
-              </span>
-              <span>{ingredient}</span>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
+  🛒
+</span>
+              <span>{cleanIngredientName(ingredient)}</span>
             </li>
           ))
         ) : (
