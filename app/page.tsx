@@ -307,6 +307,7 @@ const neededShoppingListCount = shoppingList.filter((item) => {
     return counts;
   }, {});
 
+  
   function cleanIngredientName(name: string) {
   return name
     .replace(/^packed\s+/i, "")
@@ -340,8 +341,14 @@ const missingFromFavorites = favoriteRecipes
   .slice(0, 3);
 
 
-  const smartRestockItems = recipes
-  .flatMap((recipe) => recipe.ingredients)
+  const plannedIngredients = Object.values(mealPlan)
+  .flat()
+  .flatMap((recipe: any) => recipe.ingredients || []);
+
+const smartRestockItems = [
+  ...favoriteRecipes.flatMap((recipe) => recipe.ingredients || []),
+  ...plannedIngredients,
+]
   .map((ingredient) => cleanPantryDisplayName(ingredient))
   .map((item) => cleanIngredientName(item))
   .map((item) =>
@@ -2617,99 +2624,106 @@ if (showProfile) {
 </nav>
           
 
-          <div className="mb-8 flex items-start justify-between gap-3">
-  <div>
-    <h1 className="text-4xl font-bold md:text-5xl">Shopping List</h1>
+          <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
+  <div className="mb-6 flex items-start justify-between gap-3">
+    <div>
+      <h1 className="text-4xl font-bold md:text-5xl">Shopping List</h1>
 
-   <p className="mt-2 max-w-xs text-[#6d5549]">
-  Review ingredients you need and move items into your pantry.
-</p>
+      <p className="mt-2 max-w-xs text-[#6d5549]">
+        Review ingredients you need and move items into your pantry.
+      </p>
+    </div>
+
+    <button
+      onClick={async () => {
+        if (confirm("Clear your shopping list?")) {
+          const { error } = await supabase
+            .from("shopping_items")
+            .delete()
+            .neq("id", "00000000-0000-0000-0000-000000000000");
+
+          if (error) {
+            alert(error.message);
+            return;
+          }
+
+          setShoppingList([]);
+        }
+      }}
+      className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      🗑 Clear List
+    </button>
   </div>
 
-  <button
-    onClick={async () => {
-      if (confirm("Clear your shopping list?")) {
-  const { error } = await supabase
-    .from("shopping_items")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-    
+  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+    <input
+      value={newShoppingItem}
+      onChange={(e) => setNewShoppingItem(e.target.value)}
+      placeholder="🛒  Add grocery item"
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    />
 
-  if (error) {
-    alert(error.message);
-    return;
-  }
+    <button
+      onClick={async () => {
+        if (!newShoppingItem.trim()) return;
 
-  setShoppingList([]);
-}
-    }}
-    className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-  >
-    🗑 Clear List
-  </button>
-</div>
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-<div className="mb-6 grid gap-3 md:grid-cols-[1fr_auto]">
-  <input
-    value={newShoppingItem}
-    onChange={(e) => setNewShoppingItem(e.target.value)}
-    placeholder="Add grocery item"
-    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-  />
+        if (!user) {
+          alert("Please log in again.");
+          return;
+        }
 
-  <button
-    onClick={async () => {
-      if (!newShoppingItem.trim()) return;
+        const { data, error } = await supabase
+          .from("shopping_items")
+          .insert({
+            user_id: user.id,
+            name: newShoppingItem.trim(),
+          })
+          .select()
+          .single();
 
-      const {
-  data: { user },
-} = await supabase.auth.getUser();
+        if (error) {
+          alert(error.message);
+          return;
+        }
 
-if (!user) {
-  alert("Please log in again.");
-  return;
-}
+        setShoppingList([data.name, ...shoppingList]);
+        setNewShoppingItem("");
+      }}
+      className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
+    >
+      Add Item
+    </button>
+  </div>
+</section>
 
-const { data, error } = await supabase
-  .from("shopping_items")
-  .insert({
-    user_id: user.id,
-    name: newShoppingItem.trim(),
-  })
-  .select()
-  .single();
+<section className="mb-8 rounded-[2rem] bg-white p-4 shadow-lg">
+  <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
+    <select
+      value={shoppingSort}
+      onChange={(e) => setShoppingSort(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="az">A–Z</option>
+      <option value="za">Z–A</option>
+    </select>
 
-if (error) {
-  alert(error.message);
-  return;
-}
+    <button
+      onClick={() => setHidePantryItems(!hidePantryItems)}
+      className="rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+    >
+      {hidePantryItems ? "Show Pantry Items" : "Hide Pantry Items"}
+    </button>
 
-setShoppingList([data.name, ...shoppingList]);
-setNewShoppingItem("");
-    }}
-    className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-  >
-    Add Item
-  </button>
-</div>
-
-<div className="mb-8 grid gap-3 md:grid-cols-2">
-  <select
-    value={shoppingSort}
-    onChange={(e) => setShoppingSort(e.target.value)}
-    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-  >
-    <option value="az">A–Z</option>
-    <option value="za">Z–A</option>
-  </select>
-
-  <button
-    onClick={() => setHidePantryItems(!hidePantryItems)}
-    className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-  >
-    {hidePantryItems ? "Show Pantry Items" : "Hide Pantry Items"}
-  </button>
-</div>
+    <div className="rounded-full bg-[#f8efe6] px-6 py-3 text-center font-bold">
+      {shoppingList.length} Items
+    </div>
+  </div>
+</section>
 
 <div className="rounded-3xl bg-white p-6 shadow">
   {shoppingList.length === 0 ? (
@@ -3022,7 +3036,8 @@ setNewShoppingItem("");
 </nav>
   
 
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
+  <div className="mb-6 flex items-start justify-between gap-3">
   <div>
     <h1 className="text-4xl font-bold md:text-5xl">Weekly Meal Planner</h1>
     <p className="mt-2 text-[#6d5549]">
@@ -3035,7 +3050,7 @@ setNewShoppingItem("");
       onClick={addNewMealPlanItemsToShoppingList}
       className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
     >
-      Add New Items to Shopping List
+     Add to List
     </button>
 
     <button
@@ -3068,7 +3083,7 @@ setMealPlan(updatedMealPlan);
     </button>
   </div>
 </div>
-
+</div>
 {plannerPopup && (
   <section className="fixed inset-0 z-50 flex items-end bg-black/30 px-4 pb-6 md:items-center md:justify-center md:pb-0">
     <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
@@ -3179,6 +3194,7 @@ setMealPlan(updatedMealPlan);
                   {plannedRecipes.length}/3
                 </span>
               </div>
+              
 
               {plannedRecipes.length === 0 ? (
                 <p className="text-sm text-[#6d5549]">No recipes added.</p>
@@ -3474,8 +3490,7 @@ if (showPantry) {
   setAddAnotherPantryItem(false);
   setShowPantryModal(true);
 }}
-        className="rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
-      >
+        className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg md:w-auto"      >
         + Add Items
       </button>
     </div>
@@ -3852,32 +3867,39 @@ if (showPantry) {
 </nav>
 
 
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-  <div className="w-full">
-    <h1 className="text-4xl font-bold md:text-5xl">All Recipes</h1>
-    <p className="mt-2 text-[#6d5549]">
-  Build your personal cookbook with recipes imported from anywhere or created from scratch.
+        <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
+  <div className="mb-6 flex items-start justify-between gap-3">
+<div>
+    <h1 className="text-4xl font-bold md:text-5xl">
+      All Recipes
+    </h1>
+
+    <p className="mt-2 max-w-xl text-[#6d5549]">
+      Build your personal cookbook with recipes imported from anywhere or created from scratch.
     </p>
   </div>
 
-  <div className="w-full flex flex-col gap-3 md:w-auto md:flex-row">
+  <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
   <button
     onClick={() => setShowImport(true)}
-    className="w-full rounded-full bg-[#a63a0a] px-8 py-4 text-white md:w-auto"
+    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white md:w-auto"
   >
     Import Recipe
   </button>
 
   <button
     onClick={createNewRecipe}
-    className="w-full rounded-full bg-white px-8 py-4 text-[#a63a0a] md:w-auto"
+    className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] md:w-auto"
   >
-    Create New Recipe
+    Create Recipe
   </button>
 </div>
 </div>
+</section>
 
-<div className="mb-8 grid gap-3 md:grid-cols-2">
+
+<section className="mb-8 rounded-[2rem] bg-white p-4 shadow-lg">
+  <div className="grid gap-3 md:grid-cols-2">
   <select
     value={categoryFilter}
     onChange={(e) => setCategoryFilter(e.target.value)}
@@ -3905,6 +3927,7 @@ if (showPantry) {
     <option value="za">Z–A</option>
   </select>
 </div>
+</section>
 
         {showImport && (
           <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
@@ -4053,6 +4076,7 @@ Bake for 25 minutes`}
         )}
         
       </section>
+      <BottomNav />
     </main>
   );
 }
@@ -5048,7 +5072,7 @@ Bake for 25 minutes`}
 
       <button
         onClick={goPantry}
-        className="rounded-full border border-[#3f7f32] bg-white px-5 py-2 font-semibold text-[#3f7f32]"
+        className="w-full md:w-auto rounded-full border border-[#3f7f32] bg-white px-5 py-2 font-semibold text-[#3f7f32]"
       >
         View Pantry
       </button>
