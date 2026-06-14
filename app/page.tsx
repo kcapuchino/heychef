@@ -247,6 +247,9 @@ const [recipeSort, setRecipeSort] = useState("newest");
 
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [hidePantryItems, setHidePantryItems] = useState(true);
+  const [pantrySearch, setPantrySearch] = useState("");
+const [expandedPantryCategory, setExpandedPantryCategory] = useState<string | null>("all");
+const [editingPantryItemId, setEditingPantryItemId] = useState<string | null>(null);
   const [newShoppingItem, setNewShoppingItem] = useState("");
   const [newPantryItem, setNewPantryItem] = useState("");
  const [newPantryQuantity, setNewPantryQuantity] = useState("");
@@ -254,9 +257,12 @@ const [newPantryCategory, setNewPantryCategory] = useState("Other");
 const [newPantryUnit, setNewPantryUnit] = useState("");
 const [showPantryModal, setShowPantryModal] = useState(false);
 const [pantryModalItem, setPantryModalItem] = useState("");
+const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
 const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
 const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
 const [pantryModalUnit, setPantryModalUnit] = useState("package");
+const [pantryModalCategory, setPantryModalCategory] = useState("Other");
+const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
 const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
 const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
 const [checkedRecipeIngredients, setCheckedRecipeIngredients] = useState<string[]>([]);
@@ -332,6 +338,47 @@ const missingFromFavorites = favoriteRecipes
   .filter((ingredient) => !getMatchingPantryItem(ingredient))
   .filter((ingredient, index, array) => array.indexOf(ingredient) === index)
   .slice(0, 3);
+
+
+  const smartRestockItems = recipes
+  .flatMap((recipe) => recipe.ingredients)
+  .map((ingredient) => cleanPantryDisplayName(ingredient))
+  .map((item) => cleanIngredientName(item))
+  .map((item) =>
+    item
+      .replace(/Fresh /gi, "")
+      .replace(/Frozen /gi, "")
+      .replace(/Or .*$/gi, "")
+      .replace(/,.*$/g, "")
+      .trim()
+  )
+  .filter(Boolean)
+  .filter((item, index, array) => array.indexOf(item) === index)
+  .filter((item) => {
+    const cleanedSuggestion = normalizeItemName(item);
+
+    const alreadyInPantry = pantryItems.some((pantryItem) => {
+      const cleanedPantryItem = normalizeItemName(pantryItem.name);
+
+      return (
+        cleanedPantryItem.includes(cleanedSuggestion) ||
+        cleanedSuggestion.includes(cleanedPantryItem)
+      );
+    });
+
+    const alreadyInShoppingList = shoppingList.some((shoppingItem) => {
+      const cleanedShoppingItem = normalizeItemName(shoppingItem);
+
+      return (
+        cleanedShoppingItem.includes(cleanedSuggestion) ||
+        cleanedSuggestion.includes(cleanedShoppingItem)
+      );
+    });
+
+    return !alreadyInPantry && !alreadyInShoppingList;
+  })
+  .slice(0, 8);
+  
   const filteredRecipes = recipes
   .filter((recipe) =>
     categoryFilter === "all"
@@ -1677,6 +1724,41 @@ async function savePantryModal() {
 
   if (!pantryModalItem.trim()) return;
 
+  if (editingPantryModalId) {
+    const { error } = await supabase
+      .from("pantry_items")
+      .update({
+        name: pantryModalItem.trim(),
+        quantity: pantryModalQuantity.trim() || "1",
+        unit: pantryModalUnit,
+        category: pantryModalCategory,
+      })
+      .eq("id", editingPantryModalId);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setPantryItems(
+      pantryItems.map((item) =>
+        item.id === editingPantryModalId
+          ? {
+              ...item,
+              name: pantryModalItem.trim(),
+              quantity: pantryModalQuantity.trim() || "1",
+              unit: pantryModalUnit,
+              category: pantryModalCategory,
+            }
+          : item
+      )
+    );
+
+    setEditingPantryModalId(null);
+    setShowPantryModal(false);
+    return;
+  }
+
   const { data, error } = await supabase
     .from("pantry_items")
     .insert({
@@ -1684,7 +1766,7 @@ async function savePantryModal() {
       name: pantryModalItem.trim(),
       quantity: pantryModalQuantity.trim() || "1",
       unit: pantryModalUnit,
-      category: "Other",
+      category: pantryModalCategory,
     })
     .select()
     .single();
@@ -1704,10 +1786,16 @@ async function savePantryModal() {
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
+
+  if (addAnotherPantryItem) {
+    setPantryModalItem("");
+    setPantryModalQuantity("1");
+    setPantryModalUnit("package");
+    setPantryModalCategory("Other");
+    return;
+  }
+
   setShowPantryModal(false);
-  setPantryModalItem("");
-  setPantryModalQuantity("1");
-  setPantryModalUnit("package");
 }
 
 function goAllRecipes() {
@@ -1815,6 +1903,114 @@ async function resetPassword() {
   }
 
   alert("Password reset email sent.");
+}
+function PantryModal() {
+  if (!showPantryModal) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0">
+      <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-2xl font-bold">
+  {editingPantryModalId ? "Edit Pantry Item" : "Add Pantry Item"}
+</h2>
+
+          <button
+            onClick={() => setShowPantryModal(false)}
+            className="text-3xl text-[#a63a0a]"
+          >
+            ×
+          </button>
+        </div>
+
+        <input
+          value={pantryModalItem}
+          onChange={(e) => setPantryModalItem(e.target.value)}
+          placeholder="Item name"
+          className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+        />
+
+        <input
+          value={pantryModalQuantity}
+          onChange={(e) => setPantryModalQuantity(e.target.value)}
+          placeholder="Quantity"
+          className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+        />
+
+        <select
+          value={pantryModalUnit}
+          onChange={(e) => setPantryModalUnit(e.target.value)}
+          className="mb-3 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+        >
+          <option value="">Unit</option>
+          <option value="package">package</option>
+          <option value="bag">bag</option>
+          <option value="box">box</option>
+          <option value="jar">jar</option>
+          <option value="bottle">bottle</option>
+          <option value="can">can</option>
+          <option value="carton">carton</option>
+          <option value="loaf">loaf</option>
+          <option value="bunch">bunch</option>
+          <option value="gallon">gallon</option>
+          <option value="lb">lb</option>
+          <option value="oz">oz</option>
+        </select>
+
+        <select
+          value={pantryModalCategory}
+          onChange={(e) => setPantryModalCategory(e.target.value)}
+          className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+        >
+          <option value="Produce">Produce</option>
+          <option value="Refrigerated">Refrigerated</option>
+          <option value="Frozen">Frozen</option>
+          <option value="Meat & Protein">Meat & Protein</option>
+          <option value="Canned Goods">Canned Goods</option>
+          <option value="Grains & Pasta">Grains & Pasta</option>
+          <option value="Baking">Baking</option>
+          <option value="Spices">Spices</option>
+          <option value="Beverages">Beverages</option>
+          <option value="Condiments">Condiments</option>
+          <option value="Snacks">Snacks</option>
+          <option value="Other">Other</option>
+        </select>
+
+        {!editingPantryModalId && (
+  <label className="mb-5 flex items-center gap-2 text-sm text-[#6d5549]">
+    <input
+      type="checkbox"
+      checked={addAnotherPantryItem}
+      onChange={(e) => setAddAnotherPantryItem(e.target.checked)}
+    />
+    Add another item after saving
+  </label>
+)}
+{pantryModalShoppingItem && (
+  <button
+    onClick={() => {
+      setManuallyMarkedOnHand([
+        ...manuallyMarkedOnHand,
+        pantryModalShoppingItem,
+      ]);
+
+      setShowPantryModal(false);
+      setPantryModalShoppingItem("");
+    }}
+    className="mb-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+  >
+    Mark On Hand
+  </button>
+)}
+        <button
+          onClick={savePantryModal}
+          className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+        >
+          {editingPantryModalId ? "Save Changes" : "Save Item"}
+        </button>
+      </div>
+    </div>
+  );
 }
 function BottomNav() {
   return (
@@ -2437,6 +2633,7 @@ if (showProfile) {
     .from("shopping_items")
     .delete()
     .neq("id", "00000000-0000-0000-0000-000000000000");
+    
 
   if (error) {
     alert(error.message);
@@ -2564,7 +2761,7 @@ setNewShoppingItem("");
   onChange={(e) => toggleShoppingItemChecked(item, e.target.checked)}
 />
                 <span>
-  {item}
+  {cleanIngredientName(cleanPantryDisplayName(item))}
   {count > 1 ? ` ×${count}` : ""}
 </span>
               </label>
@@ -2627,11 +2824,16 @@ setNewShoppingItem("");
     </button>
 
     <button
-      onClick={() => removeShoppingItem(item)}
-      className="text-[#a63a0a]"
-    >
-      Remove Item
-    </button>
+  onClick={() => {
+    if (!confirm(`Remove ${item} from your shopping list?`))
+      return;
+
+    removeShoppingItem(item);
+  }}
+  className="text-[#a63a0a]"
+>
+  Remove Item
+</button>
   </>
 )}
               </div>
@@ -2642,79 +2844,9 @@ setNewShoppingItem("");
   )}
 </div>
         </section>
+        <PantryModal />
 <BottomNav />
-{showPantryModal && (
-  <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0">
-    <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
-      <h2 className="mb-4 text-2xl font-bold">Add to Pantry</h2>
 
-      <input
-        value={pantryModalItem}
-        onChange={(e) => setPantryModalItem(e.target.value)}
-        placeholder="Item name"
-        className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-      />
-
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        <input
-          value={pantryModalQuantity}
-          onChange={(e) => setPantryModalQuantity(e.target.value)}
-          placeholder="Qty"
-          className="rounded-full border border-[#ead7c8] px-5 py-3"
-        />
-
-        <select
-          value={pantryModalUnit}
-          onChange={(e) => setPantryModalUnit(e.target.value)}
-          className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-        >
-          <option value="">Unit</option>
-<option value="package">package</option>
-<option value="bag">bag</option>
-<option value="box">box</option>
-<option value="jar">jar</option>
-<option value="bottle">bottle</option>
-<option value="can">can</option>
-<option value="carton">carton</option>
-<option value="loaf">loaf</option>
-<option value="bunch">bunch</option>
-<option value="gallon">gallon</option>
-<option value="lb">lb</option>
-<option value="oz">oz</option>
-        </select>
-      </div>
-
-      <div className="flex justify-end gap-3">
-  <button
-    onClick={() => setShowPantryModal(false)}
-    className="rounded-full border border-[#ead7c8] px-5 py-3"
-  >
-    Cancel
-  </button>
-
-  <button
-    onClick={() => {
-  setManuallyMarkedOnHand([
-    ...manuallyMarkedOnHand,
-    pantryModalShoppingItem,
-  ]);
-  setShowPantryModal(false);
-}}
-    className="rounded-full border border-[#ead7c8] px-5 py-3"
-  >
-    Mark On Hand
-  </button>
-
-  <button
-    onClick={savePantryModal}
-    className="rounded-full bg-[#a63a0a] px-5 py-3 text-white"
-  >
-    Add
-  </button>
-</div>
-    </div>
-  </div>
-)}
       </main>
     );
   }
@@ -3082,11 +3214,24 @@ setMealPlan(updatedMealPlan);
 </div>
 
                         <button
-                          onClick={() => removeRecipeFromMealPlan(day.date, meal, recipe.mealPlanId)}
-                          className="shrink-0 text-[#a63a0a]"
-                        >
-                          Remove
-                        </button>
+  onClick={() => {
+    if (
+      !confirm(
+        `Remove ${recipe.title} from your meal plan?`
+      )
+    )
+      return;
+
+    removeRecipeFromMealPlan(
+      day.date,
+      meal,
+      recipe.mealPlanId
+    );
+  }}
+  className="shrink-0 text-[#a63a0a]"
+>
+  Remove
+</button>
                       </div>
                     </div>
                   ))}
@@ -3308,352 +3453,232 @@ if (showPantry) {
     </div>
   )}
 </nav>
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-  <div className="w-full">
-  <h1 className="text-4xl font-bold md:text-5xl">
-    My Pantry
-  </h1>
 
-  <p className="mt-2 text-[#6d5549]">
-    Track ingredients you already have on hand.
-  </p>
-<div className="mt-4 grid gap-3 md:grid-cols-[1.5fr_0.7fr_1fr_1fr_auto]">
-    <input
-      value={newPantryItem}
-      onChange={(e) => setNewPantryItem(e.target.value)}
-      placeholder="Add pantry item"
-      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-    />
+        <div className="mb-8">
+  <div className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 className="text-4xl font-bold md:text-5xl">My Pantry</h1>
 
-    <input
-      value={newPantryQuantity}
-      onChange={(e) => setNewPantryQuantity(e.target.value)}
-      placeholder="On Hand"
-      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-    />
-    
-<select
-  value={newPantryUnit}
-  onChange={(e) => setNewPantryUnit(e.target.value)}
-  className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+        <p className="mt-2 max-w-xl text-[#6d5549]">
+          See what you already have, find ingredients fast, and keep your kitchen organized.
+        </p>
+      </div>
+
+      <button
+       onClick={() => {
+  setPantryModalItem("");
+  setPantryModalQuantity("1");
+  setPantryModalUnit("package");
+  setPantryModalCategory("Other");
+  setAddAnotherPantryItem(false);
+  setShowPantryModal(true);
+}}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg"
+      >
+        + Add Items
+      </button>
+    </div>
+
+    <div className="mt-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
+      <div className="relative">
+        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-[#6d5549]">
+          🔍
+        </span>
+
+        <input
+          value={pantrySearch}
+          onChange={(e) => setPantrySearch(e.target.value)}
+          placeholder="Search pantry items..."
+          className="w-full rounded-full border border-[#ead7c8] bg-white py-4 pl-12 pr-5 shadow-sm outline-none focus:border-[#a63a0a]"
+        />
+      </div>
+
+      <p className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#2b1a12] shadow-sm">
+        {pantryItems.length} Items
+        <span className="mx-2 text-[#a63a0a]">•</span>
+        {[...new Set(pantryItems.map((item) => item.category))].length} Categories
+      </p>
+    </div>
+  </div>
+
+  <section className="mb-6 rounded-[2rem] border border-[#ead7c8] bg-white p-5 shadow-sm">
+  <div className="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+        Smart restock
+      </p>
+
+      <h2 className="text-xl font-bold">Restock Suggestions</h2>
+
+      <p className="text-sm text-[#6d5549]">
+        Based on favorite recipes and items not already on your shopping list.
+      </p>
+    </div>
+
+    <div className="flex flex-wrap items-center gap-2">
+      {smartRestockItems.length === 0 ? (
+        <span className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium text-[#6d5549]">
+          Nothing to restock right now
+        </span>
+      ) : (
+        <>
+          {smartRestockItems.map((item) => (
+            <span
+              key={item}
+              className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium"
+            >
+              {item}
+            </span>
+          ))}
+
+          <button
+            onClick={() => addItemsToShoppingList(smartRestockItems)}
+            className="rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
+          >
+            Add {smartRestockItems.length} to Shopping List
+          </button>
+        </>
+      )}
+    </div>
+  </div>
+</section>
+
+  {pantryItems.length === 0 ? (
+    <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm">
+      <p className="text-[#6d5549]">Your pantry is empty.</p>
+    </div>
+  ) : (
+    <section className="rounded-[2rem] border border-[#ead7c8] bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+            Inventory
+          </p>
+
+          <h2 className="text-xl font-bold">Your Pantry</h2>
+        </div>
+
+        <button
+  onClick={() =>
+    setExpandedPantryCategory(
+      expandedPantryCategory === "all" ? null : "all"
+    )
+  }
+  className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-bold text-[#a63a0a]"
 >
-  <option value="">Unit</option>
-<option value="package">package</option>
-<option value="bag">bag</option>
-<option value="box">box</option>
-<option value="jar">jar</option>
-<option value="bottle">bottle</option>
-<option value="can">can</option>
-<option value="carton">carton</option>
-<option value="loaf">loaf</option>
-<option value="bunch">bunch</option>
-<option value="gallon">gallon</option>
-<option value="lb">lb</option>
-<option value="oz">oz</option>
-</select>
-    <select
-      value={newPantryCategory}
-      onChange={(e) => setNewPantryCategory(e.target.value)}
-      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-    >
-      <option value="Produce">Produce</option>
-<option value="Refrigerated">Refrigerated</option>
-<option value="Frozen">Frozen</option>
-<option value="Meat & Protein">Meat & Protein</option>
-<option value="Canned Goods">Canned Goods</option>
-<option value="Grains & Pasta">Grains & Pasta</option>
-<option value="Baking">Baking</option>
-<option value="Spices">Spices</option>
-<option value="Beverages">Beverages</option>
-<option value="Condiments">Condiments</option>
-<option value="Snacks">Snacks</option>
-<option value="Other">Other</option>
-    </select>
+  {expandedPantryCategory === "all" ? "Collapse all" : "Expand all"}
+</button>
+      </div>
+
+      <div className="space-y-2">
+        {[...new Set(pantryItems.map((item) => item.category))]
+          .sort()
+          .map((category) => {
+            const itemsInCategory = pantryItems
+              .filter((item) => item.category === category)
+              .filter((item) =>
+                item.name.toLowerCase().includes(pantrySearch.toLowerCase())
+              )
+              .sort((a, b) => a.name.localeCompare(b.name));
+
+            if (itemsInCategory.length === 0) return null;
+
+            const isExpanded =
+  expandedPantryCategory === "all" ||
+  expandedPantryCategory === category ||
+  pantrySearch.trim().length > 0;
+
+            return (
+              <div
+                key={category}
+                className="overflow-hidden rounded-2xl border border-[#ead7c8] bg-[#fffaf5]"
+              >
+                <button
+                  onClick={() =>
+                    setExpandedPantryCategory(isExpanded ? null : category)
+                  }
+                  className="flex w-full items-center justify-between px-4 py-4 text-left transition hover:bg-[#fff4ef]"
+                >
+                  <span className="font-bold">
+                    {category}{" "}
+                    <span className="font-normal text-[#6d5549]">
+                      ({itemsInCategory.length})
+                    </span>
+                  </span>
+
+                  <span className="text-lg text-[#a63a0a]">
+                    {isExpanded ? "⌃" : "⌄"}
+                  </span>
+                </button>
+
+                {isExpanded && (
+                  <div className="divide-y divide-[#ead7c8] bg-white">
+                    {itemsInCategory.map((item) => (
+                      <div key={item.id}>
+  <div className="grid gap-2 px-4 py-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
+    <p className="font-bold">{item.name}</p>
+
+    <p className="text-[#6d5549]">
+      {item.quantity || "1"} {item.unit}
+    </p>
+
+    <button
+  onClick={() => {
+    setEditingPantryModalId(item.id);
+    setPantryModalItem(item.name);
+    setPantryModalQuantity(item.quantity || "1");
+    setPantryModalUnit(item.unit || "");
+    setPantryModalCategory(item.category || "Other");
+    setAddAnotherPantryItem(false);
+    setShowPantryModal(true);
+  }}
+  className="text-sm font-bold text-[#a63a0a]"
+>
+  Edit
+</button>
 
     <button
       onClick={async () => {
-  if (!newPantryItem.trim()) return;
+         if (!confirm(`Delete ${item.name} from your pantry?`)) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+        const { error } = await supabase
+          .from("pantry_items")
+          .delete()
+          .eq("id", item.id);
 
-  if (!user) return;
+        if (error) {
+          alert(error.message);
+          return;
+        }
 
-  const { data, error } = await supabase
-    .from("pantry_items")
-    .insert({
-      user_id: user.id,
-      name: newPantryItem.trim(),
-      quantity: newPantryQuantity.trim() || "1",
-unit: newPantryUnit,
-category: newPantryCategory,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  setPantryItems([
-    {
-      id: data.id,
-      name: data.name,
-      quantity: data.quantity,
-unit: data.unit || "",
-category: data.category,
-      createdAt: data.created_at,
-    },
-    ...pantryItems,
-  ]);
-
-  setNewPantryItem("");
-  setNewPantryQuantity("");
-setNewPantryUnit("");
-setNewPantryCategory("Other");
-}}
-      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        setPantryItems(pantryItems.filter((p) => p.id !== item.id));
+      }}
+      className="text-sm text-[#a63a0a]"
     >
-      Add Item
+      Delete
     </button>
+  </div>
+
+  {editingPantryItemId === item.id && (
+    <div className="grid gap-3 bg-[#fffaf5] px-4 py-4 md:grid-cols-4">
+      {/* paste the big edit form here */}
+    </div>
+  )}
 </div>
+                    ))}
+                  </div>
+                )}
+                
+              </div>
+            );
+          })}
+      </div>
+    </section>
+  )}
 </div>
-</div>
-
-        <div className="mb-6 mt-6 grid gap-3 md:grid-cols-2">
-          <select
-            value={pantryCategoryFilter}
-            onChange={(e) => setPantryCategoryFilter(e.target.value)}
-            className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-          >
-            <option value="all">All Categories</option>
-            <option value="Produce">Produce</option>
-<option value="Refrigerated">Refrigerated</option>
-<option value="Frozen">Frozen</option>
-<option value="Meat & Protein">Meat & Protein</option>
-<option value="Canned Goods">Canned Goods</option>
-<option value="Grains & Pasta">Grains & Pasta</option>
-<option value="Baking">Baking</option>
-<option value="Spices">Spices</option>
-<option value="Beverages">Beverages</option>
-<option value="Condiments">Condiments</option>
-<option value="Snacks">Snacks</option>
-<option value="Other">Other</option>
-          </select>
-
-          <select
-            value={pantrySort}
-            onChange={(e) => setPantrySort(e.target.value)}
-            className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-          >
-            <option value="az">A–Z</option>
-            <option value="za">Z–A</option>
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-          </select>
-        </div>
-
-        {pantryItems.length === 0 ? (
-          <div className="rounded-3xl bg-white p-8 shadow">
-            <p className="text-[#6d5549]">Your pantry is empty.</p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {[...new Set(pantryItems.map((item) => item.category))]
-  .sort()
-  .map((category) => {
-                const itemsInCategory = filteredPantryItems.filter(
-                  (item) => item.category === category
-                );
-
-                if (itemsInCategory.length === 0) return null;
-
-                return (
-                  <section key={category}>
-                    <h2 className="mb-3 text-2xl font-bold text-[#a63a0a]">
-                      {category}
-                    </h2>
-
-                    <div className="grid gap-3">
-                      {itemsInCategory.map((item) => (
-                        <div
-                          key={item.id}
-                          className="rounded-3xl bg-white p-5 shadow"
-                        >
-                          <div className="grid gap-3 md:grid-cols-4">
-                            <input
-                              value={item.name}
-                              onChange={async (e) => {
-  const newName = e.target.value;
-
-  setPantryItems(
-    pantryItems.map((p) =>
-      p.id === item.id ? { ...p, name: newName } : p
-    )
-  );
-
-  await supabase
-    .from("pantry_items")
-    .update({ name: newName })
-    .eq("id", item.id);
-}}
-                              placeholder="Item"
-                              className="rounded-xl border border-[#ead7c8] p-3"
-                            />
-
-                            <input
-                              value={item.quantity}
-                              onChange={async (e) => {
-  const newQuantity = e.target.value;
-<select
-  value={item.unit || ""}
-  onChange={async (e) => {
-    const newUnit = e.target.value;
-
-    setPantryItems(
-      pantryItems.map((p) =>
-        p.id === item.id ? { ...p, unit: newUnit } : p
-      )
-    );
-
-    await supabase
-      .from("pantry_items")
-      .update({ unit: newUnit })
-      .eq("id", item.id);
-  }}
-  className="rounded-xl border border-[#ead7c8] bg-white p-3"
->
-  <option value="">Unit</option>
-<option value="package">package</option>
-<option value="bag">bag</option>
-<option value="box">box</option>
-<option value="jar">jar</option>
-<option value="bottle">bottle</option>
-<option value="can">can</option>
-<option value="carton">carton</option>
-<option value="loaf">loaf</option>
-<option value="bunch">bunch</option>
-<option value="gallon">gallon</option>
-<option value="lb">lb</option>
-<option value="oz">oz</option>
-</select>
-  setPantryItems(
-    pantryItems.map((p) =>
-      p.id === item.id ? { ...p, quantity: newQuantity } : p
-    )
-  );
-
-  await supabase
-    .from("pantry_items")
-    .update({ quantity: newQuantity })
-    .eq("id", item.id);
-}}
-                              placeholder="On Hand"
-                              className="rounded-xl border border-[#ead7c8] p-3"
-                            />
-
-               
-
-<select
-  value={item.unit || ""}
-  onChange={async (e) => {
-    const newUnit = e.target.value;
-
-    setPantryItems(
-      pantryItems.map((p) =>
-        p.id === item.id ? { ...p, unit: newUnit } : p
-      )
-    );
-
-    await supabase
-      .from("pantry_items")
-      .update({ unit: newUnit })
-      .eq("id", item.id);
-  }}
-  className="rounded-xl border border-[#ead7c8] bg-white p-3"
->
-  <option value="">Unit</option>
-<option value="package">package</option>
-<option value="bag">bag</option>
-<option value="box">box</option>
-<option value="jar">jar</option>
-<option value="bottle">bottle</option>
-<option value="can">can</option>
-<option value="carton">carton</option>
-<option value="loaf">loaf</option>
-<option value="bunch">bunch</option>
-<option value="gallon">gallon</option>
-<option value="lb">lb</option>
-<option value="oz">oz</option>
-</select>
-
-                            <select
-                              value={item.category}
-                              onChange={async (e) => {
-  const newCategory = e.target.value;
-
-  setPantryItems(
-    pantryItems.map((p) =>
-      p.id === item.id ? { ...p, category: newCategory } : p
-    )
-  );
-
-  await supabase
-    .from("pantry_items")
-    .update({ category: newCategory })
-    .eq("id", item.id);
-}}
-                              className="rounded-xl border border-[#ead7c8] bg-white p-3"
-                            >
-                              <option value="Produce">Produce</option>
-<option value="Refrigerated">Refrigerated</option>
-<option value="Frozen">Frozen</option>
-<option value="Meat & Protein">Meat & Protein</option>
-<option value="Canned Goods">Canned Goods</option>
-<option value="Grains & Pasta">Grains & Pasta</option>
-<option value="Baking">Baking</option>
-<option value="Spices">Spices</option>
-<option value="Condiments">Condiments</option>
-<option value="Snacks">Snacks</option>
-<option value="Beverages">Beverages</option>
-<option value="Other">Other</option>
-                            </select>
-                          </div>
-
-                          <div className="mt-3 flex justify-end">
-                            <button
-                              onClick={async () => {
-  const { error } = await supabase
-    .from("pantry_items")
-    .delete()
-    .eq("id", item.id);
-
-  if (error) {
-    alert(error.message);
-    return;
-  }
-
-  setPantryItems(
-    pantryItems.filter((p) => p.id !== item.id)
-  );
-}}
-                              className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm text-[#a63a0a]"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                );
-              }
-            )}
-          </div>
-        )}
       </section>
+<PantryModal />
       <BottomNav />
     </main>
   );
@@ -4026,8 +4051,8 @@ Bake for 25 minutes`}
             ))}
           </div>
         )}
+        
       </section>
-      <BottomNav />
     </main>
   );
 }
@@ -4376,11 +4401,15 @@ Bake for 25 minutes`}
               </button>
 
               <button
-                onClick={() => deleteRecipe(selectedRecipe.id)}
-                className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-              >
-                Delete Recipe
-              </button>
+  onClick={() => {
+    if (!confirm(`Delete ${selectedRecipe.title}?`)) return;
+
+    deleteRecipe(selectedRecipe.id);
+  }}
+  className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  Delete Recipe
+</button>
             </div>
 
             <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
@@ -4489,7 +4518,8 @@ Bake for 25 minutes`}
 )}
           </div>
         </section>
-        <BottomNav />
+        
+<BottomNav />
       </main>
     );
   }
