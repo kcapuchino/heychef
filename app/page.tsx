@@ -600,6 +600,12 @@ useEffect(() => {
     }
 
     setShoppingList((data || []).map((item) => item.name));
+
+setCheckedShoppingItems(
+  (data || [])
+    .filter((item) => item.is_checked)
+    .map((item) => item.name)
+);
   }
 
   if (userEmail) {
@@ -4427,7 +4433,7 @@ Bake for 25 minutes`}
         <span>{ingredient}</span>
       </label>
     );
-  })
+  })}
 </div>
 
 <h2 className="mb-4 text-2xl font-bold">Steps</h2>
