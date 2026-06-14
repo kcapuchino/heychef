@@ -169,6 +169,7 @@ function cleanPantryDisplayName(text: string) {
 function normalizeItemName(text: string) {
   return text
     .toLowerCase()
+    .replace(/-/g, " ")
     .split(",")[0]
     .replace(/[()]/g, " ")
     .replace(/\bor\b/g, " ")
