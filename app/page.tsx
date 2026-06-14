@@ -272,7 +272,7 @@ const [pantryModalItem, setPantryModalItem] = useState("");
 const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
 const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
 const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
-const [pantryModalUnit, setPantryModalUnit] = useState("package");
+const [pantryModalUnit, setPantryModalUnit] = useState("");
 const [pantryModalCategory, setPantryModalCategory] = useState("Other");
 const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
 const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
@@ -807,10 +807,11 @@ async function saveBulkPantryEdits() {
     await supabase
       .from("pantry_items")
       .update({
-        name: item.name,
-        quantity: item.quantity,
-        category: item.category,
-      })
+  name: item.name,
+  quantity: item.quantity,
+  unit: item.unit || "",
+  category: item.category,
+})
       .eq("id", item.id);
   }
 
@@ -4192,7 +4193,7 @@ if (showPantry) {
                   <div className="divide-y divide-[#ead7c8] bg-white">
                     {itemsInCategory.map((item) => (
                       <div key={item.id}>
-  <div className="grid gap-2 px-4 py-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center">
+  <div className="grid gap-2 px-4 py-3 md:grid-cols-[1fr_180px_120px_180px_auto] md:items-center">
   
 
     {isBulkEditingPantry ? (
@@ -4225,6 +4226,34 @@ if (showPantry) {
       className="rounded-full border border-[#ead7c8] px-4 py-2"
     />
 
+    
+<select
+  value={pantryDrafts[item.id]?.unit || item.unit || ""}
+  onChange={(e) =>
+    setPantryDrafts({
+      ...pantryDrafts,
+      [item.id]: {
+        ...(pantryDrafts[item.id] || item),
+        unit: e.target.value,
+      },
+    })
+  }
+  className="rounded-full border border-[#ead7c8] px-4 py-2"
+>
+  <option value="">Unit</option>
+  <option value="count">count</option>
+  <option value="can">can</option>
+  <option value="box">box</option>
+  <option value="bag">bag</option>
+  <option value="bottle">bottle</option>
+  <option value="jar">jar</option>
+  <option value="lb">lb</option>
+  <option value="oz">oz</option>
+  <option value="cup">cup</option>
+  <option value="tbsp">tbsp</option>
+  <option value="tsp">tsp</option>
+</select>
+
     <select
       value={pantryDrafts[item.id]?.category || item.category}
       onChange={(e) =>
@@ -4252,7 +4281,7 @@ if (showPantry) {
       <option value="Other">Other</option>
     </select>
 
-    <label className="flex items-center gap-2 text-sm text-[#a63a0a]">
+    <label className="flex items-center gap-2  text-[#a63a0a]">
       <input
         type="checkbox"
         checked={(pantryDrafts[item.id] as any)?.markedForDelete || false}
