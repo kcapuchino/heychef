@@ -4427,7 +4427,7 @@ Bake for 25 minutes`}
         <span>{ingredient}</span>
       </label>
     );
-  })}
+  })
 </div>
 
 <h2 className="mb-4 text-2xl font-bold">Steps</h2>
