@@ -258,6 +258,8 @@ const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
 const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
 const [pantryModalUnit, setPantryModalUnit] = useState("package");
 const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
+const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
+const [checkedRecipeIngredients, setCheckedRecipeIngredients] = useState<string[]>([]);
 const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
 const [shoppingSort, setShoppingSort] = useState("az");
 const [showPantry, setShowPantry] = useState(false);
@@ -396,6 +398,21 @@ useEffect(() => {
     JSON.stringify(manuallyMarkedOnHand)
   );
 }, [manuallyMarkedOnHand]);
+
+useEffect(() => {
+  const saved = localStorage.getItem("hey-chef-checked-recipe-ingredients");
+
+  if (saved) {
+    setCheckedRecipeIngredients(JSON.parse(saved));
+  }
+}, []);
+
+useEffect(() => {
+  localStorage.setItem(
+    "hey-chef-checked-recipe-ingredients",
+    JSON.stringify(checkedRecipeIngredients)
+  );
+}, [checkedRecipeIngredients]);
 
 useEffect(() => {
   supabase.auth.onAuthStateChange((event) => {
@@ -1487,8 +1504,24 @@ setMealPlan(updatedMealPlan);
   setIsEditingRecipe(false);
 setEditRecipeDraft(null);
 }
+async function toggleShoppingItemChecked(item: string, checked: boolean) {
+  if (checked) {
+    setCheckedShoppingItems([...checkedShoppingItems, item]);
+  } else {
+    setCheckedShoppingItems(
+      checkedShoppingItems.filter((savedItem) => savedItem !== item)
+    );
+  }
 
+  const { error } = await supabase
+    .from("shopping_items")
+    .update({ is_checked: checked })
+    .eq("name", item);
 
+  if (error) {
+    alert(error.message);
+  }
+}
   async function removeShoppingItem(item: string) {
   const { data: row } = await supabase
     .from("shopping_items")
@@ -2479,7 +2512,11 @@ setNewShoppingItem("");
           return (
             <div key={item} className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-3">
-                <input type="checkbox" className="h-5 w-5" />
+                <input
+  type="checkbox"
+  checked={checkedShoppingItems.includes(item)}
+  onChange={(e) => toggleShoppingItemChecked(item, e.target.checked)}
+/>
                 <span>
   {item}
   {count > 1 ? ` ×${count}` : ""}
@@ -4363,14 +4400,34 @@ Bake for 25 minutes`}
             )}
 
           
-
 <div className="mb-8 space-y-3">
-  {selectedRecipe.ingredients.map((ingredient) => (
-    <label key={ingredient} className="flex items-center gap-3">
-      <input type="checkbox" className="h-5 w-5" />
-      <span>{ingredient}</span>
-    </label>
-  ))}
+  {selectedRecipe.ingredients.map((ingredient) => {
+    const checkboxKey = `${selectedRecipe.id}-${ingredient}`;
+
+    return (
+      <label key={checkboxKey} className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          className="h-5 w-5"
+          checked={checkedRecipeIngredients.includes(checkboxKey)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setCheckedRecipeIngredients([
+                ...checkedRecipeIngredients,
+                checkboxKey,
+              ]);
+            } else {
+              setCheckedRecipeIngredients(
+                checkedRecipeIngredients.filter((item) => item !== checkboxKey)
+              );
+            }
+          }}
+        />
+
+        <span>{ingredient}</span>
+      </label>
+    );
+  })}
 </div>
 
 <h2 className="mb-4 text-2xl font-bold">Steps</h2>
