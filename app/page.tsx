@@ -1343,6 +1343,14 @@ async function togglePlanningQueue(recipeId: string) {
   }
 }
 
+function getIngredientQuantity(item: string) {
+  const match = item.match(
+    /^(\d+(?:\.\d+)?(?:\s+\d\/\d)?|\d\/\d)\s*(cups?|cup|tbsp|tablespoons?|tsp|teaspoons?|cans?|can|lbs?|lb|pounds?|pound|oz|ounces?)?/i
+  );
+
+  return match ? match[0].trim() : "";
+}
+
   function cleanForSort(item: string) {
   return item
     .replace(/×\s*\d+$/g, "")
@@ -3034,7 +3042,11 @@ if (showProfile) {
                 />
 
                 <span className="font-medium">
-                  {cleanIngredientName(cleanPantryDisplayName(item))}
+                  {item
+  .replace(/\(\(.*?\)\)/g, "")
+  .replace(/\(optional.*?\)/gi, "")
+  .replace(/\s+/g, " ")
+  .trim()}
                   {count > 1 ? ` ×${count}` : ""}
                 </span>
               </label>
