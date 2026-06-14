@@ -4193,11 +4193,15 @@ if (showPantry) {
                   <div className="divide-y divide-[#ead7c8] bg-white">
                     {itemsInCategory.map((item) => (
                       <div key={item.id}>
-  <div className="grid gap-2 px-4 py-3 md:grid-cols-[1fr_180px_120px_180px_auto] md:items-center">
-  
-
-    {isBulkEditingPantry ? (
-  <>
+  <div
+  className={
+    isBulkEditingPantry
+      ? "grid gap-2 px-4 py-3 md:grid-cols-[1fr_180px_120px_180px_auto] md:items-center"
+      : "grid gap-3 px-4 py-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center"
+  }
+>
+  {isBulkEditingPantry ? (
+    <>
     <input
       value={pantryDrafts[item.id]?.name || item.name}
       onChange={(e) =>
@@ -4241,7 +4245,7 @@ if (showPantry) {
   className="rounded-full border border-[#ead7c8] px-4 py-2"
 >
   <option value="">Unit</option>
-  <option value="count">count</option>
+  <option value="count">package</option>
   <option value="can">can</option>
   <option value="box">box</option>
   <option value="bag">bag</option>
@@ -4298,7 +4302,7 @@ if (showPantry) {
       Remove
     </label>
   </>
-) : (
+  ) : (
   <>
     <p className="font-bold">{item.name}</p>
 
@@ -4307,6 +4311,7 @@ if (showPantry) {
     </p>
   </>
 )}
+
 
     {!isBulkEditingPantry && (
   <>
