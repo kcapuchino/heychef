@@ -3539,13 +3539,14 @@ if (showPantry) {
       ) : (
         <>
           {smartRestockItems.map((item) => (
-            <span
-              key={item}
-              className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium"
-            >
-              {item}
-            </span>
-          ))}
+  <button
+    key={item}
+    onClick={() => addItemsToShoppingList([item])}
+    className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium transition hover:bg-[#f6e7dc]"
+  >
+    + {item}
+  </button>
+))}
 
           <button
             onClick={() => addItemsToShoppingList(smartRestockItems)}
