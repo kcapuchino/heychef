@@ -256,7 +256,7 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
 const [recipeSort, setRecipeSort] = useState("newest");
 
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
- const [hidePantryItems, setHidePantryItems] = useState(false);
+ const [hidePantryItems, setHidePantryItems] = useState(true);
   const [pantrySearch, setPantrySearch] = useState("");
 const [expandedPantryCategory, setExpandedPantryCategory] = useState<string | null>("all");
 const [editingPantryItemId, setEditingPantryItemId] = useState<string | null>(null);
@@ -3030,9 +3030,9 @@ if (showProfile) {
           return (
             <div
               key={item}
-              className="flex flex-col gap-3 border-b border-[#ead7c8] py-4 last:border-b-0 md:flex-row md:items-center md:justify-between"
+              className="grid gap-3 border-b border-[#ead7c8] py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
             >
-              <label className="flex items-center gap-3">
+              <label className="flex min-w-0 items-start gap-3">
                 <input
                   type="checkbox"
                   checked={checkedShoppingItems.includes(item)}
@@ -3041,12 +3041,13 @@ if (showProfile) {
                   }
                 />
 
-                <span className="font-medium">
+                <span className="max-w-[52ch] break-words font-medium leading-snug">
                   {item
+  .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
   .replace(/\(\(.*?\)\)/g, "")
   .replace(/\(optional.*?\)/gi, "")
   .replace(/\s+/g, " ")
-  .trim()}
+  .trim()} 
                   {count > 1 ? ` ×${count}` : ""}
                 </span>
               </label>
