@@ -3164,7 +3164,7 @@ if (showProfile) {
       <div className="mt-3 flex flex-wrap gap-2">
   <button
     onClick={() => setCookingQueueFilter("all")}
-    className={`rounded-full px-4 py-2 text-sm font-bold ${
+    className={`w-40 rounded-full px-4 py-2 text-sm font-bold text-center ${
       cookingQueueFilter === "all"
         ? "bg-[#a63a0a] text-white"
         : "border border-[#a63a0a] text-[#a63a0a]"
@@ -3175,7 +3175,7 @@ if (showProfile) {
 
   <button
     onClick={() => setCookingQueueFilter("ready")}
-    className={`rounded-full px-4 py-2 text-sm font-bold ${
+    className={`w-40 rounded-full px-4 py-2 text-sm font-bold text-center ${
       cookingQueueFilter === "ready"
         ? "bg-[#a63a0a] text-white"
         : "border border-[#a63a0a] text-[#a63a0a]"
@@ -3186,7 +3186,7 @@ if (showProfile) {
 
   <button
     onClick={() => setCookingQueueFilter("needs")}
-    className={`rounded-full px-4 py-2 text-sm font-bold ${
+    className={`w-40 rounded-full px-4 py-2 text-sm font-bold text-center ${
       cookingQueueFilter === "needs"
         ? "bg-[#a63a0a] text-white"
         : "border border-[#a63a0a] text-[#a63a0a]"
@@ -4197,12 +4197,12 @@ if (showPantry) {
   className={
     isBulkEditingPantry
       ? "grid gap-2 px-4 py-3 md:grid-cols-[1fr_180px_120px_180px_auto] md:items-center"
-      : "grid gap-3 px-4 py-3 md:grid-cols-[1fr_auto_auto_auto] md:items-center"
+      : "grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-4"
   }
 >
   {isBulkEditingPantry ? (
     <>
-    <input
+      <input
       value={pantryDrafts[item.id]?.name || item.name}
       onChange={(e) =>
         setPantryDrafts({
@@ -4245,7 +4245,7 @@ if (showPantry) {
   className="rounded-full border border-[#ead7c8] px-4 py-2"
 >
   <option value="">Unit</option>
-  <option value="count">package</option>
+  <option value="count">count</option>
   <option value="can">can</option>
   <option value="box">box</option>
   <option value="bag">bag</option>
@@ -4302,19 +4302,18 @@ if (showPantry) {
       Remove
     </label>
   </>
-  ) : (
-  <>
-    <p className="font-bold">{item.name}</p>
+) : (
+  <div>
+  <p className="font-bold">{item.name}</p>
 
-    <p className="text-[#6d5549]">
-      {item.quantity || "1"} {item.unit}
-    </p>
-  </>
+  <p className="mt-1 text-[#6d5549]">
+    {item.quantity || "1"} {item.unit}
+  </p>
+</div>
 )}
 
-
     {!isBulkEditingPantry && (
-  <>
+  <div className="flex items-center gap-4">
     <button
       onClick={() => {
         setEditingPantryModalId(item.id);
@@ -4352,7 +4351,7 @@ if (showPantry) {
     >
       Delete
     </button>
-  </>
+    </div>
 )}
   </div>
 
