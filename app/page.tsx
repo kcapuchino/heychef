@@ -685,6 +685,34 @@ setPantryItems(
     setHasLoadedUser(true);
   }
 
+ useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const sharedText = params.get("text");
+  const sharedUrl = params.get("url");
+
+  if (!sharedText && !sharedUrl) return;
+
+  setCurrentPage("recipes");
+  setShowImport(true);
+  setShowManualImport(true);
+
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
+  setSelectedRecipe(null);
+
+  if (sharedText) {
+    setManualRecipe(sharedText);
+  }
+
+  if (sharedUrl) {
+    setRecipeUrl(sharedUrl);
+  }
+
+  window.history.replaceState({}, "", "/");
+}, []);
+
   useEffect(() => {
   async function loadRecipes() {
     const {
