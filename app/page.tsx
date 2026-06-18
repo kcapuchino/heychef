@@ -20,10 +20,12 @@ type Recipe = {
 
 type PlannedRecipe = Recipe & {
   mealPlanId: string;
+  plannedDate?: string;
   isMade?: boolean;
   weekStart?: string;
   week_start?: string;
 };
+
 type PantryItem = {
   id: string;
   name: string;
@@ -366,31 +368,24 @@ const neededShoppingListCount = shoppingList.filter((item) => {
 
 const cookingQueue = Object.values(mealPlan)
   .flat()
-.filter((recipe: any) => !recipe.isMade)
-.filter(
-  (recipe, index, self) =>
-    index === self.findIndex(
-      (savedRecipe) => savedRecipe.id === recipe.id
-    )
-)
-  .filter((recipe) => {
+  .filter((recipe: PlannedRecipe) => {
     const neededCount = getRecipePantryGaps(recipe).length;
 
-    if (cookingQueueFilter === "ready") {
-      return neededCount === 0;
-    }
-
-    if (cookingQueueFilter === "needs") {
-      return neededCount > 0;
-    }
+    if (cookingQueueFilter === "ready") return neededCount === 0;
+    if (cookingQueueFilter === "needs") return neededCount > 0;
 
     return true;
   })
-  .sort(
-    (a, b) =>
-      getRecipePantryGaps(a).length -
-      getRecipePantryGaps(b).length
-  );
+  .sort((a: PlannedRecipe, b: PlannedRecipe) => {
+    if (a.isMade !== b.isMade) {
+      return a.isMade ? 1 : -1;
+    }
+
+    return (
+      new Date(a.plannedDate || "").getTime() -
+      new Date(b.plannedDate || "").getTime()
+    );
+  });
 
   const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
   const homeRecipes = recipes
@@ -970,6 +965,7 @@ loadedPlan[key].push({
   createdAt: item.recipes.created_at,
   isMade: item.is_made || false,
   mealPlanId: item.id,
+  plannedDate: item.date,
   weekStart: item.week_start,
 });
     });
@@ -1541,6 +1537,8 @@ function addToShoppingList(recipe: Recipe) {
 
   const currentMealPlanIngredients = Object.values(mealPlan)
   .flat()
+  .filter((recipe: any) => recipe.weekStart === selectedWeekStart)
+  .filter((recipe: any) => !recipe.isMade)
   .flatMap((recipe) =>
     recipe.ingredients.map((ingredient) => ({
       name: ingredient,
@@ -1619,6 +1617,7 @@ const manualItems = (manualData || []).map((item) => item.name);
   meal,
   week: activePlannerWeek,
   week_start: getWeekStartDate(activePlannerWeek),
+  is_made: false,
 })
     .select()
     .single();
@@ -1629,9 +1628,12 @@ const manualItems = (manualData || []).map((item) => item.name);
   }
 
   const plannedRecipe: PlannedRecipe = {
-    ...recipe,
-    mealPlanId: data.id,
-  };
+  ...recipe,
+  mealPlanId: data.id,
+  plannedDate: day,
+  isMade: false,
+  weekStart: getWeekStartDate(activePlannerWeek),
+};
 
   setMealPlan({
     ...mealPlan,
@@ -3387,7 +3389,7 @@ if (showProfile) {
   )}
 </section>
 <section className="mb-8 rounded-[2rem] bg-white p-5 shadow-lg md:p-6">
-  <div className="mb-5">
+  <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
   <div className="flex items-center gap-4">
     <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff4ef] text-2xl">
       👩‍🍳
@@ -3450,7 +3452,7 @@ if (showProfile) {
   .map((recipe) => (
     
       <div
-        key={recipe.id}
+        key={recipe.mealPlanId}
         className="flex flex-col gap-4 rounded-2xl border border-[#ead7c8] p-4 md:flex-row md:items-center md:justify-between"
       >
         <div className="flex gap-4">
@@ -3461,11 +3463,27 @@ if (showProfile) {
           />
 
           <div>
+            <span className="mb-1 inline-block rounded-full bg-[#fff4ef] px-3 py-1 text-xs font-bold text-[#a63a0a]">
+  {recipe.plannedDate
+    ? `${
+        recipe.weekStart === getWeekStartDate("current")
+          ? "This"
+          : "Next"
+      } ${new Date(
+        recipe.plannedDate + "T00:00:00"
+      ).toLocaleDateString("en-US", {
+        weekday: "long",
+      })}`
+    : "Planned"}
+</span>
+
+
             <h3 className="font-bold">{recipe.title}</h3>
 {getRecipePantryGaps(recipe).length === 0 && (
   <span className="mt-1 inline-block rounded-full bg-[#e4f1dc] px-3 py-1 text-xs font-bold text-[#3f7f32]">
     READY TO COOK
   </span>
+
 )}
             <p className="text-sm text-[#3f7f32]">
   {getRecipePantryGaps(recipe).length} ingredients still needed
@@ -3973,7 +3991,14 @@ setMealPlan(updatedMealPlan);
                   {plannedRecipes
     .slice(0, showAllCookingQueue ? plannedRecipes.length : 5)
     .map((recipe) => (
-      <div key={recipe.mealPlanId} className="rounded-xl bg-white p-3 text-sm">
+      <div
+  key={recipe.mealPlanId}
+  className={`rounded-xl p-3 text-sm transition ${
+    recipe.isMade
+      ? "bg-[#f3f3f3] opacity-60"
+      : "bg-white"
+  }`}
+>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
@@ -3996,9 +4021,18 @@ setMealPlan(updatedMealPlan);
                 }, 0);
               }}
 
-    className="text-left font-medium text-[#a63a0a] hover:underline"
+   className={`text-left font-medium hover:underline ${
+  recipe.isMade
+    ? "text-[#8a8a8a]"
+    : "text-[#a63a0a]"
+}`}
   >
     {recipe.title}
+    {recipe.isMade && (
+  <p className="mt-1 text-xs font-bold text-[#8a8a8a]">
+    ✓ Made
+  </p>
+)}
   </button>
 </div>
 
