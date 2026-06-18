@@ -3877,8 +3877,17 @@ setMealPlan(updatedMealPlan);
       <h2 className="mb-2 text-3xl font-bold">Add Recipe</h2>
 
       <p className="mb-5 text-[#6d5549]">
-        Add a recipe to {plannerPopup.day} {plannerPopup.meal}.
-      </p>
+  Add a recipe to{" "}
+  {new Date(plannerPopup.day + "T00:00:00").toLocaleDateString(
+    "en-US",
+    {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }
+  )}{" "}
+  • {plannerPopup.meal}
+</p>
 
       {recipes.length === 0 ? (
         <p className="text-[#6d5549]">Import a recipe first.</p>
