@@ -2760,14 +2760,14 @@ if (!userEmail) {
           <RecipeMeta recipe={sampleRecipe} />
         </div>
 
-        <div className="flex flex-col gap-3 md:flex-row">
+       <div className="flex flex-col gap-3 md:flex-row md:w-auto w-full">
           <button
             type="button"
             onClick={() => {
               setSampleRecipe(null);
               setAuthMode("signup");
             }}
-            className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+            className="w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
           >
             Save Recipe
           </button>
@@ -3109,7 +3109,7 @@ if (showProfile) {
           
 
           <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
-  <div className="mb-6 flex items-start justify-between gap-3">
+  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
     <div>
       <h1 className="text-4xl font-bold md:text-5xl">Shopping List</h1>
 
@@ -3218,7 +3218,7 @@ if (showProfile) {
       </button>
 
       <div className="rounded-full bg-[#f8efe6] px-6 py-3 text-center font-bold">
-        {shoppingList.length} Items Needed
+        {shoppingList.length} Total Items 
       </div>
     </div>
   </div>
@@ -3387,56 +3387,57 @@ if (showProfile) {
   )}
 </section>
 <section className="mb-8 rounded-[2rem] bg-white p-5 shadow-lg md:p-6">
-  <div className="mb-5 flex items-center justify-between gap-4">
-    <div className="flex items-center gap-4">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff4ef] text-2xl">
-        👩‍🍳
-      </div>
+  <div className="mb-5">
+  <div className="flex items-center gap-4">
+    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff4ef] text-2xl">
+      👩‍🍳
+    </div>
 
-      <div>
-        <h2 className="text-2xl font-bold text-[#a63a0a]">
-          Cooking Queue
-        </h2>
-        <p className="text-sm text-[#6d5549]">
-          Recipes you’re planning to make with these ingredients
-        </p>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-  <button
-    onClick={() => setCookingQueueFilter("all")}
-    className={`w-40 rounded-full px-4 py-2 text-sm font-bold text-center ${
-      cookingQueueFilter === "all"
-        ? "bg-[#a63a0a] text-white"
-        : "border border-[#a63a0a] text-[#a63a0a]"
-    }`}
-  >
-    All
-  </button>
-
-  <button
-    onClick={() => setCookingQueueFilter("ready")}
-    className={`w-40 rounded-full px-4 py-2 text-sm font-bold text-center ${
-      cookingQueueFilter === "ready"
-        ? "bg-[#a63a0a] text-white"
-        : "border border-[#a63a0a] text-[#a63a0a]"
-    }`}
-  >
-    Ready to Make
-  </button>
-
-  <button
-    onClick={() => setCookingQueueFilter("needs")}
-    className={`w-40 rounded-full px-4 py-2 text-sm font-bold text-center ${
-      cookingQueueFilter === "needs"
-        ? "bg-[#a63a0a] text-white"
-        : "border border-[#a63a0a] text-[#a63a0a]"
-    }`}
-  >
-    Needs Items
-  </button>
-</div>
+    <div>
+      <h2 className="text-2xl font-bold text-[#a63a0a]">
+        Cooking Queue
+      </h2>
+      <p className="text-sm text-[#6d5549]">
+        Recipes you’re planning to make with these ingredients
+      </p>
     </div>
   </div>
+
+  <div className="mt-5 grid gap-2 md:flex md:flex-wrap">
+    <button
+      onClick={() => setCookingQueueFilter("all")}
+      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
+        cookingQueueFilter === "all"
+          ? "bg-[#a63a0a] text-white"
+          : "border border-[#a63a0a] text-[#a63a0a]"
+      }`}
+    >
+      All
+    </button>
+
+    <button
+      onClick={() => setCookingQueueFilter("ready")}
+      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
+        cookingQueueFilter === "ready"
+          ? "bg-[#a63a0a] text-white"
+          : "border border-[#a63a0a] text-[#a63a0a]"
+      }`}
+    >
+      Ready to Make
+    </button>
+
+    <button
+      onClick={() => setCookingQueueFilter("needs")}
+      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
+        cookingQueueFilter === "needs"
+          ? "bg-[#a63a0a] text-white"
+          : "border border-[#a63a0a] text-[#a63a0a]"
+      }`}
+    >
+      Needs Items
+    </button>
+  </div>
+</div>
 
   {cookingQueue.length === 0 ? (
   <p className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-[#6d5549]">
@@ -3567,47 +3568,60 @@ const recipeImage = recipe.image_url || recipe.image || placeholderImage;
 const recipeTitle = recipe.title;
 
         return (
-          <button
-  key={item.id}
-  onClick={() => {
-  setSelectedRecipe({
-    id: recipe.id,
-    title: recipe.title,
-    image: recipe.image_url || recipe.image || "",
-    ingredients: recipe.ingredients || [],
-    steps: recipe.steps || [],
-    cookTime: recipe.cook_time || "",
-    servings: recipe.servings || "",
-    category: recipe.category || "",
-    sourceUrl: recipe.source_url || "",
-    isFavorite: recipe.is_favorite || false,
-    createdAt: recipe.created_at || "",
-  });
+  <div
+    key={item.id}
+    className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-3 text-left transition hover:-translate-y-1 hover:shadow-lg"
+  >
+    <button
+      type="button"
+      onClick={() => {
+        setSelectedRecipe({
+          id: recipe.id,
+          title: recipe.title,
+          image: recipe.image_url || recipe.image || "",
+          ingredients: recipe.ingredients || [],
+          steps: recipe.steps || [],
+          cookTime: recipe.cook_time || "",
+          servings: recipe.servings || "",
+          category: recipe.category || "",
+          sourceUrl: recipe.source_url || "",
+          isFavorite: recipe.is_favorite || false,
+          createdAt: recipe.created_at || "",
+        });
 
-  setCurrentPage("recipes");
-  setShowAllRecipes(false);
-  setShowMealPlanner(false);
-  setShowShoppingList(false);
-  setShowPantry(false);
-  setShowImport(false);
+        setCurrentPage("recipes");
+        setShowAllRecipes(false);
+        setShowMealPlanner(false);
+        setShowShoppingList(false);
+        setShowPantry(false);
+        setShowImport(false);
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}}
-  className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-3 text-left transition hover:-translate-y-1 hover:shadow-lg"
->
-            <img
-  src={recipeImage}
-  alt={recipeTitle}
-  className="mb-3 h-24 w-full rounded-2xl object-cover"
-/>
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      className="w-full text-left"
+    >
+      <img
+        src={recipeImage}
+        alt={recipeTitle}
+        className="mb-3 h-24 w-full rounded-2xl object-cover"
+      />
 
-            <h3 className="font-bold">{recipe.title}</h3>
+      <h3 className="font-bold">{recipe.title}</h3>
 
-            <p className="text-sm text-[#6d5549]">
-              Made {new Date(item.cooked_at).toLocaleDateString()}
-            </p>
-          </button>
-        );
+      <p className="text-sm text-[#6d5549]">
+        Made {new Date(item.cooked_at).toLocaleDateString()}
+      </p>
+    </button>
+
+    <button
+      type="button"
+      onClick={() => togglePlanningQueue(recipe.id)}
+      className="mt-3 w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+    >
+      Make Again
+    </button>
+  </div>
+);
       })}
     </div>
   </section>
@@ -3792,7 +3806,7 @@ const recipeTitle = recipe.title;
   
 
           <div className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
-  <div className="mb-6 flex items-start justify-between gap-3">
+  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
   <div>
     <h1 className="text-4xl font-bold md:text-5xl">Weekly Meal Planner</h1>
     <p className="mt-2 text-[#6d5549]">
@@ -4337,7 +4351,7 @@ if (showPantry) {
     </div>
   ) : (
     <section className="rounded-[2rem] border border-[#ead7c8] bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
             Inventory
@@ -4346,7 +4360,7 @@ if (showPantry) {
           <h2 className="text-xl font-bold">Your Pantry</h2>
         </div>
 
-<div className="flex flex-wrap gap-2">
+<div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap">
   <button
     onClick={() => {
       setIsBulkEditingPantry(!isBulkEditingPantry);
@@ -4839,7 +4853,7 @@ if (showPantry) {
 
 
         <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
-  <div className="mb-6 flex items-start justify-between gap-3">
+  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 <div>
     <h1 className="text-4xl font-bold md:text-5xl">
       All Recipes
@@ -5236,7 +5250,7 @@ Bake for 25 minutes`}
 
     <RecipeMeta recipe={selectedRecipe} />
   </div>
-<div className="flex flex-col gap-3 md:flex-row">
+<div className="flex flex-col gap-3 md:flex-row md:w-auto w-full">
   {!isEditingRecipe ? (
   <>
     <button
@@ -5257,7 +5271,7 @@ Bake for 25 minutes`}
         e.stopPropagation();
         selectedRecipe && toggleFavorite(selectedRecipe.id);
       }}
-      className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+      className="w-full rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
     >
       {selectedRecipe?.isFavorite ? "★ Favorite" : "☆ Favorite"}
     </button>
@@ -5271,7 +5285,7 @@ Bake for 25 minutes`}
         if (!selectedRecipe) return;
         updateSelectedRecipe(selectedRecipe);
       }}
-      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+      className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
     >
       Save Changes
     </button>
@@ -5289,7 +5303,7 @@ Bake for 25 minutes`}
         setEditRecipeDraft(null);
         setIsEditingRecipe(false);
       }}
-      className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
     >
       Cancel Editing
     </button>
@@ -5391,7 +5405,7 @@ Bake for 25 minutes`}
             <div className="mb-8 flex flex-wrap gap-3">
               <button
                 onClick={() => addToShoppingList(selectedRecipe)}
-                className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+                className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
               >
                 Add Ingredients to Shopping List
               </button>
@@ -5402,7 +5416,7 @@ Bake for 25 minutes`}
 
     deleteRecipe(selectedRecipe.id);
   }}
-  className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
 >
   Delete Recipe
 </button>
@@ -5416,7 +5430,7 @@ Bake for 25 minutes`}
 </p>
 <button
   onClick={() => togglePlanningQueue(selectedRecipe.id)}
-  className="mb-4 rounded-full border border-[#a63a0a] px-5 py-2 text-[#a63a0a]"
+  className="w-full mb-4 rounded-full border border-[#a63a0a] px-5 py-2 text-[#a63a0a]"
 >
   {selectedRecipe.isPlanningQueue
     ? "− Remove from Planning Queue"
@@ -5426,7 +5440,7 @@ Bake for 25 minutes`}
                 <select
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(e.target.value)}
-                  className="rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+                  className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
                 >
                   {plannerDays.map((day: { label: string; date: string }) => (
   <option key={day.date} value={day.date}>
@@ -5438,7 +5452,7 @@ Bake for 25 minutes`}
                 <select
                   value={selectedMeal}
                   onChange={(e) => setSelectedMeal(e.target.value)}
-                  className="rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+                  className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
                 >
                   {meals.map((meal) => (
                     <option key={meal} value={meal}>
@@ -5454,7 +5468,7 @@ Bake for 25 minutes`}
                   setSelectedRecipe(null);
                   setShowMealPlanner(true);
                 }}
-                className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+                className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
               >
                 Add to {selectedDay} {selectedMeal}
               </button>
