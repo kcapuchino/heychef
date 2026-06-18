@@ -2858,7 +2858,7 @@ if (showProfile) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
   <button
@@ -2947,7 +2947,7 @@ if (showProfile) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
   <button
@@ -3630,7 +3630,7 @@ const recipeTitle = recipe.title;
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
   <button
@@ -4069,7 +4069,7 @@ if (showPantry) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
   <button
@@ -4679,7 +4679,7 @@ if (showPantry) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
   <button
@@ -5063,7 +5063,7 @@ Bake for 25 minutes`}
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
   <button
@@ -5529,7 +5529,7 @@ Bake for 25 minutes`}
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef!
+    Hey Chef
   </button>
 
 
