@@ -14,14 +14,16 @@ type Recipe = {
   category?: string;
   sourceUrl?: string;
   isFavorite?: boolean;
-isPlanningQueue?: boolean;
-createdAt: string;
+  isPlanningQueue?: boolean;
+  createdAt: string;
 };
+
 type PlannedRecipe = Recipe & {
   mealPlanId: string;
   isMade?: boolean;
+  weekStart?: string;
+  week_start?: string;
 };
-
 type PantryItem = {
   id: string;
   name: string;
@@ -53,39 +55,90 @@ const sampleRecipes: Recipe[] = [
   {
     id: "sample-tostadas",
     title: "Avocado & Black Bean Tostadas",
-    image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1200&q=80",
-    ingredients: ["Avocado", "Black beans", "Tostada shells", "Cabbage", "Lime", "Cilantro"],
-    steps: ["Mash avocado with lime.", "Warm black beans.", "Layer beans, avocado, cabbage, and cilantro on tostadas."],
+    image:
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=1200&q=80",
+    ingredients: [
+      "2 ripe avocados",
+      "1 lime, juiced",
+      "1 can black beans, drained and rinsed",
+      "8 tostada shells",
+      "2 cups shredded cabbage",
+      "1/4 cup chopped cilantro",
+      "Salt and pepper to taste",
+    ],
+    steps: [
+      "Mash avocados with lime juice, salt, and pepper.",
+      "Warm black beans in a saucepan over medium heat.",
+      "Spread beans over tostada shells.",
+      "Top with avocado mixture, cabbage, and cilantro.",
+      "Serve immediately.",
+    ],
     cookTime: "20 min",
     servings: "4 servings",
     category: "Main Dish",
-    sourceUrl: "https://cooking.nytimes.com/recipes/1027324-avocado-black-bean-tostadas",
+    sourceUrl:
+      "https://cooking.nytimes.com/recipes/1027324-avocado-black-bean-tostadas",
     isFavorite: false,
     createdAt: new Date().toISOString(),
   },
+
   {
     id: "sample-green-beans",
     title: "Green Bean Salad with Dill Pickles & Feta",
-    image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80",
-    ingredients: ["Green beans", "Dill pickles", "Feta", "Herbs", "Olive oil", "Vinegar"],
-    steps: ["Blanch green beans.", "Chop pickles and herbs.", "Toss everything with feta and dressing."],
+    image:
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=1200&q=80",
+    ingredients: [
+      "1 lb fresh green beans",
+      "1/2 cup chopped dill pickles",
+      "1/2 cup crumbled feta cheese",
+      "2 tbsp fresh dill",
+      "2 tbsp olive oil",
+      "1 tbsp white wine vinegar",
+      "Salt and pepper to taste",
+    ],
+    steps: [
+      "Blanch green beans until tender-crisp.",
+      "Drain and cool completely.",
+      "Whisk olive oil and vinegar together.",
+      "Toss green beans with pickles, dill, feta, and dressing.",
+      "Season and serve.",
+    ],
     cookTime: "15 min",
     servings: "4 servings",
     category: "Side Dish",
-    sourceUrl: "https://cooking.nytimes.com/recipes/1025454-green-bean-salad-with-dill-pickles-and-feta",
+    sourceUrl:
+      "https://cooking.nytimes.com/recipes/1025454-green-bean-salad-with-dill-pickles-and-feta",
     isFavorite: false,
     createdAt: new Date().toISOString(),
   },
+
   {
     id: "sample-pancakes",
     title: "Sorghum Lemon Ricotta Pancakes",
-    image: "https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=1200&q=80",
-    ingredients: ["Sorghum flour", "Baking powder", "Eggs", "Lemon juice", "Lemon zest", "Milk", "Ricotta"],
-    steps: ["Mix dry ingredients.", "Whisk wet ingredients.", "Combine, rest batter, then cook pancakes."],
+    image:
+      "https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=1200&q=80",
+    ingredients: [
+      "1 cup sorghum flour",
+      "2 tsp baking powder",
+      "2 large eggs",
+      "2 tbsp lemon juice",
+      "1 tbsp lemon zest",
+      "3/4 cup milk",
+      "1/2 cup ricotta cheese",
+      "1 tbsp maple syrup",
+    ],
+    steps: [
+      "Whisk together sorghum flour and baking powder.",
+      "In a separate bowl whisk eggs, milk, ricotta, lemon juice, and zest.",
+      "Combine wet and dry ingredients until just mixed.",
+      "Let batter rest for 5 minutes.",
+      "Cook pancakes on a lightly greased skillet until golden brown.",
+    ],
     cookTime: "25 min",
     servings: "4 servings",
     category: "Breakfast",
-    sourceUrl: "https://www.sorghumcheckoff.com/recipes/sorghum-lemon-ricotta-pancakes/",
+    sourceUrl:
+      "https://www.sorghumcheckoff.com/recipes/sorghum-lemon-ricotta-pancakes/",
     isFavorite: false,
     createdAt: new Date().toISOString(),
   },
@@ -479,29 +532,28 @@ const smartRestockItems = [
 function getMealPlanKey(day: string, meal: string, week = activePlannerWeek) {
   return `${week}-${day}-${meal}`;
 }
-  const totalSlots = 21;
 
-const currentWeekFilledSlots = Object.entries(mealPlan).filter(
-  ([key, recipes]) =>
-    key.startsWith("current-") && recipes.length > 0
-).length;
+const totalSlots = 21;
 
-const nextWeekFilledSlots = Object.entries(mealPlan).filter(
-  ([key, recipes]) =>
-    key.startsWith("next-") && recipes.length > 0
-).length;
+const currentWeekStart = getWeekStartDate("current");
+const nextWeekStart = getWeekStartDate("next");
+
+const currentWeekFilledSlots = Object.values(mealPlan)
+  .flat()
+  .filter((recipe: any) => recipe.weekStart === currentWeekStart)
+  .length;
+
+const nextWeekFilledSlots = Object.values(mealPlan)
+  .flat()
+  .filter((recipe: any) => recipe.weekStart === nextWeekStart)
+  .length;
 
 const filledSlots =
   activePlannerWeek === "next"
     ? nextWeekFilledSlots
     : currentWeekFilledSlots;
 
-const plannerPercent = Math.round(
-  (filledSlots / totalSlots) * 100
-);
-
-const currentWeekStart = getWeekStartDate("current");
-const nextWeekStart = getWeekStartDate("next");
+const plannerPercent = Math.round((filledSlots / totalSlots) * 100);
 
 const selectedWeekStart =
   activePlannerWeek === "next" ? nextWeekStart : currentWeekStart;
@@ -918,6 +970,7 @@ loadedPlan[key].push({
   createdAt: item.recipes.created_at,
   isMade: item.is_made || false,
   mealPlanId: item.id,
+  weekStart: item.week_start,
 });
     });
 
@@ -1083,30 +1136,35 @@ async function changePasswordNow() {
   setShowShoppingList(false);
   setShowPantry(false);
 }
+function saveGuestRecipe(recipe: Recipe) {
+  const existing = JSON.parse(
+    localStorage.getItem("hey-chef-guest-recipes") || "[]"
+  );
 
+  localStorage.setItem(
+    "hey-chef-guest-recipes",
+    JSON.stringify([recipe, ...existing])
+  );
+
+  setRecipes((currentRecipes) => [recipe, ...currentRecipes]);
+}
   async function importRecipe() {
-  if (!recipeUrl) return;
+  if (!recipeUrl && !manualRecipe) return;
 
   setIsImporting(true);
   setImportError("");
   setShowManualImport(false);
 
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setImportError("Please log in again before importing a recipe.");
-      return;
-    }
-
     const response = await fetch("/api/import-recipe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: recipeUrl }),
+      body: JSON.stringify({
+        url: recipeUrl,
+        text: manualRecipe,
+      }),
     });
 
     const text = await response.text();
@@ -1116,9 +1174,7 @@ async function changePasswordNow() {
     try {
       importedData = JSON.parse(text);
     } catch {
-      setImportError(
-        "The import route is not returning JSON. Check app/api/import-recipe/route.ts and restart npm."
-      );
+      setImportError("The import route is not returning JSON.");
       setShowManualImport(true);
       return;
     }
@@ -1126,6 +1182,38 @@ async function changePasswordNow() {
     if (!response.ok) {
       setImportError(importedData.error || "Could not import this recipe.");
       setShowManualImport(true);
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      const guestRecipe: Recipe = {
+        id: crypto.randomUUID(),
+        title: importedData.title || "Imported Recipe",
+        image: importedData.image || "",
+        ingredients: importedData.ingredients || [],
+        steps: importedData.steps || [],
+        cookTime: importedData.cookTime || "",
+        servings: importedData.servings || "",
+        sourceUrl: importedData.sourceUrl || recipeUrl,
+        isFavorite: false,
+        isPlanningQueue: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      saveGuestRecipe(guestRecipe);
+setSampleRecipe(guestRecipe);
+
+      setRecipeUrl("");
+      setManualRecipe("");
+      setShowImport(false);
+      setImportError("");
+      setShowManualImport(false);
+
+      showToast("Recipe imported. Create an account to save it permanently.");
       return;
     }
 
@@ -1168,6 +1256,7 @@ async function changePasswordNow() {
     setPlannerRecipeId(newRecipe.id);
 
     setRecipeUrl("");
+    setManualRecipe("");
     setShowImport(false);
     setImportError("");
     setShowManualImport(false);
@@ -1179,6 +1268,7 @@ async function changePasswordNow() {
     setIsImporting(false);
   }
 }
+
 
   async function importManualRecipe() {
   if (!manualRecipe) return;
@@ -2211,12 +2301,55 @@ function PantryModal() {
           className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
         />
 
-        <input
-          value={pantryModalQuantity}
-          onChange={(e) => setPantryModalQuantity(e.target.value)}
-          placeholder="Quantity"
-          className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-        />
+        <div className="mb-3 flex items-center gap-2">
+  <button
+  type="button"
+  onClick={async () => {
+    const nextQty = Number(pantryModalQuantity || 0) - 1;
+
+    if (nextQty <= 0) {
+      if (editingPantryModalId) {
+        await supabase
+          .from("pantry_items")
+          .delete()
+          .eq("id", editingPantryModalId);
+
+        setPantryItems(
+          pantryItems.filter(
+            (item) => item.id !== editingPantryModalId
+          )
+        );
+      }
+
+      setShowPantryModal(false);
+      return;
+    }
+
+    setPantryModalQuantity(String(nextQty));
+  }}
+  className="h-12 w-12 rounded-full border border-[#ead7c8] text-xl font-bold text-[#a63a0a]"
+>
+  −
+</button>
+
+  <input
+    value={pantryModalQuantity}
+    onChange={(e) => setPantryModalQuantity(e.target.value)}
+    placeholder="Qty"
+    inputMode="decimal"
+    className="h-12 flex-1 rounded-full border border-[#ead7c8] px-5 text-center"
+  />
+
+  <button
+    type="button"
+    onClick={() =>
+      setPantryModalQuantity(String(Number(pantryModalQuantity || 0) + 1))
+    }
+    className="h-12 w-12 rounded-full border border-[#ead7c8] text-xl font-bold text-[#a63a0a]"
+  >
+    +
+  </button>
+</div>
 
         <select
           value={pantryModalUnit}
@@ -2526,7 +2659,7 @@ if (!userEmail) {
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 py-6 md:grid-cols-[1.2fr_0.8fr] md:py-10">
         <div>
           <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
-            Hey Chef!
+            Hey Chef
           </p>
 
           <h1 className="mb-4 text-5xl font-bold leading-tight md:text-7xl">
@@ -2542,9 +2675,28 @@ if (!userEmail) {
             {renderAuthCard()}
           </div>
 
-          <p className="mb-4 font-semibold text-[#a63a0a]">
-            Explore a few recipes before creating your account.
-          </p>
+          <div className="my-6 rounded-[2rem] bg-white p-5 shadow-sm">
+  <p className="mb-4 text-[#6d5549]">
+    Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
+  </p>
+
+  <div className="flex flex-wrap gap-2">
+    <input
+      value={recipeUrl}
+      onChange={(e) => setRecipeUrl(e.target.value)}
+      placeholder="https://example.com/recipe"
+      className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+    />
+
+    <button
+      onClick={importRecipe}
+      disabled={isImporting}
+      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+    >
+      {isImporting ? "Importing..." : "Import"}
+    </button>
+  </div>
+</div>
 
           <div className="grid gap-4 md:grid-cols-3">
             {sampleRecipes.map((recipe) => (
@@ -2569,6 +2721,7 @@ if (!userEmail) {
             ))}
           </div>
         </div>
+        
 
         {/* Desktop login form stays in right column */}
         <div className="hidden rounded-[2rem] bg-white p-6 shadow-xl md:block">
@@ -2577,63 +2730,120 @@ if (!userEmail) {
       </section>
 
       {sampleRecipe && (
-        <div
-          className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0"
-          onClick={() => setSampleRecipe(null)}
-        >
-          <div
-            className="relative max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setSampleRecipe(null)}
-              className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white text-3xl text-[#6d5549] shadow-lg hover:text-[#a63a0a]"
-            >
-              ×
-            </button>
+  <div
+    className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0"
+    onClick={() => setSampleRecipe(null)}
+  >
+    <div
+      className="relative max-h-[90vh] w-full overflow-y-auto rounded-[2rem] bg-white p-5 shadow-xl md:max-w-4xl md:p-6"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        onClick={() => setSampleRecipe(null)}
+        className="absolute right-4 top-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-white text-3xl text-[#6d5549] shadow-lg hover:text-[#a63a0a]"
+      >
+        ×
+      </button>
 
-            <img
-              src={sampleRecipe.image || placeholderImage}
-              alt={sampleRecipe.title}
-              className="mb-5 h-56 w-full rounded-3xl object-cover"
-            />
+      <img
+        src={sampleRecipe.image || placeholderImage}
+        alt={sampleRecipe.title}
+        className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
+      />
 
-            <h2 className="mb-2 text-3xl font-bold">{sampleRecipe.title}</h2>
-            <RecipeMeta recipe={sampleRecipe} />
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h1 className="mb-2 text-4xl font-bold">
+            {sampleRecipe.title}
+          </h1>
 
-            <h3 className="mb-3 mt-6 text-xl font-bold">Ingredients</h3>
-            <ul className="mb-6 space-y-2">
-              {sampleRecipe.ingredients.map((ingredient) => (
-                <li key={ingredient}>• {ingredient}</li>
-              ))}
-            </ul>
-
-            <h3 className="mb-3 text-xl font-bold">Steps</h3>
-            <ol className="mb-6 space-y-3">
-              {sampleRecipe.steps.map((step, index) => (
-                <li key={`${step}-${index}`} className="rounded-2xl bg-[#f8efe6] p-4">
-                  <strong>Step {index + 1}:</strong> {step}
-                </li>
-              ))}
-            </ol>
-
-            <a
-              href={sampleRecipe.sourceUrl}
-              target="_blank"
-              className="mb-4 block text-[#a63a0a] underline"
-            >
-              View original recipe
-            </a>
-
-            <button
-              onClick={() => setSampleRecipe(null)}
-              className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-            >
-              Close Preview
-            </button>
-          </div>
+          <RecipeMeta recipe={sampleRecipe} />
         </div>
+
+        <div className="flex flex-col gap-3 md:flex-row">
+          <button
+            type="button"
+            onClick={() => {
+              setSampleRecipe(null);
+              setAuthMode("signup");
+            }}
+            className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+          >
+            Save Recipe
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSampleRecipe(null);
+              setAuthMode("signup");
+            }}
+            className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+          >
+            ☆ Favorite
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-8 flex flex-wrap gap-3">
+        <button
+          onClick={() => {
+            setSampleRecipe(null);
+            setAuthMode("signup");
+          }}
+          className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        >
+          Add Ingredients to Shopping List
+        </button>
+
+        <button
+          onClick={() => {
+            setSampleRecipe(null);
+            setAuthMode("signup");
+          }}
+          className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+        >
+          Create Account to Save
+        </button>
+      </div>
+
+      {sampleRecipe.sourceUrl && (
+        <a
+          href={sampleRecipe.sourceUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mb-6 block text-[#a63a0a] underline"
+        >
+          View original recipe
+        </a>
       )}
+
+      <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
+
+      <ul className="mb-8 space-y-3">
+        {sampleRecipe.ingredients.map((ingredient) => (
+          <li key={ingredient} className="flex items-center gap-3">
+            <input type="checkbox" disabled className="h-5 w-5" />
+            <span>{ingredient}</span>
+          </li>
+        ))}
+      </ul>
+
+      <h2 className="mb-4 text-2xl font-bold">Steps</h2>
+
+      <ol className="space-y-3">
+        {sampleRecipe.steps.map((step, index) => (
+          <li
+            key={`${step}-${index}`}
+            className="rounded-2xl bg-[#f8efe6] p-4"
+          >
+            <strong>Step {index + 1}:</strong> {step}
+          </li>
+        ))}
+      </ol>
+    </div>
+  </div>
+)}
     </main>
   );
 }
@@ -2983,8 +3193,10 @@ if (showProfile) {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-[#a63a0a]">Grocery List</h2>
-        <p className="text-sm text-[#6d5549]">Items you need to buy</p>
+        <h2 className="text-2xl font-bold text-[#a63a0a]">Shopping List</h2>
+        <p className="text-sm font-medium text-[#6d5549]">
+  {neededShoppingListCount} items still needed
+</p>
       </div>
     </div>
 
@@ -3006,7 +3218,7 @@ if (showProfile) {
       </button>
 
       <div className="rounded-full bg-[#f8efe6] px-6 py-3 text-center font-bold">
-        {shoppingList.length} Items
+        {shoppingList.length} Items Needed
       </div>
     </div>
   </div>
@@ -3646,8 +3858,9 @@ setMealPlan(updatedMealPlan);
             className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
           >
             <option value="">Choose a recipe</option>
-            {recipes
-  .filter((recipe) => recipe.isPlanningQueue)
+           {recipes
+  .filter((recipe) => recipe.isPlanningQueue || recipe.isFavorite)
+  .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite))
   .map((recipe) => (
               <option key={recipe.id} value={recipe.id}>
                 {recipe.title}
@@ -4244,19 +4457,69 @@ if (showPantry) {
       className="rounded-full border border-[#ead7c8] px-4 py-2"
     />
 
-    <input
-      value={pantryDrafts[item.id]?.quantity || item.quantity || "1"}
-      onChange={(e) =>
-        setPantryDrafts({
-          ...pantryDrafts,
-          [item.id]: {
-            ...(pantryDrafts[item.id] || item),
-            quantity: e.target.value,
-          },
-        })
-      }
-      className="rounded-full border border-[#ead7c8] px-4 py-2"
-    />
+    <div className="flex items-center gap-2">
+  <button
+    type="button"
+    onClick={() => {
+      const currentQty = Number(
+        pantryDrafts[item.id]?.quantity || item.quantity || "1"
+      );
+
+      const nextQty = currentQty - 1;
+
+      setPantryDrafts({
+        ...pantryDrafts,
+        [item.id]: {
+          ...(pantryDrafts[item.id] || item),
+          quantity: String(Math.max(0, nextQty)),
+          markedForDelete: nextQty <= 0,
+        } as any,
+      });
+    }}
+    className="h-10 w-10 rounded-full border border-[#ead7c8] text-lg font-bold text-[#a63a0a]"
+  >
+    −
+  </button>
+
+  <input
+    value={pantryDrafts[item.id]?.quantity || item.quantity || "1"}
+    onChange={(e) => {
+      const nextValue = e.target.value;
+
+      setPantryDrafts({
+        ...pantryDrafts,
+        [item.id]: {
+          ...(pantryDrafts[item.id] || item),
+          quantity: nextValue,
+          markedForDelete: Number(nextValue) <= 0,
+        } as any,
+      });
+    }}
+    inputMode="decimal"
+    className="h-10 w-16 rounded-full border border-[#ead7c8] text-center"
+  />
+
+  <button
+    type="button"
+    onClick={() => {
+      const currentQty = Number(
+        pantryDrafts[item.id]?.quantity || item.quantity || "0"
+      );
+
+      setPantryDrafts({
+        ...pantryDrafts,
+        [item.id]: {
+          ...(pantryDrafts[item.id] || item),
+          quantity: String(currentQty + 1),
+          markedForDelete: false,
+        } as any,
+      });
+    }}
+    className="h-10 w-10 rounded-full border border-[#ead7c8] text-lg font-bold text-[#a63a0a]"
+  >
+    +
+  </button>
+</div>
 
     
 <select

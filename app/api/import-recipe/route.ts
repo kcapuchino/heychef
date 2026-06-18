@@ -166,10 +166,30 @@ function fallbackFromHtml(html: string) {
 
 export async function POST(request: Request) {
   try {
-    const { url } = await request.json();
+    const { url, text } = await request.json();
 
     if (!url) {
-      return NextResponse.json({ error: "Missing recipe URL" }, { status: 400 });
+      if (!url && !text) {
+  return NextResponse.json(
+    { error: "Missing recipe URL or recipe text" },
+    { status: 400 }
+  );
+}
+if (!url && text) {
+  const fallback = fallbackFromHtml(text);
+
+  if (fallback.ingredients.length > 0 || fallback.steps.length > 0) {
+    return NextResponse.json({
+      ...fallback,
+      sourceUrl: "",
+    });
+  }
+
+  return NextResponse.json(
+    { error: "No recipe ingredients or steps were found in the pasted text." },
+    { status: 404 }
+  );
+}
     }
 
     const response = await fetch(url, {
