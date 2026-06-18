@@ -1537,7 +1537,6 @@ function addToShoppingList(recipe: Recipe) {
 
   const currentMealPlanIngredients = Object.values(mealPlan)
   .flat()
-  .filter((recipe: any) => recipe.weekStart === selectedWeekStart)
   .filter((recipe: any) => !recipe.isMade)
   .flatMap((recipe) =>
     recipe.ingredients.map((ingredient) => ({
