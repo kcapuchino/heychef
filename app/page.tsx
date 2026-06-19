@@ -2723,38 +2723,52 @@ if (!userEmail) {
     </div>
   </div>
 </div>
-<div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
-  <div>
-    <div className="mb-2 text-3xl">🌎</div>
-    <h3 className="font-bold">Import from anywhere</h3>
-    <p className="text-sm text-[#6d5549]">
-      Works with recipe websites.
-    </p>
-  </div>
+<div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  {[
+    {
+      icon: "🌎",
+      title: "Import from anywhere",
+      text: "Works with recipe websites and social media.",
+    },
+    {
+      icon: "📅",
+      title: "Plan your meals",
+      text: "Updates weekly and plans up to 2 weeks at a time.",
+    },
+    {
+      icon: "🛒",
+      title: "Build shopping lists",
+      text: "Compares recipes with your pantry and adds missing ingredients.",
+    },
+    {
+      icon: "📦",
+      title: "Track your pantry",
+      text: "Know approx. what you have and what you need.",
+    },
+  ].map((feature) => (
+    <div
+      key={feature.title}
+      className="rounded-3xl bg-white/70 p-4 shadow-sm ring-1 ring-[#ead7c8]/70"
+    >
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#fff4ef] text-2xl">
+        {feature.icon}
+      </div>
 
-  <div>
-    <div className="mb-2 text-3xl">📅</div>
-    <h3 className="font-bold">Plan your meals</h3>
-    <p className="text-sm text-[#6d5549]">
-      Plan up to 2 weeks at a time.
-    </p>
-  </div>
+      <h3 className="mb-1 font-bold">
+        {feature.title}
+      </h3>
 
-  <div>
-    <div className="mb-2 text-3xl">🛒</div>
-    <h3 className="font-bold">Build shopping lists</h3>
-    <p className="text-sm text-[#6d5549]">
-      Automatically add missing ingredients.
-    </p>
-  </div>
+      <p className="text-sm leading-relaxed text-[#6d5549]">
+        {feature.text}
+      </p>
+    </div>
+  ))}
+</div>
 
-  <div>
-    <div className="mb-2 text-3xl">📦</div>
-    <h3 className="font-bold">Track your pantry</h3>
-    <p className="text-sm text-[#6d5549]">
-      Know approx. what you have and what you need.
-    </p>
-  </div>
+<div className="mt-5 rounded-full bg-white/70 px-5 py-3 text-center shadow-sm ring-1 ring-[#ead7c8]/70">
+  <p className="text-sm font-medium text-[#6d5549]">
+    Built with smart logic, not AI guesses.
+  </p>
 </div>
       
 </div>  
