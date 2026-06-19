@@ -16,7 +16,12 @@ type Recipe = {
   isFavorite?: boolean;
   isPlanningQueue?: boolean;
   createdAt: string;
+  type?: "recipe" | "grocery";
+brand?: string;
+packageSize?: string;
+pantryQuantity?: number;
 };
+
 
 type PlannedRecipe = Recipe & {
   mealPlanId: string;
@@ -276,6 +281,13 @@ const [signupName, setSignupName] = useState("");
 
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showFoodImport, setShowFoodImport] = useState(false);
+const [foodUrl, setFoodUrl] = useState("");
+const [foodBrand, setFoodBrand] = useState("");
+const [foodTitle, setFoodTitle] = useState("");
+const [foodPackageSize, setFoodPackageSize] = useState("");
+const [foodCategory, setFoodCategory] = useState("Frozen Food");
+const [foodImage, setFoodImage] = useState("");
   const importSectionRef = useRef<HTMLElement>(null);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -308,6 +320,9 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
   const [editRecipeDraft, setEditRecipeDraft] = useState<Recipe | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [foodTypeFilter, setFoodTypeFilter] = useState<
+  "all" | "recipe" | "grocery"
+>("all");
 const [recipeSort, setRecipeSort] = useState("newest");
 
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
@@ -369,10 +384,13 @@ const neededShoppingListCount = shoppingList.filter((item) => {
 const cookingQueue = Object.values(mealPlan)
   .flat()
   .filter((recipe: PlannedRecipe) => {
-    const neededCount = getRecipePantryGaps(recipe).length;
+    const isReady = canMakeRecipeFromPantry(recipe);
+const neededCount = recipe.type === "grocery"
+  ? isReady ? 0 : 1
+  : getRecipePantryGaps(recipe).length;
 
-    if (cookingQueueFilter === "ready") return neededCount === 0;
-    if (cookingQueueFilter === "needs") return neededCount > 0;
+if (cookingQueueFilter === "ready") return isReady;
+if (cookingQueueFilter === "needs") return !isReady;
 
     return true;
   })
@@ -482,6 +500,15 @@ const smartRestockItems = [
   .slice(0, 8);
   
   const filteredRecipes = recipes
+  .filter((recipe) => {
+  if (foodTypeFilter === "all") return true;
+
+  if (foodTypeFilter === "recipe") {
+    return recipe.type !== "grocery";
+  }
+
+  return recipe.type === "grocery";
+})
   .filter((recipe) =>
     categoryFilter === "all"
       ? true
@@ -792,6 +819,9 @@ setPantryItems(
         isFavorite: recipe.is_favorite || false,
         isPlanningQueue: recipe.is_planning_queue || false,
         createdAt: recipe.created_at,
+        type: recipe.type || "recipe",
+brand: recipe.brand || "",
+packageSize: recipe.package_size || "",
       }))
     );
   }
@@ -1105,7 +1135,117 @@ async function changePasswordNow() {
 
   localStorage.removeItem("hey-chef-current-user");
 }
+async function importFoodItem() {
+  if (!foodUrl.trim()) {
+    showToast("Paste a product URL first.");
+    return;
+  }
 
+  setIsImporting(true);
+  setImportError("");
+
+  try {
+    const response = await fetch("/api/import-food", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: foodUrl }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setImportError(data.error || "Could not import this product. Enter it manually below.");
+      return;
+    }
+
+    setFoodTitle(data.title || "");
+    setFoodBrand(data.brand || "");
+    setFoodPackageSize(data.packageSize || "");
+    setFoodCategory(data.category || "Prepared Food");
+    setFoodImage(data.image || "");
+
+    showToast("Product details imported.");
+  } catch {
+    setImportError("Could not import this product. Enter it manually below.");
+  } finally {
+    setIsImporting(false);
+  }
+}
+
+async function saveFoodItem() {
+  if (!foodTitle.trim()) {
+    showToast("Enter a food item name.");
+    return;
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: foodTitle.trim(),
+      image_url: foodImage.trim(),
+      ingredients: [],
+      steps: [],
+      cook_time: "",
+      servings: "",
+      category: foodCategory,
+      source_url: foodUrl.trim(),
+      is_favorite: false,
+      is_planning_queue: false,
+      type: "grocery",
+brand: foodBrand.trim(),
+package_size: foodPackageSize.trim(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  const newFoodItem: Recipe = {
+    id: data.id,
+    title: data.title,
+    image: data.image_url || "",
+    ingredients: [],
+    steps: [],
+    cookTime: "",
+    servings: "",
+    category: data.category || foodCategory,
+    sourceUrl: data.source_url || "",
+    isFavorite: false,
+    isPlanningQueue: false,
+    createdAt: data.created_at,
+    type: "grocery",
+    brand: foodBrand.trim(),
+    packageSize: foodPackageSize.trim(),
+  };
+
+  setRecipes([newFoodItem, ...recipes]);
+
+  setFoodUrl("");
+  setFoodBrand("");
+  setFoodTitle("");
+  setFoodPackageSize("");
+  setFoodCategory("Frozen Food");
+  setFoodImage("");
+  setShowFoodImport(false);
+  setFoodTypeFilter("grocery");
+
+  showToast("Food item saved.");
+}
   function createNewRecipe() {
   const newRecipe: Recipe = {
     id: "new-recipe",
@@ -1770,6 +1910,9 @@ setMealPlan(updatedMealPlan);
       source_url: updatedRecipe.sourceUrl || "",
       is_favorite: updatedRecipe.isFavorite || false,
       is_planning_queue: updatedRecipe.isPlanningQueue || false,
+      type: updatedRecipe.type || "recipe",
+brand: updatedRecipe.brand || "",
+package_size: updatedRecipe.packageSize || "",
     })
     .select()
     .single();
@@ -1805,6 +1948,9 @@ setMealPlan(updatedMealPlan);
       steps: updatedRecipe.steps,
       source_url: updatedRecipe.sourceUrl || "",
       is_favorite: updatedRecipe.isFavorite || false,
+      type: updatedRecipe.type || "recipe",
+brand: updatedRecipe.brand || "",
+package_size: updatedRecipe.packageSize || "",
     })
     .eq("id", updatedRecipe.id);
 
@@ -2054,6 +2200,14 @@ function getRecipePantryGaps(recipe: Recipe | PlannedRecipe) {
 }
 
 function canMakeRecipeFromPantry(recipe: Recipe | PlannedRecipe) {
+  if (recipe.type === "grocery") {
+    const matchingPantryItem = getMatchingPantryItem(recipe.title);
+
+    if (!matchingPantryItem) return false;
+
+    return Number(matchingPantryItem.quantity || 0) > 0;
+  }
+
   return getRecipePantryGaps(recipe).length === 0;
 }
 
@@ -3579,11 +3733,14 @@ Contact support and we'll process your request.</p>
 
 
             <h3 className="font-bold">{recipe.title}</h3>
-{getRecipePantryGaps(recipe).length === 0 && (
+{canMakeRecipeFromPantry(recipe) ? (
   <span className="mt-1 inline-block rounded-full bg-[#e4f1dc] px-3 py-1 text-xs font-bold text-[#3f7f32]">
-    READY TO COOK
+    {recipe.type === "grocery" ? "READY TO EAT" : "READY TO COOK"}
   </span>
-
+) : (
+  <span className="mt-1 inline-block rounded-full bg-[#f3ece7] px-3 py-1 text-xs font-bold text-[#6d5549]">
+    {recipe.type === "grocery" ? "OUT OF STOCK" : "NEEDS ITEMS"}
+  </span>
 )}
             <p className="text-sm text-[#3f7f32]">
   {getRecipePantryGaps(recipe).length} ingredients still needed
@@ -3630,21 +3787,23 @@ Contact support and we'll process your request.</p>
   ✓ Made This
 </button>
                 </div>
+                
       </div>
-    ))}
-    {cookingQueue.length > 5 && (
+        ))}
+
+    {cookingQueue.length > 3 && (
       <button
         onClick={() => setShowAllCookingQueue(!showAllCookingQueue)}
-        className="mx-auto mt-4 block font-bold text-[#a63a0a]"
+        className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
       >
         {showAllCookingQueue
-  ? "Show top 3 recipes"
-  : `View all ${cookingQueue.length} recipes`
-}
+          ? "Show Less"
+          : `Show All ${cookingQueue.length}`}
       </button>
     )}
   </div>
 )}
+
 </section>
 {recentlyMade.length > 0 && (
   <section className="mb-8 rounded-[2rem] border border-[#cfe3bf] bg-white p-5 shadow-lg md:p-6">
@@ -5009,17 +5168,23 @@ if (showPantry) {
 
   <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
   <button
-    onClick={() => setShowImport(true)}
+    onClick={() => {
+      setShowImport(true);
+      setShowFoodImport(false);
+    }}
     className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white md:w-auto"
   >
     Import Recipe
   </button>
 
   <button
-    onClick={createNewRecipe}
+    onClick={() => {
+      setShowFoodImport(true);
+      setShowImport(false);
+    }}
     className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] md:w-auto"
   >
-    Create Recipe
+    Add Food Item
   </button>
 </div>
 </div>
@@ -5027,84 +5192,156 @@ if (showPantry) {
 
 
 <section className="mb-8 rounded-[2rem] bg-white p-4 shadow-lg">
-  <div className="grid gap-3 md:grid-cols-2">
-  <select
-    value={categoryFilter}
-    onChange={(e) => setCategoryFilter(e.target.value)}
-    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-  >
-    <option value="all">All Categories</option>
-    <option value="Main Dish">Main Dish</option>
-    <option value="Side Dish">Side Dish</option>
-    <option value="Dessert">Dessert</option>
-    <option value="Breakfast">Breakfast</option>
-    <option value="Soup">Soup</option>
-    <option value="Snack">Snack</option>
-    <option value="Drink">Drink</option>
-  </select>
-
-  <select
-    value={recipeSort}
-    onChange={(e) => setRecipeSort(e.target.value)}
-    className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-  >
-    <option value="favorites">Favorites</option>
-    <option value="ready">Ready to Make</option>
-    <option value="newest">Newest</option>
-    <option value="oldest">Oldest</option>
-    <option value="az">A–Z</option>
-    <option value="za">Z–A</option>
-  </select>
-</div>
-</section>
-
-        {showImport && (
-          <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
-  <div className="mb-4 flex items-center justify-between">
-    <h2 className="text-2xl font-bold">Import a Recipe</h2>
+  <div className="mb-4 grid gap-2 sm:grid-cols-2 md:grid-cols-4">
+    <button
+      onClick={() => {
+        setFoodTypeFilter("all");
+        setCategoryFilter("all");
+        setRecipeSort("newest");
+      }}
+      className={`rounded-full px-4 py-2 font-bold ${
+        foodTypeFilter === "all" && recipeSort === "newest"
+          ? "bg-[#a63a0a] text-white"
+          : "bg-[#fff4ef] text-[#a63a0a]"
+      }`}
+    >
+      All
+    </button>
 
     <button
-      onClick={() => setShowImport(false)}
-      className="text-2xl text-[#6d5549]"
+      onClick={() => setFoodTypeFilter("recipe")}
+      className={`rounded-full px-4 py-2 font-bold ${
+        foodTypeFilter === "recipe"
+          ? "bg-[#a63a0a] text-white"
+          : "bg-[#fff4ef] text-[#a63a0a]"
+      }`}
     >
-      ✕
+      Recipes
+    </button>
+
+    <button
+      onClick={() => setFoodTypeFilter("grocery")}
+      className={`rounded-full px-4 py-2 font-bold ${
+        foodTypeFilter === "grocery"
+          ? "bg-[#a63a0a] text-white"
+          : "bg-[#fff4ef] text-[#a63a0a]"
+      }`}
+    >
+      Food Items
+    </button>
+
+    <button
+      onClick={() => setRecipeSort("ready")}
+      className={`rounded-full px-4 py-2 font-bold ${
+        recipeSort === "ready"
+          ? "bg-[#315f25] text-white"
+          : "bg-[#e8f6df] text-[#315f25]"
+      }`}
+    >
+      ✓ Ready
     </button>
   </div>
 
-            <div className="flex gap-3">
-              <input
-                value={recipeUrl}
-                onChange={(e) => setRecipeUrl(e.target.value)}
-                placeholder="https://example.com/recipe"
-                className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
-              />
+  <div className="grid gap-3 md:grid-cols-2">
+    <select
+      value={categoryFilter}
+      onChange={(e) => setCategoryFilter(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="all">All Categories</option>
+      <option value="Main Dish">Main Dish</option>
+      <option value="Side Dish">Side Dish</option>
+      <option value="Dessert">Dessert</option>
+      <option value="Breakfast">Breakfast</option>
+      <option value="Soup">Soup</option>
+      <option value="Snack">Snack</option>
+      <option value="Drink">Drink</option>
+      <option value="Frozen Food">Frozen Food</option>
+      <option value="Boxed Meal">Boxed Meal</option>
+      <option value="Prepared Food">Prepared Food</option>
+      <option value="Canned Food">Canned Food</option>
+    </select>
 
-              <button
-                onClick={importRecipe}
-                disabled={isImporting}
-                className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
-              >
-                {isImporting ? "Importing..." : "Import"}
-              </button>
-            </div>
-            
+    <select
+      value={recipeSort}
+      onChange={(e) => setRecipeSort(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="favorites">Favorites</option>
+      <option value="ready">Ready</option>
+      <option value="newest">Newest</option>
+      <option value="oldest">Oldest</option>
+      <option value="az">A–Z</option>
+      <option value="za">Z–A</option>
+    </select>
+  </div>
+</section>
 
-            {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
+        {showImport && (
+  <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-2xl font-bold">Import a Recipe</h2>
 
-            {showManualImport && (
-              <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
-                <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
+      <button
+        onClick={() => setShowImport(false)}
+        className="text-2xl text-[#6d5549]"
+      >
+        ✕
+      </button>
+    </div>
 
-                <p className="mb-4 text-[#6d5549]">
-                  Some websites block imports. Paste the recipe below and Hey Chef will organize it
-                  into ingredients and steps.
-                </p>
+    <p className="mb-4 text-[#6d5549]">
+      Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
+    </p>
 
-                <textarea
-                  value={manualRecipe}
-                  onChange={(e) => setManualRecipe(e.target.value)}
-                  rows={12}
-                  placeholder={`Paste Text: Recipe Title
+    <div className="flex flex-col gap-3 md:flex-row">
+      <input
+        value={recipeUrl}
+        onChange={(e) => setRecipeUrl(e.target.value)}
+        placeholder="https://example.com/recipe"
+        className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <button
+        onClick={importRecipe}
+        disabled={isImporting}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+      >
+        {isImporting ? "Importing..." : "Import"}
+      </button>
+    </div>
+
+    {importError && (
+      <p className="mt-4 text-sm text-red-700">{importError}</p>
+    )}
+
+    <div className="my-6 flex items-center gap-3 text-sm text-[#6d5549]">
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+      OR
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+    </div>
+
+    <button
+      onClick={createNewRecipe}
+      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+    >
+      + Create Recipe From Scratch
+    </button>
+
+    {showManualImport && (
+      <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+        <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
+
+        <p className="mb-4 text-[#6d5549]">
+          Some websites block imports. Paste the recipe below and Hey Chef will organize it
+          into ingredients and steps.
+        </p>
+
+        <textarea
+          value={manualRecipe}
+          onChange={(e) => setManualRecipe(e.target.value)}
+          rows={12}
+          placeholder={`Paste Text: Recipe Title
 
 Ingredients
 2 cups flour
@@ -5114,19 +5351,115 @@ Ingredients
 Directions
 Mix ingredients
 Bake for 25 minutes`}
-                  className="w-full rounded-2xl border border-[#ead7c8] p-4"
-                />
+          className="w-full rounded-2xl border border-[#ead7c8] p-4"
+        />
 
-                <button
-                  onClick={importManualRecipe}
-                  className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-                >
-                  Create Recipe
-                </button>
-              </div>
-            )}
-          </section>
-        )}
+        <button
+          onClick={importManualRecipe}
+          className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        >
+          Create Recipe
+        </button>
+      </div>
+    )}
+  </section>
+)}
+{showFoodImport && (
+  <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-2xl font-bold">Add a Food Item</h2>
+
+      <button
+        onClick={() => setShowFoodImport(false)}
+        className="text-2xl text-[#6d5549]"
+      >
+        ✕
+      </button>
+    </div>
+
+    <p className="mb-4 text-[#6d5549]">
+      Paste a product URL or enter the details manually.
+    </p>
+
+    <div className="flex flex-col gap-3 md:flex-row">
+      <input
+        value={foodUrl}
+        onChange={(e) => setFoodUrl(e.target.value)}
+        placeholder="https://example.com/product"
+        className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <button
+  onClick={importFoodItem}
+  disabled={isImporting}
+  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+>
+  {isImporting ? "Importing..." : "Import"}
+</button>
+    </div>
+
+    {importError && (
+      <p className="mt-4 text-sm text-red-700">{importError}</p>
+    )}
+
+    <div className="my-6 flex items-center gap-3 text-sm text-[#6d5549]">
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+      OR
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+    </div>
+
+    <div className="grid gap-3 md:grid-cols-2">
+      <input
+        value={foodBrand}
+        onChange={(e) => setFoodBrand(e.target.value)}
+        placeholder="Brand, like Amy's"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={foodTitle}
+        onChange={(e) => setFoodTitle(e.target.value)}
+        placeholder="Food item name"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={foodPackageSize}
+        onChange={(e) => setFoodPackageSize(e.target.value)}
+        placeholder="Package size, like 6 oz"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <select
+        value={foodCategory}
+        onChange={(e) => setFoodCategory(e.target.value)}
+        className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+      >
+        <option value="Frozen Food">Frozen Food</option>
+        <option value="Boxed Meal">Boxed Meal</option>
+        <option value="Prepared Food">Prepared Food</option>
+        <option value="Canned Food">Canned Food</option>
+        <option value="Snack">Snack</option>
+        <option value="Drink">Drink</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <input
+        value={foodImage}
+        onChange={(e) => setFoodImage(e.target.value)}
+        placeholder="Image URL optional"
+        className="rounded-full border border-[#ead7c8] px-5 py-3 md:col-span-2"
+      />
+    </div>
+
+    <button
+      onClick={saveFoodItem}
+      className="mt-5 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+    >
+      Save Food Item
+    </button>
+  </section>
+)}
 
         {recipes.length === 0 ? (
           <div className="rounded-3xl bg-white p-8 shadow">
@@ -5151,11 +5484,25 @@ Bake for 25 minutes`}
 }}
                 className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
-                <img
-  src={recipe.image || placeholderImage}
-  alt={recipe.title}
-  className="mb-4 h-36 w-full rounded-2xl object-cover"
-/>
+                <div className="relative mb-4">
+  <img
+    src={recipe.image || placeholderImage}
+    alt={recipe.title}
+    className="h-36 w-full rounded-2xl object-cover"
+  />
+
+  {recipe.type === "grocery" && (
+  canMakeRecipeFromPantry(recipe) ? (
+    <div className="absolute left-3 top-3 rounded-full bg-[#315f25] px-3 py-1 text-xs font-bold text-white">
+      ✓ Ready to Eat
+    </div>
+  ) : (
+    <div className="absolute left-3 top-3 rounded-full bg-[#a63a0a] px-3 py-1 text-xs font-bold text-white">
+      ⚠ Out of Stock
+    </div>
+  )
+)}
+</div>
 
                 <div className="flex items-start justify-between gap-3">
   <h3 className="text-lg font-bold">{recipe.title}</h3>
@@ -5172,7 +5519,21 @@ Bake for 25 minutes`}
   </button>
 </div>
 
-                <RecipeMeta recipe={recipe} />
+                {recipe.type === "grocery" ? (
+  <div className="mb-3 mt-2 text-sm text-[#6d5549]">
+    <div className="flex flex-wrap items-center gap-2">
+      <span>📦 {getMatchingPantryItem(recipe.title)?.quantity || "0"}</span>
+
+      {recipe.category && (
+        <span className="rounded-full bg-[#fff4ef] px-2 py-1 text-xs text-[#a63a0a]">
+          {recipe.category}
+        </span>
+      )}
+    </div>
+  </div>
+) : (
+  <RecipeMeta recipe={recipe} />
+)}
                 <button
   onClick={(e) => {
     e.stopPropagation();
@@ -5188,6 +5549,18 @@ Bake for 25 minutes`}
     ? "− Meal Plan Queue"
     : "+ Meal Plan Queue"}
 </button>
+{recipe.type === "grocery" && !canMakeRecipeFromPantry(recipe) && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      addItemsToShoppingList([recipe.title]);
+    }}
+    className="mt-4 mr-2 rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
+  >
+    Buy Again
+  </button>
+)}
+
                 <button
   onClick={(e) => {
     e.stopPropagation();
@@ -5380,6 +5753,26 @@ Bake for 25 minutes`}
 </nav>
 
           <div className="rounded-[2rem] bg-white p-5 md:p-6 shadow-xl">
+            <div className="sticky top-25 z-40 mb-4 flex justify-end">
+  <button
+    onClick={() => {
+  setSelectedRecipe(null);
+  setShowAllRecipes(true);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+
+  setTimeout(() => {
+    window.scrollTo({
+      top: 250,
+      behavior: "smooth",
+    });
+  }, 0);
+}}
+    className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-[#a63a0a] shadow"
+  >
+    ×
+  </button>
+</div>
             <img
   src={selectedRecipe.image || placeholderImage}
   alt={selectedRecipe.title}
@@ -5392,22 +5785,34 @@ Bake for 25 minutes`}
       {selectedRecipe.title}
     </h1>
 
-    <RecipeMeta recipe={selectedRecipe} />
+    {selectedRecipe.type === "grocery" ? (
+  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#6d5549]">
+    {selectedRecipe.cookTime && <span>⏱ {selectedRecipe.cookTime}</span>}
+    {selectedRecipe.servings && <span>👥 {selectedRecipe.servings}</span>}
+    <span>
+      In Pantry: {getMatchingPantryItem(selectedRecipe.title)?.quantity || "0"}
+    </span>
+  </div>
+) : (
+  <RecipeMeta recipe={selectedRecipe} />
+)}
   </div>
 <div className="flex flex-col gap-3 md:flex-row md:w-auto w-full">
   {!isEditingRecipe ? (
   <>
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        setEditRecipeDraft(selectedRecipe);
-        setIsEditingRecipe(true);
-      }}
-      className="w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
-    >
-      Edit Recipe
-    </button>
+   <button
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    setEditRecipeDraft(selectedRecipe);
+    setIsEditingRecipe(true);
+  }}
+  className="w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+>
+  {selectedRecipe.type === "grocery"
+    ? "Edit Food Item"
+    : "Edit Recipe"}
+</button>
 
     <button
       type="button"
@@ -5419,6 +5824,16 @@ Bake for 25 minutes`}
     >
       {selectedRecipe?.isFavorite ? "★ Favorite" : "☆ Favorite"}
     </button>
+    <button
+  onClick={() => {
+    if (confirm(`Delete ${selectedRecipe.title}?`)) {
+      deleteRecipe(selectedRecipe.id);
+    }
+  }}
+  className="w-full rounded-full border border-red-500 px-4 py-2 font-bold text-red-600"
+>
+  Delete
+</button>
   </>
 ) : (
   <>
@@ -5459,7 +5874,9 @@ Bake for 25 minutes`}
 
             {isEditingRecipe && selectedRecipe && (
   <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
-    <h2 className="mb-5 text-2xl font-bold">Edit Recipe</h2>
+    <h2 className="mb-4 text-2xl font-bold">
+      {selectedRecipe.type === "grocery" ? "Edit Food Item" : "Edit Recipe"}
+    </h2>
 
     <label className="mb-2 block font-bold">Title</label>
     <input
@@ -5479,6 +5896,32 @@ Bake for 25 minutes`}
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
+    {selectedRecipe.type === "grocery" && (
+      <>
+        <label className="mb-2 block font-bold">Brand</label>
+        <input
+          value={selectedRecipe.brand || ""}
+          onChange={(e) =>
+            setSelectedRecipe({ ...selectedRecipe, brand: e.target.value })
+          }
+          className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+        />
+
+        <label className="mb-2 block font-bold">Package Size</label>
+        <input
+          value={selectedRecipe.packageSize || ""}
+          onChange={(e) =>
+            setSelectedRecipe({
+              ...selectedRecipe,
+              packageSize: e.target.value,
+            })
+          }
+          placeholder="6 oz"
+          className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+        />
+      </>
+    )}
+
     <label className="mb-2 block font-bold">Cook Time</label>
     <input
       value={selectedRecipe.cookTime || ""}
@@ -5495,7 +5938,7 @@ Bake for 25 minutes`}
       onChange={(e) =>
         setSelectedRecipe({ ...selectedRecipe, servings: e.target.value })
       }
-      placeholder="4 servings"
+      placeholder="1 serving"
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
@@ -5515,125 +5958,181 @@ Bake for 25 minutes`}
       <option value="Soup">Soup</option>
       <option value="Snack">Snack</option>
       <option value="Drink">Drink</option>
+      <option value="Frozen Food">Frozen Food</option>
+      <option value="Boxed Meal">Boxed Meal</option>
+      <option value="Prepared Food">Prepared Food</option>
+      <option value="Canned Food">Canned Food</option>
     </select>
 
-    <label className="mb-2 block font-bold">Ingredients</label>
-    <textarea
-      value={selectedRecipe.ingredients.join("\n")}
-      onChange={(e) =>
-        setSelectedRecipe({
-          ...selectedRecipe,
-          ingredients: e.target.value.split("\n"),
-        })
-      }
-      rows={10}
-      className="mb-4 min-h-[250px] w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+    {selectedRecipe.type !== "grocery" && (
+      <>
+        <label className="mb-2 block font-bold">Ingredients</label>
+        <textarea
+          value={selectedRecipe.ingredients.join("\n")}
+          onChange={(e) =>
+            setSelectedRecipe({
+              ...selectedRecipe,
+              ingredients: e.target.value.split("\n"),
+            })
+          }
+          rows={10}
+          className="mb-4 min-h-[250px] w-full rounded-xl border border-[#ead7c8] p-3"
+        />
 
-    <label className="mb-2 block font-bold">Steps</label>
-    <textarea
-      value={selectedRecipe.steps.join("\n")}
-      onChange={(e) =>
-        setSelectedRecipe({
-          ...selectedRecipe,
-          steps: e.target.value.split("\n"),
-        })
-      }
-      rows={12}
-      className="min-h-[300px] w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+        <label className="mb-2 block font-bold">Steps</label>
+        <textarea
+          value={selectedRecipe.steps.join("\n")}
+          onChange={(e) => 
+            setSelectedRecipe({
+              ...selectedRecipe,
+              steps: e.target.value.split("\n"),
+            })
+          }
+          rows={12}
+          className="min-h-[300px] w-full rounded-xl border border-[#ead7c8] p-3"
+        />
+      </>
+    )}
   </div>
 )}
-{!isEditingRecipe && (
-  <>
-    <div className="mb-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <button
-          onClick={() => addToShoppingList(selectedRecipe)}
-          className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-        >
-          Add to Shopping List
-        </button>
 
-        {selectedRecipe.sourceUrl && (
-          <a
-            href={selectedRecipe.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-full border border-[#a63a0a] px-6 py-3 text-center text-[#a63a0a]"
+{!isEditingRecipe && selectedRecipe && (
+  selectedRecipe.type === "grocery" ? (
+    <>
+      <div className="grid gap-6 md:grid-cols-[1fr_420px]">
+        <div className="rounded-3xl bg-[#fffaf5] p-6 shadow-sm">
+          <h2 className="mb-4 text-2xl font-bold">Food Item Details</h2>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            {selectedRecipe.brand && (
+              <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-[#a63a0a]">
+                {selectedRecipe.brand}
+              </span>
+            )}
+
+            {selectedRecipe.packageSize && (
+              <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-[#a63a0a]">
+                {selectedRecipe.packageSize}
+              </span>
+            )}
+
+            {selectedRecipe.category && (
+              <span className="rounded-full bg-[#fff4ef] px-3 py-1 text-[#a63a0a]">
+                {selectedRecipe.category}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-[#ead7c8] bg-white p-5">
+            {canMakeRecipeFromPantry(selectedRecipe) ? (
+              <p className="font-bold text-[#315f25]">✓ Ready to Eat</p>
+            ) : (
+              <p className="font-bold text-[#6d5549]">Out of Stock</p>
+            )}
+
+            <p className="mt-2 text-sm text-[#6d5549]">
+              Food items become ready when they are added to your pantry.
+            </p>
+
+            <button
+              onClick={() => addItemsToShoppingList([selectedRecipe.title])}
+              className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+            >
+              Buy Again
+            </button>
+
+          </div>
+        </div>
+
+        <div className="rounded-3xl bg-[#f8efe6] p-6">
+          <h2 className="mb-4 text-2xl font-bold">Plan This Food Item</h2>
+
+          <button
+            onClick={() => togglePlanningQueue(selectedRecipe.id)}
+            className="mb-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
           >
-            View Original
-          </a>
-        )}
+            {selectedRecipe.isPlanningQueue
+              ? "− Remove from Planning Queue"
+              : "+ Add to Planning Queue"}
+          </button>
 
-        <button
-          onClick={() => {
-            if (!confirm(`Delete ${selectedRecipe.title}?`)) return;
-            deleteRecipe(selectedRecipe.id);
-          }}
-          className="rounded-full border border-red-600 px-6 py-3 text-red-600"
-        >
-          Delete Recipe
-        </button>
-      </div>
-    </div>
+          <div className="mb-3">
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+            >
+              {plannerDays.map((day) => (
+                <option key={day.date} value={day.date}>
+                  {day.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-    <div className="mb-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="rounded-3xl bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
+          <div className="mb-4">
+            <select
+              value={selectedMeal}
+              onChange={(e) => setSelectedMeal(e.target.value)}
+              className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+            >
+              {meals.map((meal) => (
+                <option key={meal} value={meal}>
+                  {meal}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="space-y-3">
-          {selectedRecipe.ingredients.map((ingredient) => {
-            const checkboxKey = `${selectedRecipe.id}-${ingredient}`;
-
-            return (
-              <label key={checkboxKey} className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5"
-                  checked={checkedRecipeIngredients.includes(checkboxKey)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setCheckedRecipeIngredients([
-                        ...checkedRecipeIngredients,
-                        checkboxKey,
-                      ]);
-                    } else {
-                      setCheckedRecipeIngredients(
-                        checkedRecipeIngredients.filter(
-                          (item) => item !== checkboxKey
-                        )
-                      );
-                    }
-                  }}
-                />
-
-                <span>{ingredient}</span>
-              </label>
-            );
-          })}
+          <button
+            onClick={() => {
+              addRecipeToMealPlan(selectedDay, selectedMeal, selectedRecipe);
+              setSelectedRecipe(null);
+              setShowMealPlanner(true);
+            }}
+            className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+          >
+            Add to Meal Plan
+          </button>
         </div>
       </div>
+    </>
+  ) : (
+    <>
+      <div className="grid gap-6 md:grid-cols-[1fr_420px]">
+        <div className="rounded-3xl bg-white p-6 shadow-sm">
+          <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
 
-      <div className="rounded-3xl bg-[#f8efe6] p-5">
-        <h2 className="mb-4 text-2xl font-bold">Plan This Recipe</h2>
+          <ul className="space-y-3">
+            {selectedRecipe.ingredients.map((ingredient, index) => (
+              <li
+                key={`${ingredient}-${index}`}
+                className="rounded-2xl bg-[#f8efe6] p-4"
+              >
+                {ingredient}
+              </li>
+            ))}
+          </ul>
+        </div>
 
-        <button
-          onClick={() => togglePlanningQueue(selectedRecipe.id)}
-          className="mb-4 w-full rounded-full border border-[#a63a0a] px-5 py-3 text-[#a63a0a]"
-        >
-          {selectedRecipe.isPlanningQueue
-            ? "− Remove from Planning Queue"
-            : "+ Add to Planning Queue"}
-        </button>
+        <div className="rounded-3xl bg-[#f8efe6] p-6">
+          <h2 className="mb-4 text-2xl font-bold">Plan This Recipe</h2>
 
-        <div className="mb-4 grid gap-3">
+          <button
+            onClick={() => togglePlanningQueue(selectedRecipe.id)}
+            className="mb-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+          >
+            {selectedRecipe.isPlanningQueue
+              ? "− Remove from Planning Queue"
+              : "+ Add to Planning Queue"}
+          </button>
+
           <select
             value={selectedDay}
             onChange={(e) => setSelectedDay(e.target.value)}
-            className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+            className="mb-3 w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
           >
-            {plannerDays.map((day: { label: string; date: string }) => (
+            {plannerDays.map((day) => (
               <option key={day.date} value={day.date}>
                 {day.label}
               </option>
@@ -5643,7 +6142,7 @@ Bake for 25 minutes`}
           <select
             value={selectedMeal}
             onChange={(e) => setSelectedMeal(e.target.value)}
-            className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+            className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
           >
             {meals.map((meal) => (
               <option key={meal} value={meal}>
@@ -5651,34 +6150,34 @@ Bake for 25 minutes`}
               </option>
             ))}
           </select>
+
+          <button
+            onClick={() => {
+              addRecipeToMealPlan(selectedDay, selectedMeal, selectedRecipe);
+              setSelectedRecipe(null);
+              setShowMealPlanner(true);
+            }}
+            className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+          >
+            Add to Meal Plan
+          </button>
         </div>
-
-        <button
-          onClick={() => {
-            addRecipeToMealPlan(selectedDay, selectedMeal, selectedRecipe);
-            setSelectedRecipe(null);
-            setShowMealPlanner(true);
-          }}
-          className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-        >
-          Add to Meal Plan
-        </button>
       </div>
-    </div>
 
-    <h2 className="mb-4 text-2xl font-bold">Steps</h2>
+      <h2 className="mb-4 mt-8 text-2xl font-bold">Steps</h2>
 
-    <ol className="space-y-3">
-      {selectedRecipe.steps.map((step, index) => (
-        <li
-          key={`${step}-${index}`}
-          className="rounded-2xl bg-[#f8efe6] p-4"
-        >
-          <strong>Step {index + 1}:</strong> {step}
-        </li>
-      ))}
-    </ol>
-  </>
+      <ol className="space-y-3">
+        {selectedRecipe.steps.map((step, index) => (
+          <li
+            key={`${step}-${index}`}
+            className="rounded-2xl bg-[#f8efe6] p-4"
+          >
+            <strong>Step {index + 1}:</strong> {step}
+          </li>
+        ))}
+      </ol>
+    </>
+  )
 )}
           </div>
         </section>
