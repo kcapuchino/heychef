@@ -2505,7 +2505,7 @@ function renderAuthCard() {
 
       <p className="mb-5 text-[#6d5549]">
         {authMode === "signup"
-          ? "Create an account to save your recipes."
+          ? "Create a free account to save your recipes."
           : "Log in to see what's on the menu today."}
       </p>
 
