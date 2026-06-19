@@ -163,33 +163,152 @@ function fallbackFromHtml(html: string) {
     servings: findServingsInHtml(html),
   };
 }
+function decodeHtmlEntities(text: string) {
+  return text
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    )
+    .replace(/&#(\d+);/g, (_, num) =>
+      String.fromCharCode(parseInt(num, 10))
+    )
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#39;/g, "'")
+    .trim();
+}
+
+function getMetaContent(html: string, selector: string) {
+  const regex = new RegExp(
+    `<meta[^>]+${selector}[^>]+content=["']([^"']*)["'][^>]*>`,
+    "i"
+  );
+
+  const match = html.match(regex);
+  return match ? decodeHtmlEntities(match[1]) : "";
+}
+
+function parseInstagramRecipeText(text: string) {
+  const decoded = decodeHtmlEntities(text);
+
+  const englishOnly = decoded
+    .split(/\n-\s*LINSEN|\nREZEPTE|\nDas hier/i)[0]
+    .trim();
+
+  const lines = englishOnly
+    .split(/\n|•/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const title =
+    lines.find((line) => line.toLowerCase().includes("recipe")) ||
+    lines[0] ||
+    "Instagram Recipe";
+
+  const ingredients: string[] = [];
+  const steps: string[] = [];
+
+  let inRecipe = false;
+
+  for (const line of lines) {
+    const lower = line.toLowerCase();
+
+    if (lower.includes("recipe")) {
+      inRecipe = true;
+      continue;
+    }
+
+    if (!inRecipe) continue;
+
+    if (
+      line.startsWith("-") ||
+      /^\d/.test(line) ||
+      lower.includes("cup") ||
+      lower.includes("tbsp") ||
+      lower.includes("tsp") ||
+      lower.includes("can")
+    ) {
+      ingredients.push(line.replace(/^-/, "").trim());
+      continue;
+    }
+
+    if (
+      /^[A-Z\s/]+$/.test(line) ||
+      lower.includes("fry") ||
+      lower.includes("mix") ||
+      lower.includes("fill") ||
+      lower.includes("roll") ||
+      lower.includes("grill")
+    ) {
+      steps.push(line);
+    }
+  }
+
+  return {
+    title: cleanText(title.replace(/recipe.*/i, "").trim()) || "Instagram Recipe",
+    ingredients,
+    steps,
+  };
+}
 
 export async function POST(request: Request) {
   try {
     const { url, text } = await request.json();
 
-    if (!url) {
-      if (!url && !text) {
-  return NextResponse.json(
-    { error: "Missing recipe URL or recipe text" },
-    { status: 400 }
-  );
-}
-if (!url && text) {
-  const fallback = fallbackFromHtml(text);
+    if (!url && !text) {
+      return NextResponse.json(
+        { error: "Missing recipe URL or recipe text" },
+        { status: 400 }
+      );
+    }
 
-  if (fallback.ingredients.length > 0 || fallback.steps.length > 0) {
-    return NextResponse.json({
-      ...fallback,
-      sourceUrl: "",
-    });
-  }
+    if (url?.includes("instagram.com")) {
+      if (!text) {
+        return NextResponse.json(
+          { error: "Instagram needs pasted caption text or shortcut text to import." },
+          { status: 400 }
+        );
+      }
 
-  return NextResponse.json(
-    { error: "No recipe ingredients or steps were found in the pasted text." },
-    { status: 404 }
-  );
-}
+      const instagram = parseInstagramRecipeText(text);
+
+      if (instagram.ingredients.length > 0 || instagram.steps.length > 0) {
+        return NextResponse.json({
+          ...instagram,
+          image: "",
+          cookTime: "",
+          servings: "",
+          sourceUrl: url,
+        });
+      }
+    }
+
+    if (!url && text) {
+      const instagram = parseInstagramRecipeText(text);
+
+      if (instagram.ingredients.length > 0 || instagram.steps.length > 0) {
+        return NextResponse.json({
+          ...instagram,
+          image: "",
+          cookTime: "",
+          servings: "",
+          sourceUrl: "",
+        });
+      }
+
+      const fallback = fallbackFromHtml(text);
+
+      if (fallback.ingredients.length > 0 || fallback.steps.length > 0) {
+        return NextResponse.json({
+          ...fallback,
+          sourceUrl: "",
+        });
+      }
+
+      return NextResponse.json(
+        { error: "No recipe ingredients or steps were found in the pasted text." },
+        { status: 404 }
+      );
     }
 
     const response = await fetch(url, {

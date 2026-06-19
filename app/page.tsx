@@ -2828,7 +2828,7 @@ if (!userEmail) {
               setSampleRecipe(null);
               setAuthMode("signup");
             }}
-            className="rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
+            className="w-full rounded-full border border-[#a63a0a] px-4 py-2 text-[#a63a0a]"
           >
             ☆ Favorite
           </button>
@@ -2841,7 +2841,7 @@ if (!userEmail) {
             setSampleRecipe(null);
             setAuthMode("signup");
           }}
-          className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+          className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
         >
           Add Ingredients to Shopping List
         </button>
@@ -2851,7 +2851,7 @@ if (!userEmail) {
             setSampleRecipe(null);
             setAuthMode("signup");
           }}
-          className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+          className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
         >
           Create Account to Save
         </button>
@@ -2868,16 +2868,39 @@ if (!userEmail) {
         </a>
       )}
 
-      <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
+      <div className="mb-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-[#ead7c8]">
+    <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
 
-      <ul className="mb-8 space-y-3">
-        {sampleRecipe.ingredients.map((ingredient) => (
-          <li key={ingredient} className="flex items-center gap-3">
-            <input type="checkbox" disabled className="h-5 w-5" />
-            <span>{ingredient}</span>
-          </li>
-        ))}
-      </ul>
+    <ul className="space-y-3">
+      {sampleRecipe.ingredients.map((ingredient) => (
+        <li key={ingredient} className="flex items-center gap-3">
+          <input type="checkbox" disabled className="h-5 w-5" />
+          <span>{ingredient}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <div className="rounded-3xl bg-[#f8efe6] p-5">
+    <h2 className="mb-3 text-2xl font-bold">Plan This Recipe</h2>
+
+    <p className="mb-4 text-sm text-[#6d5549]">
+      Create a free account to add recipes to your meal plan and shopping list.
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setSampleRecipe(null);
+        setAuthMode("signup");
+      }}
+      className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+    >
+      Create Free Account
+    </button>
+  </div>
+</div>
 
       <h2 className="mb-4 text-2xl font-bold">Steps</h2>
 
@@ -5081,8 +5104,9 @@ if (showPantry) {
                   value={manualRecipe}
                   onChange={(e) => setManualRecipe(e.target.value)}
                   rows={12}
-                  placeholder={`Lemon Texas Sheet Cake
+                  placeholder={`Paste Text: Recipe Title
 
+Ingredients
 2 cups flour
 2 cups sugar
 1 cup butter
@@ -5380,7 +5404,7 @@ Bake for 25 minutes`}
         setEditRecipeDraft(selectedRecipe);
         setIsEditingRecipe(true);
       }}
-      className="rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+      className="w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
     >
       Edit Recipe
     </button>
@@ -5522,128 +5546,138 @@ Bake for 25 minutes`}
 )}
 {!isEditingRecipe && (
   <>
-            <div className="mb-8 flex flex-wrap gap-3">
-              <button
-                onClick={() => addToShoppingList(selectedRecipe)}
-                className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-              >
-                Add Ingredients to Shopping List
-              </button>
+    <div className="mb-6 grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <button
+          onClick={() => addToShoppingList(selectedRecipe)}
+          className="rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        >
+          Add to Shopping List
+        </button>
 
-              <button
-  onClick={() => {
-    if (!confirm(`Delete ${selectedRecipe.title}?`)) return;
+        {selectedRecipe.sourceUrl && (
+          <a
+            href={selectedRecipe.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-full border border-[#a63a0a] px-6 py-3 text-center text-[#a63a0a]"
+          >
+            View Original
+          </a>
+        )}
 
-    deleteRecipe(selectedRecipe.id);
-  }}
-  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
->
-  Delete Recipe
-</button>
-            </div>
-
-            <div className="mb-8 w-full rounded-3xl bg-[#f8efe6] p-6">
-              <h2 className="mb-2 text-xl font-bold">Plan This Recipe</h2>
-
-<p className="mb-4 text-sm text-[#6d5549]">
-  Already know when you're making it? Add it to your meal plan.
-</p>
-<button
-  onClick={() => togglePlanningQueue(selectedRecipe.id)}
-  className="w-full mb-4 rounded-full border border-[#a63a0a] px-5 py-2 text-[#a63a0a]"
->
-  {selectedRecipe.isPlanningQueue
-    ? "− Remove from Planning Queue"
-    : "+ Add to Planning Queue"}
-</button>
-              <div className="mb-4 grid gap-3 md:grid-cols-2">
-                <select
-                  value={selectedDay}
-                  onChange={(e) => setSelectedDay(e.target.value)}
-                  className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
-                >
-                  {plannerDays.map((day: { label: string; date: string }) => (
-  <option key={day.date} value={day.date}>
-    {day.label}
-  </option>
-))}
-                </select>
-
-                <select
-                  value={selectedMeal}
-                  onChange={(e) => setSelectedMeal(e.target.value)}
-                  className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
-                >
-                  {meals.map((meal) => (
-                    <option key={meal} value={meal}>
-                      {meal}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                onClick={() => {
-                  addRecipeToMealPlan(selectedDay, selectedMeal, selectedRecipe);
-                  setSelectedRecipe(null);
-                  setShowMealPlanner(true);
-                }}
-                className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-              >
-                Add to {selectedDay} {selectedMeal}
-              </button>
-            </div>
-
-            {selectedRecipe.sourceUrl && (
-              <a
-                href={selectedRecipe.sourceUrl}
-                target="_blank"
-                className="mb-8 block text-sm text-[#a63a0a] underline"
-              >
-                View original recipe
-              </a>
-            )}
-
-          
-<div className="mb-8 space-y-3">
-  {selectedRecipe.ingredients.map((ingredient) => {
-    const checkboxKey = `${selectedRecipe.id}-${ingredient}`;
-
-    return (
-      <label key={checkboxKey} className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          className="h-5 w-5"
-          checked={checkedRecipeIngredients.includes(checkboxKey)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setCheckedRecipeIngredients([
-                ...checkedRecipeIngredients,
-                checkboxKey,
-              ]);
-            } else {
-              setCheckedRecipeIngredients(
-                checkedRecipeIngredients.filter((item) => item !== checkboxKey)
-              );
-            }
+        <button
+          onClick={() => {
+            if (!confirm(`Delete ${selectedRecipe.title}?`)) return;
+            deleteRecipe(selectedRecipe.id);
           }}
-        />
+          className="rounded-full border border-red-600 px-6 py-3 text-red-600"
+        >
+          Delete Recipe
+        </button>
+      </div>
+    </div>
 
-        <span>{ingredient}</span>
-      </label>
-    );
-  })}
-</div>
+    <div className="mb-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-3xl bg-white p-5 shadow-sm">
+        <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
 
-<h2 className="mb-4 text-2xl font-bold">Steps</h2>
+        <div className="space-y-3">
+          {selectedRecipe.ingredients.map((ingredient) => {
+            const checkboxKey = `${selectedRecipe.id}-${ingredient}`;
 
-<ol className="space-y-3">
-  {selectedRecipe.steps.map((step, index) => (
-    <li key={`${step}-${index}`} className="rounded-2xl bg-[#f8efe6] p-4">
-      <strong>Step {index + 1}:</strong> {step}
-    </li>
-  ))}
-</ol>
+            return (
+              <label key={checkboxKey} className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5"
+                  checked={checkedRecipeIngredients.includes(checkboxKey)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setCheckedRecipeIngredients([
+                        ...checkedRecipeIngredients,
+                        checkboxKey,
+                      ]);
+                    } else {
+                      setCheckedRecipeIngredients(
+                        checkedRecipeIngredients.filter(
+                          (item) => item !== checkboxKey
+                        )
+                      );
+                    }
+                  }}
+                />
+
+                <span>{ingredient}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-3xl bg-[#f8efe6] p-5">
+        <h2 className="mb-4 text-2xl font-bold">Plan This Recipe</h2>
+
+        <button
+          onClick={() => togglePlanningQueue(selectedRecipe.id)}
+          className="mb-4 w-full rounded-full border border-[#a63a0a] px-5 py-3 text-[#a63a0a]"
+        >
+          {selectedRecipe.isPlanningQueue
+            ? "− Remove from Planning Queue"
+            : "+ Add to Planning Queue"}
+        </button>
+
+        <div className="mb-4 grid gap-3">
+          <select
+            value={selectedDay}
+            onChange={(e) => setSelectedDay(e.target.value)}
+            className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+          >
+            {plannerDays.map((day: { label: string; date: string }) => (
+              <option key={day.date} value={day.date}>
+                {day.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedMeal}
+            onChange={(e) => setSelectedMeal(e.target.value)}
+            className="w-full rounded-full border border-[#ead7c8] bg-white px-4 py-3"
+          >
+            {meals.map((meal) => (
+              <option key={meal} value={meal}>
+                {meal}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={() => {
+            addRecipeToMealPlan(selectedDay, selectedMeal, selectedRecipe);
+            setSelectedRecipe(null);
+            setShowMealPlanner(true);
+          }}
+          className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+        >
+          Add to Meal Plan
+        </button>
+      </div>
+    </div>
+
+    <h2 className="mb-4 text-2xl font-bold">Steps</h2>
+
+    <ol className="space-y-3">
+      {selectedRecipe.steps.map((step, index) => (
+        <li
+          key={`${step}-${index}`}
+          className="rounded-2xl bg-[#f8efe6] p-4"
+        >
+          <strong>Step {index + 1}:</strong> {step}
+        </li>
+      ))}
+    </ol>
   </>
 )}
           </div>
