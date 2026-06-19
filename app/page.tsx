@@ -2657,7 +2657,7 @@ function renderAuthCard() {
 if (!userEmail) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
-      <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 py-6 md:grid-cols-[1.2fr_0.8fr] md:py-10">
+     <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl items-center gap-12 py-8 md:grid-cols-[1.2fr_0.8fr] md:py-16">
         <div>
           <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
             Hey Chef
@@ -2699,33 +2699,68 @@ if (!userEmail) {
   </div>
 </div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {sampleRecipes.map((recipe) => (
-              <button
-                key={recipe.id}
-                onClick={() => setSampleRecipe(recipe)}
-                className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-              >
-                <img
-                  src={recipe.image || placeholderImage}
-                  alt={recipe.title}
-                  className="mb-4 h-36 w-full rounded-2xl object-cover"
-                />
+          <div
+  onClick={() => setSampleRecipe(sampleRecipes[0])}
+  className="cursor-pointer rounded-[2rem] bg-white p-5 shadow-sm transition hover:shadow-lg"
+>
+  <div className="flex flex-col gap-4 md:flex-row">
+    <img
+      src={sampleRecipes[0].image || placeholderImage}
+      alt={sampleRecipes[0].title}
+      className="h-40 w-full rounded-2xl object-cover md:w-64"
+    />
 
-                <h3 className="text-lg font-bold">{recipe.title}</h3>
-                <RecipeMeta recipe={recipe} />
+    <div className="flex-1">
+      <h3 className="mb-2 text-2xl font-bold">
+        {sampleRecipes[0].title}
+      </h3>
 
-                <p className="mt-3 text-sm text-[#6d5549]">
-                  Click to preview
-                </p>
-              </button>
-            ))}
-          </div>
-        </div>
-        
+      <RecipeMeta recipe={sampleRecipes[0]} />
+
+      <p className="mt-4 text-[#6d5549]">
+        Click to preview
+      </p>
+    </div>
+  </div>
+</div>
+<div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+  <div>
+    <div className="mb-2 text-3xl">🌎</div>
+    <h3 className="font-bold">Import from anywhere</h3>
+    <p className="text-sm text-[#6d5549]">
+      Works with recipe websites.
+    </p>
+  </div>
+
+  <div>
+    <div className="mb-2 text-3xl">📅</div>
+    <h3 className="font-bold">Plan your meals</h3>
+    <p className="text-sm text-[#6d5549]">
+      Plan up to 2 weeks at a time.
+    </p>
+  </div>
+
+  <div>
+    <div className="mb-2 text-3xl">🛒</div>
+    <h3 className="font-bold">Build shopping lists</h3>
+    <p className="text-sm text-[#6d5549]">
+      Automatically add missing ingredients.
+    </p>
+  </div>
+
+  <div>
+    <div className="mb-2 text-3xl">📦</div>
+    <h3 className="font-bold">Track your pantry</h3>
+    <p className="text-sm text-[#6d5549]">
+      Know approx. what you have and what you need.
+    </p>
+  </div>
+</div>
+      
+</div>  
 
         {/* Desktop login form stays in right column */}
-        <div className="hidden rounded-[2rem] bg-white p-6 shadow-xl md:block">
+        <div className="hidden rounded-[2rem] bg-white p-8 shadow-xl md:block">
           {renderAuthCard()}
         </div>
       </section>
@@ -2845,6 +2880,15 @@ if (!userEmail) {
     </div>
   </div>
 )}
+<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy">Privacy</a>
+    <a href="/terms">Terms</a>
+    <a href="/contact">Contact</a>
+  </div>
+</footer>
     </main>
   );
 }
@@ -2930,6 +2974,26 @@ if (showProfile) {
           >
             Change Password
           </button>
+          <div className="mt-8 border-t border-[#ead7c8] pt-6">
+  <h2 className="mb-2 text-lg font-bold text-red-700">
+    Danger Zone
+  </h2>
+
+  <p className="mb-4 text-sm text-[#6d5549]">
+   Permanently delete your Hey Chef account and saved data.<br />
+  
+Contact support and we'll process your request.</p>
+
+  <button
+  onClick={() => {
+    window.location.href =
+      "mailto:kcapuchino06@gmail.com?subject=Hey Chef Account Deletion Request";
+  }}
+  className="w-full rounded-full border border-red-600 px-6 py-3 font-semibold text-red-600"
+>
+  Request Account Deletion
+</button>
+</div>
         </section>
       </section>
 
