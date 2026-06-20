@@ -307,7 +307,8 @@ const [foodImage, setFoodImage] = useState("");
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  const [shoppingList, setShoppingList] = useState<string[]>([]);
+  const [shoppingList, setShoppingList] = useState<string[]>([])
+  const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
   const [showShoppingList, setShowShoppingList] = useState(false);
 
   const [showMealPlanner, setShowMealPlanner] = useState(false);
@@ -863,8 +864,16 @@ useEffect(() => {
       return;
     }
 
-    setShoppingList(
-  (data || []).map((item) => item.name)
+    setShoppingList((data || []).map((item) => item.name));
+
+setShoppingItemImages(
+  (data || []).reduce((images, item) => {
+    if (item.image_url) {
+      images[item.name] = item.image_url;
+    }
+
+    return images;
+  }, {} as Record<string, string>)
 );
 
 setCheckedShoppingItems(
@@ -2433,7 +2442,7 @@ async function savePantryItemAsFoodCard(item: PantryItem) {
   showToast("Added to Quick Eats.");
 }
 
-async function addShoppingItemToPantry(shoppingItem: string) {
+async function addShoppingItemToPantry(shoppingItem: string, count = 1) {
   const cleanedShoppingName = normalizeItemName(shoppingItem);
 
   const alreadyInPantry = pantryItems.find((pantryItem) => {
@@ -2454,7 +2463,7 @@ async function addShoppingItemToPantry(shoppingItem: string) {
 
   setPantryModalItem(cleanedName);
   setPantryModalShoppingItem(shoppingItem);
-  setPantryModalQuantity("1");
+  setPantryModalQuantity(String(count));
   setPantryModalUnit("package");
   setPantryModalCategory("Prepared Food");
   setShowPantryModal(true)
@@ -2546,6 +2555,8 @@ async function savePantryModal() {
       quantity: pantryModalQuantity.trim() || "1",
       unit: pantryModalUnit,
       category: pantryModalCategory,
+      image_url: shoppingItemImages[pantryModalShoppingItem] || "",
+source_url: "",
     })
     .select()
     .single();
@@ -2562,6 +2573,7 @@ async function savePantryModal() {
     unit: data.unit || "",
     category: data.category || "Other",
     createdAt: data.created_at,
+    image: data.image_url || shoppingItemImages[pantryModalShoppingItem] || "",
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
@@ -3845,6 +3857,11 @@ product = await response.json();
                     toggleShoppingItemChecked(item, e.target.checked)
                   }
                 />
+                <img
+  src={shoppingItemImages[item] || placeholderImage}
+  alt={item}
+  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+/>
 
                 <span className="max-w-[52ch] break-words font-medium leading-snug">
                   {item
@@ -3912,7 +3929,7 @@ product = await response.json();
                 ) : (
                   <>
                     <button
-                      onClick={() => addShoppingItemToPantry(item)}
+                      onClick={() => addShoppingItemToPantry(item, count)}
                       className="text-sm font-medium text-[#a63a0a]"
                     >
                       Add to Pantry
@@ -5231,14 +5248,21 @@ if (showPantry) {
     </label>
   </>
 ) : (
-  <div>
+  <div className="flex min-w-0 items-center gap-3">
+    <img
+      src={item.image || placeholderImage}
+      alt={item.name}
+      className="h-12 w-12 shrink-0 rounded-xl object-cover"
+    />
 
-  <p className="font-bold">{item.name}</p>
+    <div className="min-w-0">
+      <p className="break-words font-bold">{item.name}</p>
 
-  <p className="mt-1 text-[#6d5549]">
-    {item.quantity || "1"} {item.unit}
-  </p>
-</div>
+      <p className="mt-1 text-[#6d5549]">
+        {item.quantity || "1"} {item.unit}
+      </p>
+    </div>
+  </div>
 )}
 
     {!isBulkEditingPantry && (
