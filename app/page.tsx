@@ -338,6 +338,7 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
 >("all");
 const [recipeSort, setRecipeSort] = useState("newest");
 
+  const [shoppingItemUrls, setShoppingItemUrls] = useState<Record<string, string>>({});
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
  const [hidePantryItems, setHidePantryItems] = useState(true);
   const [pantrySearch, setPantrySearch] = useState("");
@@ -873,6 +874,16 @@ setShoppingItemImages(
     }
 
     return images;
+  }, {} as Record<string, string>)
+);
+
+setShoppingItemUrls(
+  (data || []).reduce((urls, item) => {
+    if (item.source_url) {
+      urls[item.name] = item.source_url;
+    }
+
+    return urls;
   }, {} as Record<string, string>)
 );
 
@@ -1526,6 +1537,28 @@ setSampleRecipe(guestRecipe);
   setShowImport(false);
 }
 
+function getRecipeForShoppingItem(itemName: string) {
+  return recipes.find((recipe) =>
+    recipe.ingredients.some(
+      (ingredient) =>
+        normalizeItemName(ingredient) === normalizeItemName(itemName)
+    )
+  );
+}
+
+function getShoppingItemIcon(item: string) {
+  const text = normalizeItemName(item);
+
+  if (/lettuce|onion|garlic|lime|lemon|avocado|tomato|cilantro|potato|berries|grapes/.test(text)) return "🥬";
+  if (/rice|pasta|bread|flour|oats|beans|tortilla/.test(text)) return "🌾";
+  if (/milk|cheese|yogurt|cream|butter/.test(text)) return "🥛";
+  if (/frozen|burrito|pizza|fries/.test(text)) return "❄️";
+  if (/oil|vinegar|sauce|tamari|mustard|ketchup|mayo|adobo/.test(text)) return "🫙";
+  if (/salt|pepper|cumin|paprika|spice|seasoning/.test(text)) return "🧂";
+
+  return "🛒";
+}
+
 
 function showToast(message: string) {
   setToastMessage(message);
@@ -1646,7 +1679,7 @@ function getIngredientQuantity(item: string) {
     .trim();
 }
 
-async function addItemsToShoppingList(items: string[]) {
+async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -1657,9 +1690,13 @@ async function addItemsToShoppingList(items: string[]) {
   }
 
   const rows = items.map((item) => ({
-    user_id: user.id,
-    name: item,
-  }));
+  user_id: user.id,
+  name: item,
+  image_url: sourceRecipe?.image || "",
+  source_url: sourceRecipe?.sourceUrl || "",
+  brand: sourceRecipe?.brand || "",
+  package_size: sourceRecipe?.packageSize || "",
+}));
 
   const { data, error } = await supabase
     .from("shopping_items")
@@ -3700,6 +3737,7 @@ Contact support and we'll process your request.</p>
 let product: any = null;
 
   // Instacart product URL
+  const originalUrl = itemName;
   if (
     itemName.includes("instacart.com/products/")
   ) {
@@ -3735,7 +3773,7 @@ product = await response.json();
     return;
   }
   console.log("PRODUCT BEFORE SAVE", product);
-  const originalUrl = itemName;
+  
   const { data, error } = await supabase
   .from("shopping_items")
   .insert({
@@ -3744,13 +3782,22 @@ product = await response.json();
     brand: product?.brand || "",
     package_size: product?.packageSize || "",
     image_url: product?.image || "",
-    source_url: itemName.includes("http") ? itemName : "",
+    source_url: originalUrl.includes("http") ? originalUrl : "",
     price: product?.price || "",
   })
   .select()
   .single();
 
   setShoppingList([data.name, ...shoppingList]);
+  setShoppingItemImages({
+  ...shoppingItemImages,
+  [data.name]: data.image_url || "",
+});
+
+setShoppingItemUrls({
+  ...shoppingItemUrls,
+  [data.name]: data.source_url || "",
+});
   setNewShoppingItem("");
 }}
       className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
@@ -3840,9 +3887,18 @@ product = await response.json();
 
           return cleanForSort(a.item).localeCompare(cleanForSort(b.item));
         })
+        
         .map(({ item, count }) => {
           const matchingPantryItem = getMatchingPantryItem(item);
           const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+           const linkedRecipe = getRecipeForShoppingItem(item);
+
+           const displayName = `${item
+  .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
+  .replace(/\(\(.*?\)\)/g, "")
+  .replace(/\(optional.*?\)/gi, "")
+  .replace(/\s+/g, " ")
+  .trim()}${count > 1 ? ` ×${count}` : ""}`;
 
           return (
             <div
@@ -3857,21 +3913,44 @@ product = await response.json();
                     toggleShoppingItemChecked(item, e.target.checked)
                   }
                 />
-                <img
-  src={shoppingItemImages[item] || placeholderImage}
-  alt={item}
-  className="h-12 w-12 shrink-0 rounded-xl object-cover"
-/>
+                {shoppingItemImages[item] ? (
+  <img
+    src={shoppingItemImages[item]}
+    alt={item}
+    className="h-12 w-12 shrink-0 rounded-xl object-cover"
+  />
+) : (
+  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#fff4ef] text-xl">
+   {getShoppingItemIcon(item)}
+  </div>
+)}
 
-                <span className="max-w-[52ch] break-words font-medium leading-snug">
-                  {item
-  .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
-  .replace(/\(\(.*?\)\)/g, "")
-  .replace(/\(optional.*?\)/gi, "")
-  .replace(/\s+/g, " ")
-  .trim()} 
-                  {count > 1 ? ` ×${count}` : ""}
-                </span>
+                {shoppingItemUrls[item] ? (
+  <a
+    href={shoppingItemUrls[item]}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="max-w-[52ch] break-words font-medium leading-snug text-[#a63a0a] hover:underline"
+  >
+    {item
+      .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
+      .replace(/\(\(.*?\)\)/g, "")
+      .replace(/\(optional.*?\)/gi, "")
+      .replace(/\s+/g, " ")
+      .trim()}
+    {count > 1 ? ` ×${count}` : ""}
+  </a>
+) : (
+  <span className="max-w-[52ch] break-words font-medium leading-snug">
+    {item
+      .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
+      .replace(/\(\(.*?\)\)/g, "")
+      .replace(/\(optional.*?\)/gi, "")
+      .replace(/\s+/g, " ")
+      .trim()}
+    {count > 1 ? ` ×${count}` : ""}
+  </span>
+)}
               </label>
 
               <div className="flex flex-wrap items-center gap-3 pl-7 md:pl-0">
@@ -5249,11 +5328,27 @@ if (showPantry) {
   </>
 ) : (
   <div className="flex min-w-0 items-center gap-3">
+  {item.image &&
+  (item.sourceUrl ? (
+    <a
+      href={item.sourceUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="View product"
+    >
+      <img
+        src={item.image}
+        alt={item.name}
+        className="h-12 w-12 shrink-0 rounded-xl object-cover transition hover:scale-105"
+      />
+    </a>
+  ) : (
     <img
-      src={item.image || placeholderImage}
+      src={item.image}
       alt={item.name}
       className="h-12 w-12 shrink-0 rounded-xl object-cover"
     />
+  ))}
 
     <div className="min-w-0">
       <p className="break-words font-bold">{item.name}</p>
@@ -6459,6 +6554,13 @@ Bake for 25 minutes`}
       <div className="grid gap-6 md:grid-cols-[1fr_420px]">
         <div className="rounded-3xl bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
+          
+          <button
+  onClick={() => addToShoppingList(selectedRecipe)}
+  className="mb-5 w-full rounded-full border border-[#a63a0a] px-5 py-3 font-bold text-[#a63a0a]"
+>
+  Add All Ingredients to Shopping List
+</button>
 
           <ul className="space-y-3">
             {selectedRecipe.ingredients.map((ingredient, index) => (
