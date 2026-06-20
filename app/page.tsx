@@ -4740,17 +4740,21 @@ setMealPlan(updatedMealPlan);
         <option value="">Plan from shopping list</option>
         {shoppingList
   .filter((item) => {
-    .filter(
-    (item) =>
-      !Object.values(mealPlan)
-        .flat()
-        .some(
-          (planned) =>
-            planned.source === "shopping_list" &&
-            normalizeItemName(planned.title) === normalizeItemName(item) &&
-            !planned.isMade
-        )
-  )
+    const alreadyPlannedCount = Object.values(mealPlan)
+      .flat()
+      .filter(
+        (planned) =>
+          planned.source === "shopping_list" &&
+          planned.title === item &&
+          !planned.isMade
+      ).length;
+
+    const cartCount = shoppingList.filter(
+      (cartItem) => cartItem === item
+    ).length;
+
+    return alreadyPlannedCount < cartCount;
+  })
   .map((item, index) => (
     <option key={`${item}-${index}`} value={item}>
       {item}
