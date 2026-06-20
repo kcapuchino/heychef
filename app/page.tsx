@@ -3550,7 +3550,7 @@ Contact support and we'll process your request.</p>
               key={item}
               className="grid gap-3 border-b border-[#ead7c8] py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
             >
-              <label className="flex min-w-0 items-start gap-3">
+              <label className="flex min-w-0 items-center gap-3">
                 <input
                   type="checkbox"
                   checked={checkedShoppingItems.includes(item)}
