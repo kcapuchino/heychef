@@ -20,7 +20,7 @@ type Recipe = {
 brand?: string;
 packageSize?: string;
 pantryQuantity?: number;
-source?: "recipe" | "shopping_list";
+source?: "recipe" | "shopping_list" | "leftovers";
 };
 
 
@@ -327,6 +327,7 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
   const [plannerMeal, setPlannerMeal] = useState("Dinner");
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
   const [plannerShoppingItemId, setPlannerShoppingItemId] = useState("");
+  const [plannerLeftoverId, setPlannerLeftoverId] = useState("");
   const [plannerPopup, setPlannerPopup] = useState<{
   day: string;
   meal: string;
@@ -1893,7 +1894,33 @@ const manualItems = (manualData || []).map((item) => item.name);
   addRecipeToMealPlan(day, meal, recipe);
   setPlannerPopup(null);
 }
+async function addLeftoverFromPlanner() {
+  if (!plannerPopup || !plannerLeftoverId) return;
 
+  const original = Object.values(mealPlan)
+    .flat()
+    .find((item) => item.mealPlanId === plannerLeftoverId);
+
+  if (!original) return;
+
+  const key = getMealPlanKey(plannerPopup.day, plannerPopup.meal);
+
+  const leftoverItem: PlannedRecipe = {
+    ...original,
+    id: crypto.randomUUID(),
+    mealPlanId: crypto.randomUUID(),
+    isMade: false,
+    source: "leftovers",
+  };
+
+  setMealPlan((current) => ({
+    ...current,
+    [key]: [...(current[key] || []), leftoverItem],
+  }));
+
+  setPlannerLeftoverId("");
+  setPlannerPopup(null);
+}
   async function removeRecipeFromMealPlan(
   day: string,
   meal: string,
@@ -4713,10 +4740,11 @@ setMealPlan(updatedMealPlan);
 
       <select
         value={plannerRecipeId}
-        onChange={(e) => {
-          setPlannerRecipeId(e.target.value);
-          setPlannerShoppingItemId("");
-        }}
+       onChange={(e) => {
+  setPlannerRecipeId(e.target.value);
+  setPlannerShoppingItemId("");
+  setPlannerLeftoverId("");
+}}
         className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
       >
         <option value="">Choose a recipe</option>
@@ -4729,15 +4757,14 @@ setMealPlan(updatedMealPlan);
             </option>
           ))}
       </select>
-
-      <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
-
+ <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
       <select
         value={plannerShoppingItemId}
         onChange={(e) => {
-          setPlannerShoppingItemId(e.target.value);
-          setPlannerRecipeId("");
-        }}
+  setPlannerRecipeId(e.target.value);
+  setPlannerShoppingItemId("");
+  setPlannerLeftoverId("");
+}}
         className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
       >
         <option value="">Plan from shopping list</option>
@@ -4764,18 +4791,41 @@ setMealPlan(updatedMealPlan);
     </option>
   ))}
       </select>
+ <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
+      <select
+  value={plannerLeftoverId}
+  onChange={(e) => {
+    setPlannerLeftoverId(e.target.value);
+    setPlannerRecipeId("");
+    setPlannerShoppingItemId("");
+  }}
+  className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
+>
+  <option value="">Plan leftovers</option>
+
+  {Object.values(mealPlan)
+    .flat()
+    .filter((item) => !item.isMade)
+    .map((item) => (
+      <option key={item.mealPlanId} value={item.mealPlanId}>
+        {item.title}
+      </option>
+    ))}
+</select>
 
       <button
-        onClick={
-          plannerRecipeId
-            ? addRecipeFromPlanner
-            : addShoppingListFromPlanner
-        }
-        disabled={!plannerRecipeId && !plannerShoppingItemId}
-        className="w-full rounded-full bg-[#a63a0a] px-6 py-4 text-white disabled:opacity-50"
-      >
-        Add to {plannerPopup.meal}
-      </button>
+  onClick={
+    plannerRecipeId
+      ? addRecipeFromPlanner
+      : plannerShoppingItemId
+      ? addShoppingListFromPlanner
+      : addLeftoverFromPlanner
+  }
+  disabled={!plannerRecipeId && !plannerShoppingItemId && !plannerLeftoverId}
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-4 text-white disabled:opacity-50"
+>
+  Add to {plannerPopup.meal}
+</button>
 
       <button
         onClick={() => setPlannerPopup(null)}
@@ -4862,12 +4912,14 @@ setMealPlan(updatedMealPlan);
       <div
   key={recipe.mealPlanId}
   className={`rounded-xl p-3 text-sm transition ${
-  recipe.isMade
-    ? "bg-[#f3f3f3] opacity-60"
-    : recipe.source === "shopping_list"
-    ? "border border-[#cfe3bf] bg-[#fbfff7]"
-    : "bg-white"
-}`}
+    recipe.isMade
+      ? "bg-[#f3f3f3] opacity-60"
+      : recipe.source === "leftovers"
+      ? "border border-[#cfe0f7] bg-[#f6faff]"
+      : recipe.source === "shopping_list"
+      ? "border border-[#cfe3bf] bg-[#fbfff7]"
+      : "bg-white"
+  }`}
 >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -4906,12 +4958,24 @@ setMealPlan(updatedMealPlan);
   </p>
 )}
 
-{recipe.source === "shopping_list" && (
-  <p className="mt-1 text-xs font-bold text-[#3f7f32]">
-    From shopping list
-  </p>
-)}
-  </button>
+  {recipe.source === "shopping_list" && (
+    <p className="mt-1 text-xs font-bold text-[#3f7f32]">
+      From shopping list
+    </p>
+  )}
+
+  {recipe.source === "leftovers" && (
+    <p className="mt-1 text-xs font-bold text-[#4f6fa8]">
+      Leftovers
+    </p>
+  )}
+
+  {recipe.isMade && (
+    <p className="mt-1 text-xs font-bold text-[#8a8a8a]">
+      ✓ Made
+    </p>
+  )}
+</button>
 </div>
 
                         <button
