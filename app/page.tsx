@@ -3343,7 +3343,7 @@ if (!userEmail) {
           rel="noreferrer"
           className="mb-6 block text-[#a63a0a] underline"
         >
-          View original recipe
+         🔗 View original recipe
         </a>
       )}
 
@@ -6248,6 +6248,20 @@ Bake for 25 minutes`}
 ) : (
   <RecipeMeta recipe={selectedRecipe} />
 )}
+{selectedRecipe.sourceUrl && (
+  <div className="mt-3">
+  <a
+    href={selectedRecipe.sourceUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-sm font-medium text-[#a63a0a] hover:underline"
+  >
+    {selectedRecipe.category === "Prepared Food"
+      ? "🛒 View in Store"
+      : "🔗 View Original Recipe"}
+  </a>
+</div>
+)}
   </div>
 <div className="flex flex-col gap-3 md:flex-row md:w-auto w-full">
   {!isEditingRecipe ? (
@@ -6551,28 +6565,47 @@ Bake for 25 minutes`}
     </>
   ) : (
     <>
-      <div className="grid gap-6 md:grid-cols-[1fr_420px]">
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-2xl font-bold">Ingredients</h2>
-          
-          <button
+    <button
   onClick={() => addToShoppingList(selectedRecipe)}
-  className="mb-5 w-full rounded-full border border-[#a63a0a] px-5 py-3 font-bold text-[#a63a0a]"
+  className="mb-6 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
 >
-  Add All Ingredients to Shopping List
+  Add Ingredients to Shopping List
 </button>
+      <div className="grid gap-6 md:grid-cols-[1fr_420px]">
+        <div className="rounded-3xl border border-[#ead7c8] bg-white p-6">
+  <h2 className="mb-5 text-2xl font-bold">Ingredients</h2>
 
-          <ul className="space-y-3">
-            {selectedRecipe.ingredients.map((ingredient, index) => (
-              <li
-                key={`${ingredient}-${index}`}
-                className="rounded-2xl bg-[#f8efe6] p-4"
-              >
-                {ingredient}
-              </li>
-            ))}
-          </ul>
-        </div>
+  <ul className="space-y-3">
+    {selectedRecipe.ingredients.map((ingredient, index) => (
+      <li
+        key={`${ingredient}-${index}`}
+        className="flex items-center gap-3"
+      >
+        <input
+          type="checkbox"
+          checked={checkedRecipeIngredients.includes(ingredient)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setCheckedRecipeIngredients([
+                ...checkedRecipeIngredients,
+                ingredient,
+              ]);
+            } else {
+              setCheckedRecipeIngredients(
+                checkedRecipeIngredients.filter(
+                  (item) => item !== ingredient
+                )
+              );
+            }
+          }}
+          className="h-5 w-5"
+        />
+
+        <span>{ingredient}</span>
+      </li>
+    ))}
+  </ul>
+</div>
 
         <div className="rounded-3xl bg-[#f8efe6] p-6">
           <h2 className="mb-4 text-2xl font-bold">Plan This Recipe</h2>
