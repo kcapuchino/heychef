@@ -986,17 +986,18 @@ useEffect(() => {
     const { data, error } = await supabase
   .from("meal_plan")
   .select(`
-    id,
-    date,
-    day,
-    meal,
-    week,
-    week_start,
-    is_made,
-    source,
-    title,
-    recipes (*)
-  `)
+  id,
+  date,
+  day,
+  meal,
+  week,
+  week_start,
+  is_made,
+  source,
+  title,
+  image_url,
+  recipes (*)
+`)
   .eq("user_id", user.id);
 
     if (error) {
@@ -1033,7 +1034,7 @@ if (item.source === "shopping_list") {
   loadedPlan[key].push({
     id: item.id,
     title: item.title,
-    image: shoppingItemImages[item.title] || "",
+    image: item.image_url || "",
     ingredients: [],
     steps: [],
     cookTime: "",
@@ -2018,6 +2019,7 @@ if (alreadyPlannedCount >= cartCount) {
   week_start: getWeekStartDate(activePlannerWeek),
   source: "shopping_list",
   title: plannerShoppingItemId,
+  image_url: shoppingItemImages[plannerShoppingItemId] || "",
 })
     .select()
     .single();
@@ -3918,6 +3920,7 @@ product = await response.json();
     image_url: product?.image || "",
     source_url: originalUrl.includes("http") ? originalUrl : "",
     price: product?.price || "",
+    
   })
   .select()
   .single();
