@@ -38,6 +38,11 @@ type PantryItem = {
   unit?: string;
   category: string;
   createdAt: string;
+  brand?: string;
+  packageSize?: string;
+  image?: string;
+  sourceUrl?: string;
+  price?: string;
 };
 
 type ShoppingItem = {
@@ -45,6 +50,11 @@ type ShoppingItem = {
   name: string;
   storeSection?: string;
   sourceMealPlanId?: string;
+  brand?: string;
+  packageSize?: string;
+  image?: string;
+  sourceUrl?: string;
+  price?: string;
 };
 
 type SavedUserData = {
@@ -52,7 +62,9 @@ type SavedUserData = {
   shoppingList: string[];
   mealPlan: Record<string, PlannedRecipe[]>;
   pantryItems: PantryItem[];
+  
 };
+
 
 
 const meals = ["Breakfast", "Lunch", "Dinner"];
@@ -226,8 +238,8 @@ function cleanPantryDisplayName(text: string) {
     .replace(/^(small|large|medium)\s+/i, "")
     .trim();
 }
-function normalizeItemName(text: string) {
-  return text
+function normalizeItemName(text?: string | null) {
+  return String(text || "")
     .toLowerCase()
     .replace(/-/g, " ")
     .split(",")[0]
@@ -851,12 +863,14 @@ useEffect(() => {
       return;
     }
 
-    setShoppingList((data || []).map((item) => item.name));
+    setShoppingList(
+  (data || []).map((item) => item.name)
+);
 
 setCheckedShoppingItems(
   (data || [])
     .filter((item) => item.is_checked)
-    .map((item) => item.name)
+    .map((item) => item.id)
 );
   }
 
@@ -891,6 +905,12 @@ useEffect(() => {
     unit: item.unit || "",
     category: item.category || "Other",
     createdAt: item.created_at,
+
+    brand: item.brand || "",
+    packageSize: item.package_size || "",
+    image: item.image_url || "",
+    sourceUrl: item.source_url || "",
+    price: item.price || "",
   }))
 );
   }
@@ -1463,7 +1483,7 @@ setSampleRecipe(guestRecipe);
     .insert({
       user_id: user.id,
       title: recipe.title,
-      image_url: "",
+      image_url: placeholderImage,
       ingredients: recipe.ingredients,
       steps: recipe.steps,
       source_url: recipe.sourceUrl,
@@ -1859,6 +1879,8 @@ const manualItems = (manualData || []).map((item) => item.name);
 }
 
   async function deleteRecipe(recipeId: string) {
+  const recipeToDelete = recipes.find((recipe) => recipe.id === recipeId);
+
   const { error } = await supabase
     .from("recipes")
     .delete()
@@ -1869,23 +1891,41 @@ const manualItems = (manualData || []).map((item) => item.name);
     return;
   }
 
+  if (recipeToDelete?.type === "grocery") {
+    await supabase
+      .from("pantry_items")
+      .delete()
+      .eq("name", recipeToDelete.title);
+
+    setPantryItems(
+      pantryItems.filter(
+        (item) =>
+          normalizeItemName(item.name) !==
+          normalizeItemName(recipeToDelete.title)
+      )
+    );
+  }
+
   setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
 
   const updatedMealPlan = { ...mealPlan };
 
-Object.keys(updatedMealPlan).forEach((key) => {
-  if (key.startsWith(`${activePlannerWeek}-`)) {
-    delete updatedMealPlan[key];
-  }
-});
-
-setMealPlan(updatedMealPlan);
+  Object.keys(updatedMealPlan).forEach((key) => {
+    updatedMealPlan[key] = updatedMealPlan[key].filter(
+      (recipe) => recipe.id !== recipeId
+    );
+  });
 
   setMealPlan(updatedMealPlan);
   setSelectedRecipe(null);
   setShowAllRecipes(true);
-}
 
+  showToast(
+    recipeToDelete?.type === "grocery"
+      ? "Food item removed from library and pantry."
+      : "Recipe deleted."
+  );
+}
   async function updateSelectedRecipe(updatedRecipe: Recipe) {
     console.log("Saving recipe:", updatedRecipe);
     if (updatedRecipe.id === "new-recipe") {
@@ -2213,6 +2253,186 @@ function canMakeRecipeFromPantry(recipe: Recipe | PlannedRecipe) {
   return getRecipePantryGaps(recipe).length === 0;
 }
 
+function shouldSaveAsFoodCard(name: string) {
+  const text = name.toLowerCase();
+
+  const foodCardWords = [
+    "burrito",
+    "pizza rolls",
+    "pizza",
+    "frozen meal",
+    "soup",
+    "mac and cheese",
+    "protein bar",
+    "granola bar",
+    "yogurt",
+    "cereal",
+    "snack",
+    "chips",
+    "crackers",
+  ];
+
+  const ingredientWords = [
+    "grapes",
+    "blueberries",
+    "strawberries",
+    "lettuce",
+    "lemon",
+    "lime",
+    "onion",
+    "garlic",
+    "cilantro",
+    "flour",
+    "sugar",
+    "rice",
+    "beans",
+  ];
+
+  if (ingredientWords.some((word) => text.includes(word))) {
+    return false;
+  }
+
+  return foodCardWords.some((word) => text.includes(word));
+}
+
+async function saveShoppingItemAsFoodItem(itemName: string) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+
+  const { data: shoppingRow, error: shoppingError } = await supabase
+    .from("shopping_items")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("name", itemName)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (shoppingError) {
+    showToast(shoppingError.message);
+    return;
+  }
+
+  const newFoodItem: Recipe = {
+    id: crypto.randomUUID(),
+    title: cleanPantryDisplayName(itemName),
+    image: shoppingRow?.image_url || "",
+    ingredients: [],
+    steps: [],
+    cookTime: "",
+    servings: "",
+    category: "Prepared Food",
+    sourceUrl: shoppingRow?.source_url || "",
+    isFavorite: false,
+    isPlanningQueue: false,
+    createdAt: new Date().toISOString(),
+    type: "grocery",
+    brand: shoppingRow?.brand || "",
+    packageSize: shoppingRow?.package_size || "",
+  };
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: newFoodItem.title,
+      image_url: newFoodItem.image,
+      ingredients: [],
+      steps: [],
+      cook_time: "",
+      servings: "",
+      category: newFoodItem.category,
+      source_url: newFoodItem.sourceUrl,
+      is_favorite: false,
+      is_planning_queue: false,
+      type: "grocery",
+      brand: newFoodItem.brand,
+      package_size: newFoodItem.packageSize,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  setRecipes([
+    {
+      ...newFoodItem,
+      id: data.id,
+      createdAt: data.created_at,
+    },
+    ...recipes,
+  ]);
+}
+
+async function savePantryItemAsFoodCard(item: PantryItem) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: item.name,
+      image_url: item.image || "",
+      ingredients: [],
+      steps: [],
+      cook_time: "",
+      servings: "",
+      category: item.category || "Prepared Food",
+      source_url: item.sourceUrl || "",
+      is_favorite: false,
+      is_planning_queue: false,
+      type: "grocery",
+      brand: item.brand || "",
+      package_size: item.packageSize || "",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  setRecipes([
+    {
+      id: data.id,
+      title: data.title,
+      image: data.image_url || "",
+      ingredients: [],
+      steps: [],
+      cookTime: "",
+      servings: "",
+      category: data.category || "Prepared Food",
+      sourceUrl: data.source_url || "",
+      isFavorite: false,
+      isPlanningQueue: false,
+      createdAt: data.created_at,
+      type: "grocery",
+      brand: data.brand || "",
+      packageSize: data.package_size || "",
+    },
+    ...recipes,
+  ]);
+
+  showToast("Added to Quick Eats.");
+}
+
 async function addShoppingItemToPantry(shoppingItem: string) {
   const cleanedShoppingName = normalizeItemName(shoppingItem);
 
@@ -2233,12 +2453,42 @@ async function addShoppingItemToPantry(shoppingItem: string) {
   const cleanedName = cleanPantryDisplayName(shoppingItem);
 
   setPantryModalItem(cleanedName);
-setPantryModalShoppingItem(shoppingItem);
-setPantryModalQuantity("1");
-setPantryModalUnit("package");
-setPantryModalUnit("package");
-setShowPantryModal(true);
-showToast(`${cleanedName} ready to add to pantry.`);
+  setPantryModalShoppingItem(shoppingItem);
+  setPantryModalQuantity("1");
+  setPantryModalUnit("package");
+  setPantryModalCategory("Prepared Food");
+  setShowPantryModal(true)
+
+  showToast(`${cleanedName} ready to add to pantry.`);
+}
+
+async function resetPantry() {
+  if (
+    !confirm(
+      "Remove all pantry items and start over?"
+    )
+  ) {
+    return;
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { error } = await supabase
+    .from("pantry_items")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  setPantryItems([]);
+  showToast("Pantry reset.");
 }
 
 async function savePantryModal() {
@@ -2315,6 +2565,12 @@ async function savePantryModal() {
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
+  if (
+  pantryModalShoppingItem &&
+  shouldSaveAsFoodCard(pantryModalShoppingItem)
+) {
+  await saveShoppingItemAsFoodItem(pantryModalShoppingItem);
+}
   setPantrySessionAddCount((count) => count + 1);
 
   if (addAnotherPantryItem) {
@@ -3420,40 +3676,71 @@ Contact support and we'll process your request.</p>
     <input
       value={newShoppingItem}
       onChange={(e) => setNewShoppingItem(e.target.value)}
-      placeholder="🛒  Add grocery item"
+      placeholder="🛒  Add grocery item or paste url"
       className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
     />
 
     <button
       onClick={async () => {
-        if (!newShoppingItem.trim()) return;
+  if (!newShoppingItem.trim()) return;
 
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+  let itemName = newShoppingItem.trim();
+let product: any = null;
 
-        if (!user) {
-          showToast("Please log in again.");
-          return;
-        }
+  // Instacart product URL
+  if (
+    itemName.includes("instacart.com/products/")
+  ) {
+    try {
+      const response = await fetch("/api/import-food", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    url: itemName,
+  }),
+});
 
-        const { data, error } = await supabase
-          .from("shopping_items")
-          .insert({
-            user_id: user.id,
-            name: newShoppingItem.trim(),
-          })
-          .select()
-          .single();
+product = await response.json();
 
-        if (error) {
-          showToast(error.message);
-          return;
-        }
+      console.log("IMPORTED PRODUCT", product);
 
-        setShoppingList([data.name, ...shoppingList]);
-        setNewShoppingItem("");
-      }}
+      if (product?.title) {
+        itemName = product.title;
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+  console.log("PRODUCT BEFORE SAVE", product);
+  const originalUrl = itemName;
+  const { data, error } = await supabase
+  .from("shopping_items")
+  .insert({
+    user_id: user.id,
+    name: itemName,
+    brand: product?.brand || "",
+    package_size: product?.packageSize || "",
+    image_url: product?.image || "",
+    source_url: itemName.includes("http") ? itemName : "",
+    price: product?.price || "",
+  })
+  .select()
+  .single();
+
+  setShoppingList([data.name, ...shoppingList]);
+  setNewShoppingItem("");
+}}
       className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
     >
       Add Item
@@ -4689,6 +4976,7 @@ if (showPantry) {
           <h2 className="text-xl font-bold">Your Pantry</h2>
         </div>
 
+
 <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap">
   <button
     onClick={() => {
@@ -4708,6 +4996,12 @@ if (showPantry) {
     className="rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
   >
     {isBulkEditingPantry ? "Cancel Bulk Edit" : "Bulk Edit"}
+  </button>
+   <button
+    onClick={resetPantry}
+    className="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600"
+  >
+    Reset Pantry
   </button>
 
   {isBulkEditingPantry && (
@@ -4938,6 +5232,7 @@ if (showPantry) {
   </>
 ) : (
   <div>
+
   <p className="font-bold">{item.name}</p>
 
   <p className="mt-1 text-[#6d5549]">
@@ -4948,6 +5243,12 @@ if (showPantry) {
 
     {!isBulkEditingPantry && (
   <div className="flex items-center gap-4">
+  <button
+    onClick={() => savePantryItemAsFoodCard(item)}
+    className="text-sm font-bold text-[#a63a0a]"
+  >
+    Quick Eat
+  </button>
     <button
       onClick={() => {
         setEditingPantryModalId(item.id);
@@ -5223,93 +5524,6 @@ if (showPantry) {
 </div>
 </section>
 
-
-<section className="mb-8 rounded-[2rem] bg-white p-4 shadow-lg">
-  <div className="mb-4 grid gap-2 sm:grid-cols-2 md:grid-cols-4">
-    <button
-      onClick={() => {
-        setFoodTypeFilter("all");
-        setCategoryFilter("all");
-        setRecipeSort("newest");
-      }}
-      className={`rounded-full px-4 py-2 font-bold ${
-        foodTypeFilter === "all" && recipeSort === "newest"
-          ? "bg-[#a63a0a] text-white"
-          : "bg-[#fff4ef] text-[#a63a0a]"
-      }`}
-    >
-      All
-    </button>
-
-    <button
-      onClick={() => setFoodTypeFilter("recipe")}
-      className={`rounded-full px-4 py-2 font-bold ${
-        foodTypeFilter === "recipe"
-          ? "bg-[#a63a0a] text-white"
-          : "bg-[#fff4ef] text-[#a63a0a]"
-      }`}
-    >
-      Recipes
-    </button>
-
-    <button
-      onClick={() => setFoodTypeFilter("grocery")}
-      className={`rounded-full px-4 py-2 font-bold ${
-        foodTypeFilter === "grocery"
-          ? "bg-[#a63a0a] text-white"
-          : "bg-[#fff4ef] text-[#a63a0a]"
-      }`}
-    >
-      Food Items
-    </button>
-
-    <button
-      onClick={() => setRecipeSort("ready")}
-      className={`rounded-full px-4 py-2 font-bold ${
-        recipeSort === "ready"
-          ? "bg-[#315f25] text-white"
-          : "bg-[#e8f6df] text-[#315f25]"
-      }`}
-    >
-      ✓ Ready
-    </button>
-  </div>
-
-  <div className="grid gap-3 md:grid-cols-2">
-    <select
-      value={categoryFilter}
-      onChange={(e) => setCategoryFilter(e.target.value)}
-      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-    >
-      <option value="all">All Categories</option>
-      <option value="Main Dish">Main Dish</option>
-      <option value="Side Dish">Side Dish</option>
-      <option value="Dessert">Dessert</option>
-      <option value="Breakfast">Breakfast</option>
-      <option value="Soup">Soup</option>
-      <option value="Snack">Snack</option>
-      <option value="Drink">Drink</option>
-      <option value="Frozen Food">Frozen Food</option>
-      <option value="Boxed Meal">Boxed Meal</option>
-      <option value="Prepared Food">Prepared Food</option>
-      <option value="Canned Food">Canned Food</option>
-    </select>
-
-    <select
-      value={recipeSort}
-      onChange={(e) => setRecipeSort(e.target.value)}
-      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-    >
-      <option value="favorites">Favorites</option>
-      <option value="ready">Ready</option>
-      <option value="newest">Newest</option>
-      <option value="oldest">Oldest</option>
-      <option value="az">A–Z</option>
-      <option value="za">Z–A</option>
-    </select>
-  </div>
-</section>
-
         {showImport && (
   <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
     <div className="mb-4 flex items-center justify-between">
@@ -5493,6 +5707,92 @@ Bake for 25 minutes`}
     </button>
   </section>
 )}
+
+<section className="mb-8 rounded-[2rem] bg-white p-4 shadow-lg">
+  <div className="mb-4 grid gap-2 sm:grid-cols-2 md:grid-cols-4">
+    <button
+      onClick={() => {
+        setFoodTypeFilter("all");
+        setCategoryFilter("all");
+        setRecipeSort("newest");
+      }}
+      className={`rounded-full px-4 py-2 font-bold ${
+        foodTypeFilter === "all" && recipeSort === "newest"
+          ? "bg-[#a63a0a] text-white"
+          : "bg-[#fff4ef] text-[#a63a0a]"
+      }`}
+    >
+      All
+    </button>
+
+    <button
+      onClick={() => setFoodTypeFilter("recipe")}
+      className={`rounded-full px-4 py-2 font-bold ${
+        foodTypeFilter === "recipe"
+          ? "bg-[#a63a0a] text-white"
+          : "bg-[#fff4ef] text-[#a63a0a]"
+      }`}
+    >
+      Recipes
+    </button>
+
+    <button
+      onClick={() => setFoodTypeFilter("grocery")}
+      className={`rounded-full px-4 py-2 font-bold ${
+        foodTypeFilter === "grocery"
+          ? "bg-[#a63a0a] text-white"
+          : "bg-[#fff4ef] text-[#a63a0a]"
+      }`}
+    >
+      Food Items
+    </button>
+
+    <button
+      onClick={() => setRecipeSort("ready")}
+      className={`rounded-full px-4 py-2 font-bold ${
+        recipeSort === "ready"
+          ? "bg-[#315f25] text-white"
+          : "bg-[#e8f6df] text-[#315f25]"
+      }`}
+    >
+      ✓ Ready
+    </button>
+  </div>
+
+  <div className="grid gap-3 md:grid-cols-2">
+    <select
+      value={categoryFilter}
+      onChange={(e) => setCategoryFilter(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="all">All Categories</option>
+      <option value="Main Dish">Main Dish</option>
+      <option value="Side Dish">Side Dish</option>
+      <option value="Dessert">Dessert</option>
+      <option value="Breakfast">Breakfast</option>
+      <option value="Soup">Soup</option>
+      <option value="Snack">Snack</option>
+      <option value="Drink">Drink</option>
+      <option value="Frozen Food">Frozen Food</option>
+      <option value="Boxed Meal">Boxed Meal</option>
+      <option value="Prepared Food">Prepared Food</option>
+      <option value="Canned Food">Canned Food</option>
+    </select>
+
+    <select
+      value={recipeSort}
+      onChange={(e) => setRecipeSort(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="favorites">Favorites</option>
+      <option value="ready">Ready</option>
+      <option value="newest">Newest</option>
+      <option value="oldest">Oldest</option>
+      <option value="az">A–Z</option>
+      <option value="za">Z–A</option>
+    </select>
+  </div>
+</section>
 
         {recipes.length === 0 ? (
           <div className="rounded-3xl bg-white p-8 shadow">

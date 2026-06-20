@@ -151,23 +151,30 @@ const title = rawTitle
   .trim();
 
     if (!title) {
-      return NextResponse.json(
-        { error: "Could not find product details. Enter them manually below." },
-        { status: 404 }
-      );
-    }
+  return NextResponse.json(
+    { error: "Could not find product details. Enter them manually below." },
+    { status: 404 }
+  );
+}
 
-    return NextResponse.json({
-      title,
-      brand: "",
-      packageSize: guessPackageSize(title),
-      category: guessCategory(title),
-      image: "",
-      sourceUrl: url,
-      cookTime: "0 min",
-      servings: "1",
-      type: "grocery",
-    });
+const image =
+  getMetaContent(html, 'property=["\\\']og:image["\\\']') ||
+  getMetaContent(html, 'name=["\\\']og:image["\\\']') ||
+  "";
+
+const brand = title.split(" ")[0];
+
+return NextResponse.json({
+  title,
+  brand,
+  packageSize: guessPackageSize(title),
+  category: guessCategory(title),
+  image,
+  sourceUrl: url,
+  cookTime: "0 min",
+  servings: "1",
+  type: "grocery",
+});
   } catch {
     return NextResponse.json(
       { error: "Could not import this product. Enter it manually below." },
