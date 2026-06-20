@@ -338,6 +338,8 @@ const [pantryDrafts, setPantryDrafts] = useState<Record<string, PantryItem>>({})
 const [newPantryCategory, setNewPantryCategory] = useState("Other");
 const [newPantryUnit, setNewPantryUnit] = useState("");
 const [showPantryModal, setShowPantryModal] = useState(false);
+const [pantrySessionAddCount, setPantrySessionAddCount] = useState(0);
+const [recentlyAddedPantryId, setRecentlyAddedPantryId] = useState<string | null>(null);
 const [pantryModalItem, setPantryModalItem] = useState("");
 const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
 const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
@@ -2236,6 +2238,7 @@ setPantryModalQuantity("1");
 setPantryModalUnit("package");
 setPantryModalUnit("package");
 setShowPantryModal(true);
+showToast(`${cleanedName} ready to add to pantry.`);
 }
 
 async function savePantryModal() {
@@ -2312,6 +2315,7 @@ async function savePantryModal() {
   };
 
   setPantryItems([newPantryItem, ...pantryItems]);
+  setPantrySessionAddCount((count) => count + 1);
 
   if (addAnotherPantryItem) {
     setPantryModalItem("");
@@ -2320,6 +2324,12 @@ async function savePantryModal() {
     setPantryModalCategory("Other");
     return;
   }
+
+  setRecentlyAddedPantryId(newPantryItem.id);
+
+setTimeout(() => {
+  setRecentlyAddedPantryId(null);
+}, 2000);
 
   setShowPantryModal(false);
 }
@@ -2431,6 +2441,7 @@ async function resetPassword() {
   showToast("Password reset email sent.");
 }
 function PantryModal() {
+
   if (!showPantryModal) return null;
 
   return (
@@ -2439,10 +2450,18 @@ function PantryModal() {
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-2xl font-bold">
   {editingPantryModalId ? "Edit Pantry Item" : "Add Pantry Item"}
+  {pantrySessionAddCount > 0 && (
+  <div className="mt-2 inline-flex rounded-full bg-[#cfe3bf] px-3 py-1 text-sm font-bold text-[#2f5f25]">
+    ✓ {pantrySessionAddCount} item{pantrySessionAddCount !== 1 ? "s" : ""} added
+  </div>
+)}
 </h2>
 
           <button
-            onClick={() => setShowPantryModal(false)}
+            onClick={() => {
+  setShowPantryModal(false);
+  setPantrySessionAddCount(0);
+}}
             className="text-3xl text-[#a63a0a]"
           >
             ×
@@ -2477,6 +2496,7 @@ function PantryModal() {
       }
 
       setShowPantryModal(false);
+setPantrySessionAddCount(0);
       return;
     }
 
@@ -3904,7 +3924,14 @@ const recipeTitle = recipe.title;
   </section>
 )}
         </section>
-        <PantryModal />
+        {showPantryModal && PantryModal()}
+    
+
+      {toastMessage && (
+  <div className="fixed left-1/2 top-6 z-[9999] -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
+    {toastMessage}
+  </div>
+)}
 <BottomNav />
 
       </main>
@@ -4980,8 +5007,14 @@ if (showPantry) {
   )}
 </div>
       </section>
-<PantryModal />
       <BottomNav />
+        {showPantryModal && PantryModal()}
+
+      {toastMessage && (
+  <div className="fixed left-1/2 top-6 z-[9999] -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
+    {toastMessage}
+  </div>
+)}
     </main>
   );
 }
@@ -6196,7 +6229,7 @@ Bake for 25 minutes`}
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+    Hey Chef™
   </button>
 
 
@@ -6501,13 +6534,71 @@ Bake for 25 minutes`}
       <span className="text-sm text-[#6d5549]">OR</span>
       <div className="h-px flex-1 bg-[#ead7c8]" />
     </div>
+{showFoodImport && (
+  <div className="mt-5 grid gap-3 md:grid-cols-2">
+    <input
+      value={foodBrand}
+      onChange={(e) => setFoodBrand(e.target.value)}
+      placeholder="Brand"
+      className="rounded-full border border-[#ead7c8] px-5 py-3"
+    />
+
+    <input
+      value={foodTitle}
+      onChange={(e) => setFoodTitle(e.target.value)}
+      placeholder="Food item name"
+      className="rounded-full border border-[#ead7c8] px-5 py-3"
+    />
+
+    <input
+      value={foodPackageSize}
+      onChange={(e) => setFoodPackageSize(e.target.value)}
+      placeholder="Package size, like 6 oz"
+      className="rounded-full border border-[#ead7c8] px-5 py-3"
+    />
+
+    <select
+      value={foodCategory}
+      onChange={(e) => setFoodCategory(e.target.value)}
+      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    >
+      <option value="Produce">Produce</option>
+      <option value="Refrigerated">Refrigerated</option>
+      <option value="Frozen Food">Frozen Food</option>
+      <option value="Canned Goods">Canned Goods</option>
+      <option value="Grains & Pasta">Grains & Pasta</option>
+      <option value="Baking">Baking</option>
+      <option value="Spices">Spices</option>
+      <option value="Beverages">Beverages</option>
+      <option value="Condiments">Condiments</option>
+      <option value="Snacks">Snacks</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <input
+      value={foodImage}
+      onChange={(e) => setFoodImage(e.target.value)}
+      placeholder="Image URL"
+      className="rounded-full border border-[#ead7c8] px-5 py-3 md:col-span-2"
+    />
 
     <button
-      onClick={() => setShowFoodImport(true)}
-      className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+      onClick={saveFoodItem}
+      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white md:col-span-2"
     >
-      + Enter Food Item Manually
+      Save Food Item
     </button>
+  </div>
+)}
+
+{!showFoodImport && (
+  <button
+    onClick={() => setShowFoodImport(true)}
+    className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+  >
+    + Enter Food Item Manually
+  </button>
+)}
   </>
 )}
   </section>
@@ -6815,15 +6906,19 @@ Bake for 25 minutes`}
       ))}
     </div>
   )}
-</section>
       </section>
-      <PantryModal />
-      <BottomNav />
+      </section>
+
+      {showPantryModal && PantryModal()}
+    
+
       {toastMessage && (
-  <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
+  <div className="fixed left-1/2 top-6 z-[9999] -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
     {toastMessage}
   </div>
 )}
+
+      <BottomNav />
     </main>
   );
 }
