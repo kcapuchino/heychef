@@ -2818,11 +2818,11 @@ if (!userEmail) {
           </p>
 
           <h1 className="mb-4 text-5xl font-bold leading-tight md:text-7xl">
-            Save recipes from anywhere.
+            Plan meals. Use what you have.
           </h1>
 
           <p className="mb-6 max-w-xl text-lg text-[#6d5549]">
-            Import recipes, plan meals, build shopping lists, and keep your favorite meals in one cozy place.
+            Import recipes, plan your week, build your grocery list, and cook with confidence.
           </p>
 
           {/* Mobile login form goes here */}
@@ -2881,23 +2881,23 @@ if (!userEmail) {
   {[
     {
       icon: "🌎",
-      title: "Import from anywhere",
-      text: "Works with recipe websites and social media.",
+      title: "Save recipes anywhere",
+      text: "Import from websites, social media, and shared links.",
     },
     {
       icon: "📅",
-      title: "Plan your meals",
-      text: "Updates weekly and plans up to 2 weeks at a time.",
+      title: "Plan meals faster",
+      text: "Organize breakfast, lunch, and dinner in minutes.",
     },
     {
       icon: "🛒",
-      title: "Build shopping lists",
-      text: "Compares recipes with your pantry and adds missing ingredients.",
+      title: "Shop smarter",
+      text: "Automatically build grocery lists from your meal plan.",
     },
     {
       icon: "📦",
-      title: "Track your pantry",
-      text: "Know approx. what you have and what you need.",
+      title: "Use what you have",
+      text: "Track pantry items and reduce food waste.",
     },
   ].map((feature) => (
     <div
@@ -3094,7 +3094,7 @@ if (showProfile) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+    Hey Chef™
   </button>
 
   <button
@@ -3203,7 +3203,7 @@ Contact support and we'll process your request.</p>
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+    Hey Chef™
   </button>
 
   <button
@@ -3921,7 +3921,7 @@ const recipeTitle = recipe.title;
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+   Hey Chef™
   </button>
 
   <button
@@ -4385,7 +4385,7 @@ if (showPantry) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+   Hey Chef™
   </button>
 
   <button
@@ -4995,7 +4995,7 @@ if (showPantry) {
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+    Hey Chef™
   </button>
 
   <button
@@ -5158,11 +5158,11 @@ if (showPantry) {
   <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
 <div>
     <h1 className="text-4xl font-bold md:text-5xl">
-      All Recipes
+      Food Library
     </h1>
 
     <p className="mt-2 max-w-xl text-[#6d5549]">
-      Build your personal cookbook with recipes imported from anywhere or created from scratch.
+      Build your personal food library with recipes, grocery items, and pantry favorites.
     </p>
   </div>
 
@@ -5594,7 +5594,7 @@ Bake for 25 minutes`}
     onClick={goHome}
     className="text-3xl font-bold text-[#a63a0a]"
   >
-    Hey Chef
+    Hey Chef™
   </button>
 
   <button
@@ -6397,9 +6397,54 @@ Bake for 25 minutes`}
   </div>
 
   <p className="mb-4 text-[#6d5549]">
-    Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
-  </p>
+  Add a recipe, packaged food, or pantry item to Hey Chef.
+</p>
 
+<div className="mb-4 flex flex-wrap gap-2">
+  <button
+    onClick={() => {
+      setShowFoodImport(false);
+      setShowPantryModal(false);
+    }}
+    className={`rounded-full px-4 py-2 text-sm font-bold ${
+      !showFoodImport
+        ? "bg-[#a63a0a] text-white"
+        : "border border-[#a63a0a] text-[#a63a0a]"
+    }`}
+  >
+    Recipe
+  </button>
+
+  <button
+    onClick={() => setShowFoodImport(true)}
+    className={`rounded-full px-4 py-2 text-sm font-bold ${
+      showFoodImport
+        ? "bg-[#a63a0a] text-white"
+        : "border border-[#a63a0a] text-[#a63a0a]"
+    }`}
+  >
+    Food Item
+  </button>
+
+  <button
+  onClick={() => {
+    setEditingPantryModalId(null);
+    setPantryModalShoppingItem("");
+    setPantryModalItem("");
+    setPantryModalQuantity("1");
+    setPantryModalUnit("package");
+    setPantryModalCategory("Other");
+    setAddAnotherPantryItem(false);
+    setShowPantryModal(true);
+  }}
+  className="rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+>
+  Pantry Item
+</button>
+</div>
+
+{!showFoodImport ? (
+  <>
     <div className="flex flex-wrap gap-2">
       <input
         value={recipeUrl}
@@ -6409,12 +6454,12 @@ Bake for 25 minutes`}
       />
 
       <button
-  onClick={importRecipe}
-  disabled={isImporting}
-  className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
->
-  {isImporting ? "Importing..." : "Import"}
-</button>
+        onClick={importRecipe}
+        disabled={isImporting}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+      >
+        {isImporting ? "Importing..." : "Import"}
+      </button>
     </div>
 
     <div className="my-5 flex items-center gap-4">
@@ -6423,55 +6468,48 @@ Bake for 25 minutes`}
       <div className="h-px flex-1 bg-[#ead7c8]" />
     </div>
 
-   <button
-  onClick={() => {
-    createNewRecipe();
+    <button
+      onClick={() => {
+        createNewRecipe();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }}
+      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      + Create from Scratch
+    </button>
+  </>
+) : (
+  <>
+    <div className="flex flex-wrap gap-2">
+      <input
+        value={foodUrl}
+        onChange={(e) => setFoodUrl(e.target.value)}
+        placeholder="Paste grocery or product URL"
+        className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+      />
 
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  }}
-  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
->
-  + Create from Scratch
-</button>
+      <button
+        onClick={importFoodItem}
+        disabled={isImporting}
+        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+      >
+        {isImporting ? "Importing..." : "Import Food"}
+      </button>
+    </div>
+     <div className="my-5 flex items-center gap-4">
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+      <span className="text-sm text-[#6d5549]">OR</span>
+      <div className="h-px flex-1 bg-[#ead7c8]" />
+    </div>
 
-    {importError && <p className="mt-4 text-sm text-red-700">{importError}</p>}
-
-    {showManualImport && (
-      <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
-        <h3 className="mb-2 text-xl font-bold">Can't Import This Recipe?</h3>
-
-        <p className="mb-4 text-[#6d5549]">
-          Some websites block imports. Paste the recipe below and Hey Chef will organize it
-          into ingredients and steps.
-        </p>
-
-        <textarea
-          value={manualRecipe}
-          onChange={(e) => setManualRecipe(e.target.value)}
-          rows={12}
-          placeholder={`Lemon Texas Sheet Cake
-
-2 cups flour
-2 cups sugar
-1 cup butter
-
-Directions
-Mix ingredients
-Bake for 25 minutes`}
-          className="w-full rounded-2xl border border-[#ead7c8] p-4"
-        />
-
-        <button
-          onClick={importManualRecipe}
-          className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-        >
-          Create Recipe
-        </button>
-      </div>
-    )}
+    <button
+      onClick={() => setShowFoodImport(true)}
+      className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      + Enter Food Item Manually
+    </button>
+  </>
+)}
   </section>
 )}
   </section>
@@ -6779,6 +6817,7 @@ Bake for 25 minutes`}
   )}
 </section>
       </section>
+      <PantryModal />
       <BottomNav />
       {toastMessage && (
   <div className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
