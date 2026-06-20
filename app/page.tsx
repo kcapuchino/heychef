@@ -984,17 +984,20 @@ useEffect(() => {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("meal_plan")
-      .select(`
-  id,
-  date,
-  day,
-  meal,
-  week,
-  week_start,
-  is_made,
-  recipes (*)
-`);
+  .from("meal_plan")
+  .select(`
+    id,
+    date,
+    day,
+    meal,
+    week,
+    week_start,
+    is_made,
+    source,
+    title,
+    recipes (*)
+  `)
+  .eq("user_id", user.id);
 
     if (error) {
       console.error(error);
