@@ -1000,11 +1000,13 @@ useEffect(() => {
   .eq("user_id", user.id);
 
     if (error) {
-      console.error(error);
-      return;
-    }
+  console.error(error);
+  return;
+}
 
-    const loadedPlan: Record<string, PlannedRecipe[]> = {};
+console.log("MEAL PLAN DATA", data);
+
+const loadedPlan: Record<string, PlannedRecipe[]> = {};
 
     (data || []).forEach((item: any) => {
       console.log(item.week_start);
