@@ -20,6 +20,7 @@ type Recipe = {
 brand?: string;
 packageSize?: string;
 pantryQuantity?: number;
+source?: "recipe" | "shopping_list";
 };
 
 
@@ -325,6 +326,7 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
   const [plannerDay, setPlannerDay] = useState("");
   const [plannerMeal, setPlannerMeal] = useState("Dinner");
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
+  const [plannerShoppingItemId, setPlannerShoppingItemId] = useState("");
   const [plannerPopup, setPlannerPopup] = useState<{
   day: string;
   meal: string;
@@ -1021,6 +1023,29 @@ const key = `${plannerWeek}-${mealDate}-${item.meal}`;
 
       if (!loadedPlan[key]) {
   loadedPlan[key] = [];
+}
+if (item.source === "shopping_list") {
+  loadedPlan[key].push({
+    id: item.id,
+    title: item.title,
+    image: shoppingItemImages[item.title] || "",
+    ingredients: [],
+    steps: [],
+    cookTime: "",
+    servings: "",
+    category: "Prepared Food",
+    sourceUrl: "",
+    isFavorite: false,
+    createdAt: item.created_at,
+    isMade: item.is_made || false,
+    mealPlanId: item.id,
+    plannedDate: mealDate,
+    weekStart: item.week_start,
+    type: "grocery",
+    source: "shopping_list",
+  });
+
+  return;
 }
 
 loadedPlan[key].push({
@@ -1923,7 +1948,70 @@ const manualItems = (manualData || []).map((item) => item.name);
     ),
   });
 }
+async function addShoppingListFromPlanner() {
+  console.log("clicked shopping list planner", plannerShoppingItemId);
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !plannerPopup || !plannerShoppingItemId) return;
+
+  const key = getMealPlanKey(plannerPopup.day, plannerPopup.meal);
+
+  const newItem: PlannedRecipe = {
+  id: crypto.randomUUID(),
+  mealPlanId: crypto.randomUUID(),
+
+  title: plannerShoppingItemId,
+  image: shoppingItemImages[plannerShoppingItemId] || "",
+  ingredients: [],
+  steps: [],
+  cookTime: "",
+  servings: "",
+  category: "Prepared Food",
+  sourceUrl: "",
+  createdAt: new Date().toISOString(),
+  type: "grocery",
+
+  isMade: false,
+  weekStart: getWeekStartDate(activePlannerWeek),
+  source: "shopping_list",
+};
+
+
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .insert({
+  user_id: user.id,
+  day: plannerPopup.day,
+  meal: plannerPopup.meal,
+  week_start: getWeekStartDate(activePlannerWeek),
+  source: "shopping_list",
+  title: plannerShoppingItemId,
+})
+    .select()
+    .single();
+
+  if (error) {
+  console.log("SHOPPING PLAN ERROR", error);
+  showToast(error.message);
+  return;
+}
+
+  const plannedRecipe: PlannedRecipe = {
+  ...newItem,
+  mealPlanId: data.id,
+};
+
+setMealPlan((current) => ({
+  ...current,
+  [key]: [...(current[key] || []), plannedRecipe],
+}));
+
+  setPlannerShoppingItemId("");
+  setPlannerPopup(null);
+}
   async function deleteRecipe(recipeId: string) {
   const recipeToDelete = recipes.find((recipe) => recipe.id === recipeId);
 
@@ -4576,49 +4664,69 @@ setMealPlan(updatedMealPlan);
 {plannerPopup && (
   <section className="fixed inset-0 z-50 flex items-end bg-black/30 px-4 pb-6 md:items-center md:justify-center md:pb-0">
     <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
-      <h2 className="mb-2 text-3xl font-bold">Add Recipe</h2>
+      <h2 className="mb-2 text-3xl font-bold">Add to Plan</h2>
 
       <p className="mb-5 text-[#6d5549]">
-  Add a recipe to{" "}
-  {new Date(plannerPopup.day + "T00:00:00").toLocaleDateString(
-    "en-US",
-    {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-    }
-  )}{" "}
-  • {plannerPopup.meal}
-</p>
+        Add something to{" "}
+        {new Date(plannerPopup.day + "T00:00:00").toLocaleDateString(
+          "en-US",
+          {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          }
+        )}{" "}
+        • {plannerPopup.meal}
+      </p>
 
-      {recipes.length === 0 ? (
-        <p className="text-[#6d5549]">Import a recipe first.</p>
-      ) : (
-        <>
-          <select
-            value={plannerRecipeId}
-            onChange={(e) => setPlannerRecipeId(e.target.value)}
-            className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
-          >
-            <option value="">Choose a recipe</option>
-           {recipes
-  .filter((recipe) => recipe.isPlanningQueue || recipe.isFavorite)
-  .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite))
-  .map((recipe) => (
-              <option key={recipe.id} value={recipe.id}>
-                {recipe.title}
-              </option>
-            ))}
-          </select>
+      <select
+        value={plannerRecipeId}
+        onChange={(e) => {
+          setPlannerRecipeId(e.target.value);
+          setPlannerShoppingItemId("");
+        }}
+        className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
+      >
+        <option value="">Choose a recipe</option>
+        {recipes
+          .filter((recipe) => recipe.isPlanningQueue || recipe.isFavorite)
+          .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite))
+          .map((recipe) => (
+            <option key={recipe.id} value={recipe.id}>
+              {recipe.title}
+            </option>
+          ))}
+      </select>
 
-          <button
-            onClick={addRecipeFromPlanner}
-            className="w-full rounded-full bg-[#a63a0a] px-6 py-4 text-white"
-          >
-            Add to {plannerPopup.meal}
-          </button>
-        </>
-      )}
+      <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
+
+      <select
+        value={plannerShoppingItemId}
+        onChange={(e) => {
+          setPlannerShoppingItemId(e.target.value);
+          setPlannerRecipeId("");
+        }}
+        className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
+      >
+        <option value="">Plan from shopping list</option>
+        {shoppingList.map((item, index) => (
+  <option key={`${item}-${index}`} value={item}>
+    {item}
+  </option>
+))}
+      </select>
+
+      <button
+        onClick={
+          plannerRecipeId
+            ? addRecipeFromPlanner
+            : addShoppingListFromPlanner
+        }
+        disabled={!plannerRecipeId && !plannerShoppingItemId}
+        className="w-full rounded-full bg-[#a63a0a] px-6 py-4 text-white disabled:opacity-50"
+      >
+        Add to {plannerPopup.meal}
+      </button>
 
       <button
         onClick={() => setPlannerPopup(null)}
@@ -4705,10 +4813,12 @@ setMealPlan(updatedMealPlan);
       <div
   key={recipe.mealPlanId}
   className={`rounded-xl p-3 text-sm transition ${
-    recipe.isMade
-      ? "bg-[#f3f3f3] opacity-60"
-      : "bg-white"
-  }`}
+  recipe.isMade
+    ? "bg-[#f3f3f3] opacity-60"
+    : recipe.source === "shopping_list"
+    ? "border border-[#cfe3bf] bg-[#fbfff7]"
+    : "bg-white"
+}`}
 >
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -4735,6 +4845,8 @@ setMealPlan(updatedMealPlan);
    className={`text-left font-medium hover:underline ${
   recipe.isMade
     ? "text-[#8a8a8a]"
+    : recipe.source === "shopping_list"
+    ? "text-[#3f7f32]"
     : "text-[#a63a0a]"
 }`}
   >
@@ -4742,6 +4854,12 @@ setMealPlan(updatedMealPlan);
     {recipe.isMade && (
   <p className="mt-1 text-xs font-bold text-[#8a8a8a]">
     ✓ Made
+  </p>
+)}
+
+{recipe.source === "shopping_list" && (
+  <p className="mt-1 text-xs font-bold text-[#3f7f32]">
+    From shopping list
   </p>
 )}
   </button>
@@ -4775,9 +4893,10 @@ setMealPlan(updatedMealPlan);
               {plannedRecipes.length <3 && (
                 <button
                   onClick={() => {
-                    setPlannerPopup({ day: day.date, meal });
-                    setPlannerRecipeId(recipes[0]?.id || "");
-                  }}
+  setPlannerPopup({ day: day.date, meal });
+  setPlannerRecipeId("");
+  setPlannerShoppingItemId("");
+}}
                   className="mt-4 w-full rounded-full bg-white px-4 py-3 text-sm font-semibold text-[#a63a0a] shadow-sm"
                 >
                   + Add from Queue
