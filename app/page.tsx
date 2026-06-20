@@ -3514,6 +3514,23 @@ Contact support and we'll process your request.</p>
       </section>
 
       <BottomNav />
+      <footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
     </main>
   );
 }
@@ -4316,7 +4333,23 @@ const recipeTitle = recipe.title;
   </div>
 )}
 <BottomNav />
+<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
       </main>
     );
   }
@@ -4759,6 +4792,23 @@ setMealPlan(updatedMealPlan);
 </div>
         </section>
 <BottomNav />
+<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
       </main>
     );
   }
@@ -5435,6 +5485,23 @@ if (showPantry) {
     {toastMessage}
   </div>
 )}
+<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
     </main>
   );
 }
@@ -6032,6 +6099,24 @@ Bake for 25 minutes`}
         
       </section>
       <BottomNav />
+
+      <footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
     </main>
   );
 }
@@ -6675,6 +6760,23 @@ Bake for 25 minutes`}
         </section>
         
 <BottomNav />
+<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
       </main>
     );
   }
@@ -7378,6 +7480,23 @@ Bake for 25 minutes`}
 )}
 
       <BottomNav />
+      <footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
+  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+  <div className="mt-3 flex justify-center gap-6">
+    <a href="/privacy" className="hover:text-[#a63a0a]">
+      Privacy
+    </a>
+
+    <a href="/terms" className="hover:text-[#a63a0a]">
+      Terms
+    </a>
+
+    <a href="/contact" className="hover:text-[#a63a0a]">
+      Contact
+    </a>
+  </div>
+</footer>
     </main>
   );
 }
