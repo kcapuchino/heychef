@@ -1010,7 +1010,6 @@ const loadedPlan: Record<string, PlannedRecipe[]> = {};
 
     (data || []).forEach((item: any) => {
       console.log(item.week_start);
-      if (!item.recipes) return;
 
 const currentWeekStart = getWeekStartDate("current");
 const nextWeekStart = getWeekStartDate("next");
@@ -1024,11 +1023,12 @@ if (item.week_start === currentWeekStart) {
 }
 
 const mealDate = item.date || item.day;
-const key = `${plannerWeek}-${mealDate}-${item.meal}`;
+const key = getMealPlanKey(mealDate, item.meal);
 
-      if (!loadedPlan[key]) {
+if (!loadedPlan[key]) {
   loadedPlan[key] = [];
 }
+
 if (item.source === "shopping_list") {
   loadedPlan[key].push({
     id: item.id,
@@ -1050,8 +1050,12 @@ if (item.source === "shopping_list") {
     source: "shopping_list",
   });
 
+  if (!item.recipes) return;
+
   return;
 }
+
+if (!item.recipes) return;
 
 loadedPlan[key].push({
   id: item.recipes.id,
@@ -1962,6 +1966,25 @@ async function addShoppingListFromPlanner() {
 
   if (!user || !plannerPopup || !plannerShoppingItemId) return;
 
+
+  const alreadyPlannedCount = Object.values(mealPlan)
+  .flat()
+  .filter(
+    (item) =>
+      item.source === "shopping_list" &&
+      item.title === plannerShoppingItemId &&
+      !item.isMade
+  ).length;
+
+const cartCount = shoppingList.filter(
+  (item) => item === plannerShoppingItemId
+).length;
+
+if (alreadyPlannedCount >= cartCount) {
+  showToast(`You only have ${cartCount} ${plannerShoppingItemId} in your shopping list.`);
+  return;
+}
+
   const key = getMealPlanKey(plannerPopup.day, plannerPopup.meal);
 
   const newItem: PlannedRecipe = {
@@ -1983,6 +2006,7 @@ async function addShoppingListFromPlanner() {
   weekStart: getWeekStartDate(activePlannerWeek),
   source: "shopping_list",
 };
+
 
 
   const { data, error } = await supabase
@@ -4714,11 +4738,24 @@ setMealPlan(updatedMealPlan);
         className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
       >
         <option value="">Plan from shopping list</option>
-        {shoppingList.map((item, index) => (
-  <option key={`${item}-${index}`} value={item}>
-    {item}
-  </option>
-))}
+        {shoppingList
+  .filter((item) => {
+    .filter(
+    (item) =>
+      !Object.values(mealPlan)
+        .flat()
+        .some(
+          (planned) =>
+            planned.source === "shopping_list" &&
+            normalizeItemName(planned.title) === normalizeItemName(item) &&
+            !planned.isMade
+        )
+  )
+  .map((item, index) => (
+    <option key={`${item}-${index}`} value={item}>
+      {item}
+    </option>
+  ))}
       </select>
 
       <button
