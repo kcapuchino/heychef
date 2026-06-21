@@ -2752,7 +2752,56 @@ async function saveShoppingItemAsFoodItem(itemName: string) {
     ...recipes,
   ]);
 }
+function guessFoodCategory(text: string) {
+  const value = text.toLowerCase();
 
+  if (
+    value.includes("potato") ||
+    value.includes("yam") ||
+    value.includes("lettuce") ||
+    value.includes("spinach") ||
+    value.includes("cilantro") ||
+    value.includes("onion") ||
+    value.includes("garlic") ||
+    value.includes("carrot") ||
+    value.includes("celery") ||
+    value.includes("lemon") ||
+    value.includes("lime") ||
+    value.includes("avocado")
+  ) {
+    return "Produce";
+  }
+
+  if (
+    value.includes("cheese") ||
+    value.includes("milk") ||
+    value.includes("butter") ||
+    value.includes("yogurt")
+  ) {
+    return "Refrigerated";
+  }
+
+  if (value.includes("frozen")) return "Frozen";
+
+  if (
+    value.includes("chips") ||
+    value.includes("crackers") ||
+    value.includes("cookies")
+  ) {
+    return "Snacks";
+  }
+
+  if (
+    value.includes("beans") ||
+    value.includes("tomato") ||
+    value.includes("soup") ||
+    value.includes("lentil")
+  ) {
+    return "Canned Goods";
+  }
+
+  return "Other";
+}
 async function savePantryItemAsFoodCard(item: PantryItem) {
   const {
     data: { user },
@@ -2895,8 +2944,19 @@ async function refreshPantryImageFromUrl() {
       return;
     }
 
-    if (product.title) setPantryModalItem(product.title);
-    if (product.image) setPantryModalImage(product.image);
+    if (product.title) {
+  setPantryModalItem(product.title);
+
+  setPantryModalCategory(
+    guessFoodCategory(
+      `${product.title} ${pantryModalSourceUrl}`
+    )
+  );
+}
+
+if (product.image) {
+  setPantryModalImage(product.image);
+}
 
     showToast("Image refreshed.");
   } catch (error) {
@@ -2982,8 +3042,9 @@ async function savePantryModal() {
   }
 
   let name = pantryModalItem.trim();
-  let imageUrl = pantryModalImage.trim();
-  const sourceUrl = pantryModalSourceUrl.trim();
+let imageUrl = pantryModalImage.trim();
+let category = pantryModalCategory;
+const sourceUrl = pantryModalSourceUrl.trim();
 
   const urlChanged =
   sourceUrl !== "" && sourceUrl !== originalPantrySourceUrl.trim();
@@ -3004,9 +3065,11 @@ if (shouldImportProduct) {
     console.log("PANTRY IMPORT RESULT", product);
 
     if (response.ok) {
-      name = product.title || name;
-      imageUrl = product.image || "";
-    }
+  name = product.title || name;
+  imageUrl = product.image || "";
+
+  category = guessFoodCategory(`${product.title || name} ${sourceUrl}`);
+}
   } catch (error) {
     console.error(error);
   }
