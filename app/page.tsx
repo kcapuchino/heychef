@@ -3100,7 +3100,7 @@ if (existingFoodCard) {
     ...recipes,
   ]);
 
-  showToast("Added to Quick Eats.");
+  showToast("Added to Go-To Foods.");
 }
 
 async function addShoppingItemToPantry(shoppingItem: string, count = 1) {
@@ -6291,7 +6291,7 @@ if (showPantry) {
     onClick={() => savePantryItemAsFoodCard(item)}
     className="text-sm font-bold text-[#a63a0a]"
   >
-    Quick Eat
+    Go-To Foods
   </button>
   <button
   onClick={async () => {
@@ -6612,7 +6612,7 @@ if (showPantry) {
     }}
     className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] md:w-auto"
   >
-    Add Food Item
+    Add Go-To Food
   </button>
 </div>
 </div>
@@ -6708,7 +6708,7 @@ Bake for 25 minutes`}
 {showFoodImport && (
   <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-2xl font-bold">Add a Food Item</h2>
+      <h2 className="text-2xl font-bold">Add a Go-To Foods</h2>
 
       <button
         onClick={() => setShowFoodImport(false)}
@@ -6787,7 +6787,7 @@ Bake for 25 minutes`}
       onClick={saveFoodItem}
       className="mt-5 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
     >
-      Save Food Item
+      Save Go-To Food
     </button>
   </section>
 )}
@@ -6828,7 +6828,7 @@ Bake for 25 minutes`}
           : "bg-[#fff4ef] text-[#a63a0a]"
       }`}
     >
-      Food Items
+      Go-To Foods
     </button>
 
     <button
@@ -7461,7 +7461,7 @@ Bake for 25 minutes`}
     <>
       <div className="grid gap-6 md:grid-cols-[1fr_420px]">
         <div className="rounded-3xl bg-[#fffaf5] p-6 shadow-sm">
-          <h2 className="mb-4 text-2xl font-bold">Food Item Details</h2>
+          <h2 className="mb-4 text-2xl font-bold">Go-To Food Details</h2>
 
           <div className="flex flex-wrap gap-2 text-sm">
             {selectedRecipe.brand && (
@@ -7505,7 +7505,7 @@ Bake for 25 minutes`}
         </div>
 
         <div className="rounded-3xl bg-[#f8efe6] p-6">
-          <h2 className="mb-4 text-2xl font-bold">Plan This Food Item</h2>
+          <h2 className="mb-4 text-2xl font-bold">Plan This Go-To Food</h2>
 
           <button
             onClick={() => togglePlanningQueue(selectedRecipe.id)}
@@ -7936,7 +7936,7 @@ Bake for 25 minutes`}
         : "border border-[#a63a0a] text-[#a63a0a]"
     }`}
   >
-    Pantry Staples
+   Go-To Foods
   </button>
 
   <button
@@ -8222,7 +8222,7 @@ Bake for 25 minutes`}
       onClick={saveFoodItem}
       className="rounded-full bg-[#a63a0a] px-6 py-3 text-white md:col-span-2"
     >
-      Save Food Item
+      Save Go-To Food
     </button>
   </div>
 )}
@@ -8232,7 +8232,7 @@ Bake for 25 minutes`}
     onClick={() => setShowFoodImport(true)}
     className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
   >
-    + Enter Food Item Manually
+    + Enter Go-To Foods Manually
   </button>
 )}
   </>
