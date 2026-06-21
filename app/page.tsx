@@ -3042,9 +3042,8 @@ async function savePantryModal() {
   }
 
   let name = pantryModalItem.trim();
-let imageUrl = pantryModalImage.trim();
-let category = pantryModalCategory;
-const sourceUrl = pantryModalSourceUrl.trim();
+  let imageUrl = pantryModalImage.trim();
+  const sourceUrl = pantryModalSourceUrl.trim();
 
   const urlChanged =
   sourceUrl !== "" && sourceUrl !== originalPantrySourceUrl.trim();
@@ -3065,11 +3064,9 @@ if (shouldImportProduct) {
     console.log("PANTRY IMPORT RESULT", product);
 
     if (response.ok) {
-  name = product.title || name;
-  imageUrl = product.image || "";
-
-  category = guessFoodCategory(`${product.title || name} ${sourceUrl}`);
-}
+      name = product.title || name;
+      imageUrl = product.image || "";
+    }
   } catch (error) {
     console.error(error);
   }
@@ -3434,22 +3431,17 @@ setPantrySessionAddCount(0);
   </label>
 )}
 
-        <button
-  onClick={savePantryModal}
-  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
->
-  {editingPantryModalId &&
-  pantryModalSourceUrl.trim() &&
-  (pantryModalSourceUrl.trim() !== originalPantrySourceUrl.trim() ||
-    !pantryModalImage.trim())
-    ? "Import Item"
-    : editingPantryModalId
-    ? "Save Changes"
-    : "Save Item"}
-</button>
-      </div>
+          
+
+      <button
+        onClick={savePantryModal}
+        className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+      >
+        {editingPantryModalId ? "Save Changes" : "Save Item"}
+      </button>
     </div>
-  );
+  </div>
+);
 }
 function BottomNav() {
   return (
