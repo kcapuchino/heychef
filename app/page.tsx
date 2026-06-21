@@ -5434,9 +5434,17 @@ setMealPlan(updatedMealPlan);
 >
   <option value="">Plan leftovers</option>
   {Object.values(mealPlan)
-    .flat()
-    .filter((item) => !item.isMade)
-    .map((item) => (
+  .flat()
+  .filter((item) => !item.isMade)
+  .filter(
+    (item, index, array) =>
+      index ===
+      array.findIndex(
+        (other) =>
+          normalizeItemName(other.title) === normalizeItemName(item.title)
+      )
+  )
+  .map((item) => (
       <option key={item.mealPlanId} value={item.mealPlanId}>
         {item.title}
       </option>
