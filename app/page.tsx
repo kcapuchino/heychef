@@ -778,7 +778,6 @@ useEffect(() => {
     if (savedData) {
       const parsed: SavedUserData = JSON.parse(savedData);
       setRecipes(parsed.recipes || []);
-setShoppingList(parsed.shoppingList || []);
 setMealPlan(parsed.mealPlan || {});
 setPantryItems(
   (parsed.pantryItems || []).map((item) => ({
@@ -788,7 +787,6 @@ setPantryItems(
 );
     } else {
   setRecipes([]);
-  setShoppingList([]);
   setMealPlan({});
   setPantryItems([]);
   setPlannerRecipeId("");
@@ -923,6 +921,11 @@ async function loadShoppingItems() {
 }
 
   setShoppingList((data || []).map((item) => item.name));
+  setBuyAnywayItems(
+  (data || [])
+    .filter((item) => item.buy_anyway)
+    .map((item) => item.name)
+);
 
   setShoppingItemImages(
     (data || []).reduce((images, item) => {
@@ -1026,6 +1029,11 @@ setPantryDrafts({});
 
 showToast("Pantry updated.");
 }
+useEffect(() => {
+  if (userEmail) {
+    loadShoppingItems();
+  }
+}, [userEmail]);
 
 useEffect(() => {
   async function loadMealPlan() {
@@ -1084,24 +1092,27 @@ if (!loadedPlan[key]) {
 
 if (item.source === "shopping_list" || item.source === "leftovers") {
   loadedPlan[key].push({
-    id: item.id,
-    title: item.title,
-    image: item.image_url || "",
-    ingredients: [],
-    steps: [],
-    cookTime: "",
-    servings: "",
-    category: "Prepared Food",
-    sourceUrl: "",
-    isFavorite: false,
-    createdAt: item.created_at,
-    isMade: item.is_made || false,
-    mealPlanId: item.id,
-    plannedDate: mealDate,
-    weekStart: item.week_start,
-    type: "grocery",
-    source: item.source || "shopping_list",
-  });
+  id: item.recipes.id,
+  title: item.recipes.title,
+  image: item.recipes.image_url || "",
+  ingredients: item.recipes.ingredients || [],
+  steps: item.recipes.steps || [],
+  cookTime: item.recipes.cook_time || "",
+  servings: item.recipes.servings || "",
+  category: item.recipes.category || "",
+  sourceUrl: item.recipes.source_url || "",
+  isFavorite: item.recipes.is_favorite || false,
+  createdAt: item.recipes.created_at,
+  isMade: item.is_made || false,
+  mealPlanId: item.id,
+  plannedDate: item.date,
+  weekStart: item.week_start,
+
+  type: item.recipes.type || "recipe",
+  brand: item.recipes.brand || "",
+  packageSize: item.recipes.package_size || "",
+  price: item.recipes.price || "",
+});
 
   if (!item.recipes) return;
 
@@ -1251,7 +1262,6 @@ async function changePasswordNow() {
   setHasLoadedUser(false);
 
   setRecipes([]);
-  setShoppingList([]);
   setMealPlan({});
   setSelectedRecipe(null);
 
@@ -1264,6 +1274,12 @@ async function changePasswordNow() {
 
   localStorage.removeItem("hey-chef-current-user");
 }
+
+useEffect(() => {
+  if (userEmail) {
+    loadShoppingItems();
+  }
+}, [userEmail]);
 async function importFoodItem() {
   if (!foodUrl.trim()) {
     showToast("Paste a product URL first.");
@@ -1846,11 +1862,8 @@ setShoppingItemUrls((current) => {
   return updated;
 });
 
-  const sorted = [...shoppingList, ...newItems].sort((a, b) =>
-    cleanForSort(a).localeCompare(cleanForSort(b))
-  );
-
-  setShoppingList(sorted);
+  await loadShoppingItems();
+  
 
   showToast(
     isGroceryItem
@@ -1887,64 +1900,86 @@ function addToShoppingList(recipe: Recipe) {
     showToast("Please log in again.");
     return;
   }
+
   showToast("Updating grocery list...");
 
-  const currentMealPlanIngredients = Object.values(mealPlan)
-  .flat()
-  .filter((recipe: any) => !recipe.isMade)
-  .flatMap((recipe) =>
-    recipe.ingredients.map((ingredient) => ({
-      name: ingredient,
-      mealPlanId: recipe.mealPlanId,
-    }))
-  );
+  // 1. Clear ONLY old meal-plan shopping rows.
+  // This keeps manual shopping list adds safe.
+  const { error: deleteError } = await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("user_id", user.id)
+    .not("source_meal_plan_id", "is", null);
 
-  if (currentMealPlanIngredients.length === 0) {
+  if (deleteError) {
+    showToast(deleteError.message);
+    return;
+  }
+
+  const plannedMeals = Object.values(mealPlan)
+    .flat()
+    .filter((item: any) => !item.isMade);
+
+  const mealPlanItems: any[] = [];
+
+  for (const item of plannedMeals) {
+    const ingredients = item.ingredients || [];
+
+    const isStoreItem =
+      item.source === "shopping_list" ||
+      item.source === "leftovers" ||
+      ingredients.length === 0;
+
+    if (isStoreItem) {
+      mealPlanItems.push({
+        name: item.title,
+        mealPlanId: item.mealPlanId,
+        imageUrl: item.image || "",
+        sourceUrl: item.sourceUrl || "",
+        buyAnyway: true,
+      });
+
+      continue;
+    }
+
+    ingredients.forEach((ingredient: string) => {
+      mealPlanItems.push({
+        name: ingredient,
+        mealPlanId: item.mealPlanId,
+        imageUrl: item.image || "",
+        sourceUrl: item.sourceUrl || "",
+        buyAnyway: false,
+      });
+    });
+  }
+
+  if (mealPlanItems.length === 0) {
+    await loadShoppingItems();
     showToast("No meal plan items to add.");
     return;
   }
 
-  const rows = currentMealPlanIngredients.map((item) => ({
-    user_id: user.id,
-    name: item.name,
-    source_meal_plan_id: item.mealPlanId,
-    store_section: "Other",
-  }));
-
-  const { data, error } = await supabase
-    .from("shopping_items")
-    .insert(rows)
-    .select();
+  const { error } = await supabase.from("shopping_items").insert(
+    mealPlanItems.map((item) => ({
+      user_id: user.id,
+      name: item.name,
+      source_meal_plan_id: item.mealPlanId,
+      store_section: "Other",
+      image_url: item.imageUrl,
+      source_url: item.sourceUrl,
+      buy_anyway: item.buyAnyway,
+    }))
+  );
 
   if (error) {
     showToast(error.message);
     return;
   }
 
-  const { data: manualData, error: manualError } = await supabase
-  .from("shopping_items")
-  .select("*")
-  .eq("user_id", user.id)
-  .is("source_meal_plan_id", null);
+  await loadShoppingItems();
 
-if (manualError) {
-  showToast(manualError.message);
-  return;
+  showToast("Grocery list updated.");
 }
-
-const manualItems = (manualData || []).map((item) => item.name);
-
-  const newMealPlanItems = (data || []).map((item) => item.name);
-
-  const sorted = [...manualItems, ...newMealPlanItems].sort((a, b) =>
-    cleanForSort(a).localeCompare(cleanForSort(b))
-  );
-
-  setShoppingList(sorted);
-
- alert("Grocery list updated.");
-}
-
   async function addRecipeToMealPlan(day: string, meal: string, recipe: Recipe) {
   const key = getMealPlanKey(day, meal);
   const currentRecipes = mealPlan[key] || [];
@@ -2416,8 +2451,12 @@ const pantryRows = uniqueShoppingRows
       )
   )
   .map((item) => {
-    const cleanName = cleanPantryDisplayName(item.name);
-    const memory = getImageMemoryForPantryItem(cleanName);
+  const cleanName = cleanPantryDisplayName(item.name);
+  const memory = getImageMemoryForPantryItem(cleanName);
+
+  const shoppingImage = shoppingItemImages[item.name] || "";
+  const shoppingUrl = shoppingItemUrls[item.name] || "";
+  
 
     const hasProductData =
       item.brand || item.package_size || item.price || item.image_url;
@@ -2431,8 +2470,8 @@ const pantryRows = uniqueShoppingRows
 
       brand: item.brand || "",
       package_size: item.package_size || "",
-      image_url: item.image_url || memory?.image_url || "",
-      source_url: item.source_url || memory?.source_url || "",
+      image_url: item.image_url || shoppingImage || memory?.image_url || "",
+source_url: item.source_url || shoppingUrl || memory?.source_url || "",
       price: item.price || "",
     };
   });
@@ -4584,22 +4623,28 @@ setShoppingItemUrls({
         .map(({ item, count }) => {
           const matchingPantryItem = getMatchingPantryItem(item);
           const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
-           const linkedRecipe = getRecipeForShoppingItem(item);
-
            const linkedFoodItem = recipes.find((recipe) => {
-  const recipeName = normalizeItemName(recipe.title);
-  const itemName = normalizeItemName(item);
+  if (recipe.type !== "grocery") return false;
 
-  return (
-    recipeName === itemName ||
-    recipeName.includes(itemName) ||
-    itemName.includes(recipeName)
-  );
+  return normalizeItemName(recipe.title) === normalizeItemName(item);
 });
-const itemUrl =
+
+const linkedRecipe = linkedFoodItem
+  ? null
+  : recipes.find((recipe) => {
+      if (recipe.type === "grocery") return false;
+
+      return (recipe.ingredients || []).some(
+        (ingredient) =>
+          normalizeItemName(ingredient) === normalizeItemName(item)
+      );
+    });
+
+const recipeUrl = linkedRecipe?.sourceUrl || "";
+
+const storeUrl =
   shoppingItemUrls[item] ||
   linkedFoodItem?.sourceUrl ||
-  linkedRecipe?.sourceUrl ||
   "";
 
 const itemImage =
@@ -4645,25 +4690,25 @@ const itemImage =
     {displayName}
   </p>
 
-  {linkedRecipe ? (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      setSelectedRecipe(linkedRecipe);
-    }}
-    className="text-sm font-bold text-[#a63a0a] hover:underline"
-  >
-    📖 View Recipe
-  </button>
-) : itemUrl ? (
+  {storeUrl ? (
   <a
-    href={itemUrl}
+    href={storeUrl}
     target="_blank"
     rel="noopener noreferrer"
     onClick={(e) => e.stopPropagation()}
     className="text-sm font-bold text-[#a63a0a] hover:underline"
   >
     🛒 View in Store
+  </a>
+) : recipeUrl ? (
+  <a
+    href={recipeUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    onClick={(e) => e.stopPropagation()}
+    className="text-sm font-bold text-[#a63a0a] hover:underline"
+  >
+    📖 View Recipe
   </a>
 ) : null}
 </div>
@@ -4672,82 +4717,80 @@ const itemImage =
               </label>
 
               <div className="flex flex-wrap items-center gap-3 pl-7 md:pl-0">
-                {buyAnywayItems.includes(item) ? (
-                  <>
-                    <span className="text-sm text-[#6d5549]">
-                      ✓ In pantry: {matchingPantryItem?.quantity || "on hand"}
-                    </span>
+  {matchingPantryItem ? (
+    <>
+      <span className="text-sm text-[#6d5549]">
+        ✓ In pantry: {matchingPantryItem.quantity || "on hand"}
+      </span>
 
-                    <button
-                      onClick={() => {
-                        setBuyAnywayItems(
-                          buyAnywayItems.filter(
-                            (savedItem) => savedItem !== item
-                          )
-                        );
-                      }}
-                      className="text-sm font-medium text-[#a63a0a]"
-                    >
-                      Move Back
-                    </button>
-                  </>
-                ) : matchingPantryItem ? (
-                  <>
-                    <span className="text-sm text-[#6d5549]">
-                      ✓ In pantry: {matchingPantryItem.quantity || "on hand"}
-                    </span>
+      {buyAnywayItems.includes(item) ? (
+        <button
+          onClick={() => {
+            setBuyAnywayItems(
+              buyAnywayItems.filter(
+                (savedItem) => savedItem !== item
+              )
+            );
+          }}
+          className="text-sm font-medium text-[#a63a0a]"
+        >
+          Move Back
+        </button>
+      ) : (
+        <button
+          onClick={() => {
+            setBuyAnywayItems([...buyAnywayItems, item]);
+          }}
+          className="text-sm font-medium text-[#a63a0a]"
+        >
+          Buy Anyway
+        </button>
+      )}
+    </>
+  ) : isManuallyMarkedOnHand ? (
+    <>
+      <span className="text-sm text-[#6d5549]">
+        ✓ On hand
+      </span>
 
-                    <button
-                      onClick={() => {
-                        setBuyAnywayItems([...buyAnywayItems, item]);
-                      }}
-                      className="text-sm font-medium text-[#a63a0a]"
-                    >
-                      Buy Anyway
-                    </button>
-                  </>
-                ) : isManuallyMarkedOnHand ? (
-                  <>
-                    <span className="text-sm text-[#6d5549]">✓ On hand</span>
+      <button
+        onClick={() => {
+          setManuallyMarkedOnHand(
+            manuallyMarkedOnHand.filter(
+              (savedItem) => savedItem !== item
+            )
+          );
+        }}
+        className="text-sm font-medium text-[#a63a0a]"
+      >
+        Move Back
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={() =>
+          setManuallyMarkedOnHand((current) => [...current, item])
+        }
+        className="text-sm font-medium text-[#a63a0a]"
+      >
+        Mark On Hand
+      </button>
 
-                    <button
-                      onClick={() => {
-                        setManuallyMarkedOnHand(
-                          manuallyMarkedOnHand.filter(
-                            (savedItem) => savedItem !== item
-                          )
-                        );
-                      }}
-                      className="text-sm font-medium text-[#a63a0a]"
-                    >
-                      Move Back
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-  onClick={() =>
-    setManuallyMarkedOnHand((current) => [...current, item])
-  }
-  className="text-sm font-medium text-[#a63a0a]"
->
-  Mark On Hand
-</button>
+      <button
+        onClick={() => {
+          if (!confirm(`Remove ${item} from your shopping list?`))
+            return;
 
-                    <button
-                      onClick={() => {
-                        if (!confirm(`Remove ${item} from your shopping list?`))
-                          return;
-
-                        removeShoppingItem(item);
-                      }}
-                      className="text-sm font-medium text-[#a63a0a]"
-                    >
-                      Remove
-                    </button>
-                  </>
-                )}
-              </div>
+          removeShoppingItem(item);
+        }}
+        className="text-sm font-medium text-[#a63a0a]"
+      >
+        Remove
+      </button>
+    </>
+  )}
+</div>
             </div>
           );
         })}
@@ -6227,6 +6270,30 @@ if (showPantry) {
   >
     Quick Eat
   </button>
+  <button
+  onClick={async () => {
+    await addItemsToShoppingList([item.name], {
+      id: item.id,
+      title: item.name,
+      image: item.image || "",
+      ingredients: [],
+      steps: [],
+      sourceUrl: item.sourceUrl || "",
+      createdAt: item.createdAt,
+      type: "grocery",
+      brand: item.brand || "",
+      packageSize: item.packageSize || "",
+      price: item.price || "",
+    });
+
+    setBuyAnywayItems((current) => [
+      ...new Set([...current, item.name]),
+    ]);
+  }}
+  className="text-sm font-bold text-[#a63a0a]"
+>
+  Buy More
+</button>
     <button
       onClick={() => {
         setEditingPantryModalId(item.id);
