@@ -1964,8 +1964,8 @@ if (deleteError) {
   mealPlanItems.push({
     name: ingredient,
     mealPlanId: item.mealPlanId,
-    imageUrl: "",
-    sourceUrl: "",
+    imageUrl: fullRecipe?.image_url || item.image || "",
+sourceUrl: fullRecipe?.source_url || item.sourceUrl || "",
     buyAnyway: false,
   });
 });
@@ -2473,10 +2473,19 @@ const pantryRows = uniqueShoppingRows
 
   const shoppingImage = shoppingItemImages[item.name] || "";
   const shoppingUrl = shoppingItemUrls[item.name] || "";
+  const isGroceryItem = item.buy_anyway === true;
+
+const pantryImage = isGroceryItem
+  ? item.image_url || shoppingImage || memory?.image_url || ""
+  : memory?.image_url || "";
+
+const pantryUrl = isGroceryItem
+  ? item.source_url || shoppingUrl || memory?.source_url || ""
+  : memory?.source_url || "";
   
 
     const hasProductData =
-      item.brand || item.package_size || item.price || item.image_url;
+  item.buy_anyway === true || item.brand || item.package_size || item.price;
 
     return {
       user_id: user.id,
@@ -2487,8 +2496,13 @@ const pantryRows = uniqueShoppingRows
 
       brand: item.brand || "",
       package_size: item.package_size || "",
-      image_url: item.image_url || shoppingImage || memory?.image_url || "",
-source_url: item.source_url || shoppingUrl || memory?.source_url || "",
+      image_url: hasProductData
+  ? item.image_url || shoppingImage || memory?.image_url || ""
+  : memory?.image_url || "",
+
+source_url: hasProductData
+  ? item.source_url || shoppingUrl || memory?.source_url || ""
+  : memory?.source_url || "",
       price: item.price || "",
     };
   });
