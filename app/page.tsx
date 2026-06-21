@@ -21,10 +21,12 @@ brand?: string;
 packageSize?: string;
 pantryQuantity?: number;
 source?: "recipe" | "shopping_list" | "leftovers";
+price?: string;
 };
 
 
 type PlannedRecipe = Recipe & {
+  parentMealPlanId?: string;
   mealPlanId: string;
   plannedDate?: string;
   isMade?: boolean;
@@ -538,6 +540,18 @@ const smartRestockItems = [
 
     return canMakeRecipeFromPantry(recipe);
   })
+  .filter((recipe) => {
+  if (recipe.type !== "grocery") return true;
+
+  const isAlreadyInShoppingList = shoppingList.some(
+    (item) =>
+      normalizeItemName(item) === normalizeItemName(recipe.title) ||
+      normalizeItemName(item).includes(normalizeItemName(recipe.title)) ||
+      normalizeItemName(recipe.title).includes(normalizeItemName(item))
+  );
+
+  return !isAlreadyInShoppingList;
+})
   .sort((a, b) => {
     if (recipeSort === "az") {
       return a.title.localeCompare(b.title);
@@ -1031,7 +1045,7 @@ if (!loadedPlan[key]) {
   loadedPlan[key] = [];
 }
 
-if (item.source === "shopping_list") {
+if (item.source === "shopping_list" || item.source === "leftovers") {
   loadedPlan[key].push({
     id: item.id,
     title: item.title,
@@ -1049,7 +1063,7 @@ if (item.source === "shopping_list") {
     plannedDate: mealDate,
     weekStart: item.week_start,
     type: "grocery",
-    source: "shopping_list",
+    source: item.source || "shopping_list",
   });
 
   if (!item.recipes) return;
@@ -1266,6 +1280,26 @@ async function saveFoodItem() {
     showToast("Please log in again.");
     return;
   }
+
+  const existingFoodCard = recipes.find((recipe) => {
+  if (recipe.type !== "grocery") return false;
+
+  const existingName = normalizeItemName(recipe.title);
+  const newName = normalizeItemName(foodTitle);
+
+  return (
+    existingName === newName ||
+    existingName.includes(newName) ||
+    newName.includes(existingName)
+  );
+});
+
+if (existingFoodCard) {
+  showToast("Food card already exists.");
+  setSelectedRecipe(existingFoodCard);
+  setShowFoodImport(false);
+  return;
+}
 
   const { data, error } = await supabase
     .from("recipes")
@@ -1732,6 +1766,8 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
   source_url: sourceRecipe?.sourceUrl || "",
   brand: sourceRecipe?.brand || "",
   package_size: sourceRecipe?.packageSize || "",
+  price: sourceRecipe?.price || "",
+  store_section: "Other",
 }));
 
   const { data, error } = await supabase
@@ -1745,6 +1781,15 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
   }
 
   const newItems = (data || []).map((item) => item.name);
+ 
+  setShoppingItemImages((current) => {
+  const updated = { ...current };
+  (data || []).forEach((item) => {
+    updated[item.name] = item.image_url || "";
+  });
+
+  return updated;
+});
 
   const sorted = [...shoppingList, ...newItems].sort((a, b) =>
     cleanForSort(a).localeCompare(cleanForSort(b))
@@ -1755,7 +1800,12 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
 }
 
 function addToShoppingList(recipe: Recipe) {
-  addItemsToShoppingList(recipe.ingredients);
+  if (recipe.type === "grocery") {
+    addItemsToShoppingList([recipe.title], recipe);
+    return;
+  }
+
+  addItemsToShoppingList(recipe.ingredients, recipe);
 }
 
   function addMealPlanToShoppingList() {
@@ -1897,6 +1947,12 @@ const manualItems = (manualData || []).map((item) => item.name);
 async function addLeftoverFromPlanner() {
   if (!plannerPopup || !plannerLeftoverId) return;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
   const original = Object.values(mealPlan)
     .flat()
     .find((item) => item.mealPlanId === plannerLeftoverId);
@@ -1905,17 +1961,43 @@ async function addLeftoverFromPlanner() {
 
   const key = getMealPlanKey(plannerPopup.day, plannerPopup.meal);
 
-  const leftoverItem: PlannedRecipe = {
+  const newItem: PlannedRecipe = {
     ...original,
     id: crypto.randomUUID(),
     mealPlanId: crypto.randomUUID(),
     isMade: false,
     source: "leftovers",
+parentMealPlanId: original.mealPlanId,
+  };
+
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .insert({
+      user_id: user.id,
+      day: plannerPopup.day,
+      meal: plannerPopup.meal,
+      week_start: getWeekStartDate(activePlannerWeek),
+      source: "leftovers",
+      title: original.title,
+      image_url: original.image || "",
+      is_made: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  const plannedRecipe: PlannedRecipe = {
+    ...newItem,
+    mealPlanId: data.id,
   };
 
   setMealPlan((current) => ({
     ...current,
-    [key]: [...(current[key] || []), leftoverItem],
+    [key]: [...(current[key] || []), plannedRecipe],
   }));
 
   setPlannerLeftoverId("");
@@ -2083,21 +2165,6 @@ setMealPlan((current) => ({
     return;
   }
 
-  if (recipeToDelete?.type === "grocery") {
-    await supabase
-      .from("pantry_items")
-      .delete()
-      .eq("name", recipeToDelete.title);
-
-    setPantryItems(
-      pantryItems.filter(
-        (item) =>
-          normalizeItemName(item.name) !==
-          normalizeItemName(recipeToDelete.title)
-      )
-    );
-  }
-
   setRecipes(recipes.filter((recipe) => recipe.id !== recipeId));
 
   const updatedMealPlan = { ...mealPlan };
@@ -2236,22 +2303,112 @@ async function addCheckedItemsToPantry() {
     return;
   }
 
-  const pantryRows = checkedShoppingItems.map((item) => ({
-    user_id: user.id,
-    name: cleanPantryDisplayName(item),
-    quantity: "1",
-    unit: "package",
-    category: "Other",
-  }));
+  const { data: shoppingRows, error: shoppingError } = await supabase
+    .from("shopping_items")
+    .select("*")
+    .in("name", checkedShoppingItems);
 
-  const { data: insertedPantryItems, error: pantryError } = await supabase
-    .from("pantry_items")
-    .insert(pantryRows)
-    .select();
-
-  if (pantryError) {
-    showToast(pantryError.message);
+  if (shoppingError) {
+    showToast(shoppingError.message);
     return;
+  }
+
+  const existingPantryNames = pantryItems.map((item) =>
+    normalizeItemName(item.name)
+  );
+
+  const pantryRows = (shoppingRows || [])
+    .filter(
+      (item) =>
+        !existingPantryNames.includes(
+          normalizeItemName(cleanPantryDisplayName(item.name))
+        )
+    )
+    .map((item) => ({
+      user_id: user.id,
+      name: cleanPantryDisplayName(item.name),
+      quantity: "1",
+      unit: "package",
+      category: "Other",
+
+      brand: item.brand || "",
+      package_size: item.package_size || "",
+      image_url: item.image_url || "",
+      source_url: item.source_url || "",
+      price: item.price || "",
+    }));
+
+  let insertedPantryItems: any[] = [];
+
+  if (pantryRows.length > 0) {
+    const { data, error: pantryError } = await supabase
+      .from("pantry_items")
+      .insert(pantryRows)
+      .select();
+
+    if (pantryError) {
+      showToast(pantryError.message);
+      return;
+    }
+
+    insertedPantryItems = data || [];
+  }
+
+  for (const item of pantryRows) {
+    const existingFoodCard = recipes.find(
+      (recipe) =>
+        recipe.type === "grocery" &&
+        normalizeItemName(recipe.title) === normalizeItemName(item.name)
+    );
+
+    if (existingFoodCard) {
+      continue;
+    }
+
+    const { data: newFoodCard, error: foodCardError } = await supabase
+      .from("recipes")
+      .insert({
+        user_id: user.id,
+        title: item.name,
+        image_url: item.image_url || "",
+        ingredients: [],
+        steps: [],
+        cook_time: "",
+        servings: "",
+        category: item.category || "Other",
+        source_url: item.source_url || "",
+        is_favorite: false,
+        is_planning_queue: false,
+        type: "grocery",
+        brand: item.brand || "",
+        package_size: item.package_size || "",
+        price: item.price || "",
+      })
+      .select()
+      .single();
+
+    if (!foodCardError && newFoodCard) {
+      setRecipes((current) => [
+        {
+          id: newFoodCard.id,
+          title: newFoodCard.title,
+          image: newFoodCard.image_url || "",
+          ingredients: [],
+          steps: [],
+          cookTime: "",
+          servings: "",
+          category: newFoodCard.category || "Other",
+          sourceUrl: newFoodCard.source_url || "",
+          isFavorite: false,
+          isPlanningQueue: false,
+          createdAt: newFoodCard.created_at,
+          type: "grocery",
+          brand: newFoodCard.brand || "",
+          packageSize: newFoodCard.package_size || "",
+        },
+        ...current,
+      ]);
+    }
   }
 
   const { error: deleteError } = await supabase
@@ -2268,10 +2425,23 @@ async function addCheckedItemsToPantry() {
     shoppingList.filter((item) => !checkedShoppingItems.includes(item))
   );
 
-  setPantryItems([
-    ...pantryItems,
-    ...(insertedPantryItems || []),
-  ]);
+setPantryItems([
+  ...pantryItems,
+  ...(insertedPantryItems || []).map((item) => ({
+    id: item.id,
+    name: item.name,
+    quantity: item.quantity || "",
+    unit: item.unit || "",
+    category: item.category || "Other",
+    createdAt: item.created_at,
+
+    brand: item.brand || "",
+    packageSize: item.package_size || "",
+    image: item.image_url || "",
+    sourceUrl: item.source_url || "",
+    price: item.price || "",
+  })),
+]);
 
   setCheckedShoppingItems([]);
 
@@ -2574,7 +2744,34 @@ async function savePantryItemAsFoodCard(item: PantryItem) {
     showToast("Please log in again.");
     return;
   }
+  
+const existingFoodCard = recipes.find((recipe) => {
+  const recipeName = normalizeItemName(recipe.title);
+const itemName = normalizeItemName(item.name);
 
+return (
+  recipeName === itemName ||
+  recipeName.includes(itemName) ||
+  itemName.includes(recipeName)
+);
+
+  const existingName = normalizeItemName(recipe.title);
+  const pantryName = normalizeItemName(item.name);
+
+  return (
+    existingName === pantryName ||
+    existingName.includes(pantryName) ||
+    pantryName.includes(existingName) ||
+    (!!item.sourceUrl && recipe.sourceUrl === item.sourceUrl)
+  );
+});
+
+if (existingFoodCard) {
+  showToast("Food card already exists.");
+  setSelectedRecipe(existingFoodCard);
+  setCurrentPage("recipes");
+  return;
+}
   const { data, error } = await supabase
     .from("recipes")
     .insert({
@@ -3026,22 +3223,7 @@ setPantrySessionAddCount(0);
     Add another item after saving
   </label>
 )}
-{pantryModalShoppingItem && (
-  <button
-    onClick={() => {
-      setManuallyMarkedOnHand([
-        ...manuallyMarkedOnHand,
-        pantryModalShoppingItem,
-      ]);
 
-      setShowPantryModal(false);
-      setPantryModalShoppingItem("");
-    }}
-    className="mb-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
-  >
-    Mark On Hand
-  </button>
-)}
         <button
           onClick={savePantryModal}
           className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
@@ -4057,6 +4239,28 @@ setShoppingItemUrls({
           const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
            const linkedRecipe = getRecipeForShoppingItem(item);
 
+           const linkedFoodItem = recipes.find((recipe) => {
+  const recipeName = normalizeItemName(recipe.title);
+  const itemName = normalizeItemName(item);
+
+  return (
+    recipeName === itemName ||
+    recipeName.includes(itemName) ||
+    itemName.includes(recipeName)
+  );
+});
+const itemUrl =
+  shoppingItemUrls[item] ||
+  linkedFoodItem?.sourceUrl ||
+  linkedRecipe?.sourceUrl ||
+  "";
+
+const itemImage =
+  shoppingItemImages[item] ||
+  linkedFoodItem?.image ||
+  linkedRecipe?.image ||
+  "";
+
            const displayName = `${item
   .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
   .replace(/\(\(.*?\)\)/g, "")
@@ -4077,44 +4281,47 @@ setShoppingItemUrls({
                     toggleShoppingItemChecked(item, e.target.checked)
                   }
                 />
-                {shoppingItemImages[item] ? (
+                {itemImage ? (
   <img
-    src={shoppingItemImages[item]}
+    src={itemImage}
     alt={item}
     className="h-12 w-12 shrink-0 rounded-xl object-cover"
   />
 ) : (
   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#fff4ef] text-xl">
-   {getShoppingItemIcon(item)}
-  </div>
+  {getShoppingItemIcon(item)}
+</div>
 )}
 
-                {shoppingItemUrls[item] ? (
+<div className="min-w-0">
+  <p className="max-w-[52ch] break-words font-medium leading-snug">
+    {displayName}
+  </p>
+
+  {linkedRecipe ? (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      setSelectedRecipe(linkedRecipe);
+    }}
+    className="text-sm font-bold text-[#a63a0a] hover:underline"
+  >
+    📖 View Recipe
+  </button>
+) : itemUrl ? (
   <a
-    href={shoppingItemUrls[item]}
+    href={itemUrl}
     target="_blank"
     rel="noopener noreferrer"
-    className="max-w-[52ch] break-words font-medium leading-snug text-[#a63a0a] hover:underline"
+    onClick={(e) => e.stopPropagation()}
+    className="text-sm font-bold text-[#a63a0a] hover:underline"
   >
-    {item
-      .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
-      .replace(/\(\(.*?\)\)/g, "")
-      .replace(/\(optional.*?\)/gi, "")
-      .replace(/\s+/g, " ")
-      .trim()}
-    {count > 1 ? ` ×${count}` : ""}
+    🛒 View in Store
   </a>
-) : (
-  <span className="max-w-[52ch] break-words font-medium leading-snug">
-    {item
-      .replace(/,\s*(optional|for garnish|divided|to taste).*$/i, "")
-      .replace(/\(\(.*?\)\)/g, "")
-      .replace(/\(optional.*?\)/gi, "")
-      .replace(/\s+/g, " ")
-      .trim()}
-    {count > 1 ? ` ×${count}` : ""}
-  </span>
-)}
+) : null}
+</div>
+
+                
               </label>
 
               <div className="flex flex-wrap items-center gap-3 pl-7 md:pl-0">
@@ -4172,11 +4379,13 @@ setShoppingItemUrls({
                 ) : (
                   <>
                     <button
-                      onClick={() => addShoppingItemToPantry(item, count)}
-                      className="text-sm font-medium text-[#a63a0a]"
-                    >
-                      Add to Pantry
-                    </button>
+  onClick={() =>
+    setManuallyMarkedOnHand((current) => [...current, item])
+  }
+  className="text-sm font-medium text-[#a63a0a]"
+>
+  Mark On Hand
+</button>
 
                     <button
                       onClick={() => {
@@ -5611,6 +5820,7 @@ if (showPantry) {
 ) : (
   <div className="flex min-w-0 items-center gap-3">
   {item.image &&
+  item.sourceUrl &&
   (item.sourceUrl ? (
     <a
       href={item.sourceUrl}
@@ -6302,10 +6512,24 @@ Bake for 25 minutes`}
 </button>
 {recipe.type === "grocery" && !canMakeRecipeFromPantry(recipe) && (
   <button
-    onClick={(e) => {
-      e.stopPropagation();
-      addItemsToShoppingList([recipe.title]);
-    }}
+    onClick={async (e) => {
+  e.stopPropagation();
+
+  await addItemsToShoppingList([recipe.title], recipe);
+
+  await supabase
+    .from("pantry_items")
+    .update({ quantity: "0" })
+    .eq("name", recipe.title);
+
+  setPantryItems((current) =>
+    current.map((item) =>
+      normalizeItemName(item.name) === normalizeItemName(recipe.title)
+        ? { ...item, quantity: "0" }
+        : item
+    )
+  );
+}}
     className="mt-4 mr-2 rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
   >
     Buy Again
@@ -6818,7 +7042,7 @@ Bake for 25 minutes`}
             </p>
 
             <button
-              onClick={() => addItemsToShoppingList([selectedRecipe.title])}
+              onClick={() => addItemsToShoppingList([selectedRecipe.title], selectedRecipe)}
               className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
             >
               Buy Again
