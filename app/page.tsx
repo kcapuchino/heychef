@@ -4462,7 +4462,7 @@ Contact support and we'll process your request.</p>
     <div>
       <h1 className="text-4xl font-bold md:text-5xl">Shopping List</h1>
 
-      <p className="mt-2 max-w-xs text-[#6d5549]">
+       <p className="mt-2 text-[#6d5549]">
         Review ingredients you need and move items into your pantry.
       </p>
     </div>
