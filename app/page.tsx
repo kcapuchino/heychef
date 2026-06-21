@@ -360,7 +360,10 @@ const [showPantryModal, setShowPantryModal] = useState(false);
 const [pantrySessionAddCount, setPantrySessionAddCount] = useState(0);
 const [recentlyAddedPantryId, setRecentlyAddedPantryId] = useState<string | null>(null);
 const [pantryModalItem, setPantryModalItem] = useState("");
+const [pantryModalImage, setPantryModalImage] = useState("");
+const [pantryModalSourceUrl, setPantryModalSourceUrl] = useState("");
 const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
+const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
 const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
 const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
 const [pantryModalUnit, setPantryModalUnit] = useState("");
@@ -864,57 +867,70 @@ packageSize: recipe.package_size || "",
   }
 }, [userEmail]);
 
-useEffect(() => {
-  async function loadShoppingItems() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+async function loadShoppingItems() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!user) return;
+  if (!user) return;
 
-    const { data, error } = await supabase
-      .from("shopping_items")
-      .select("*")
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("shopping_items")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setShoppingList((data || []).map((item) => item.name));
-
-setShoppingItemImages(
-  (data || []).reduce((images, item) => {
-    if (item.image_url) {
-      images[item.name] = item.image_url;
-    }
-
-    return images;
-  }, {} as Record<string, string>)
-);
-
-setShoppingItemUrls(
-  (data || []).reduce((urls, item) => {
-    if (item.source_url) {
-      urls[item.name] = item.source_url;
-    }
-
-    return urls;
-  }, {} as Record<string, string>)
-);
-
-setCheckedShoppingItems(
-  (data || [])
-    .filter((item) => item.is_checked)
-    .map((item) => item.id)
-);
+  if (error) {
+    console.error(error);
+    return;
   }
 
-  if (userEmail) {
-    loadShoppingItems();
+  const normalizedNames = [...new Set(
+    (data || []).map((item) => normalizeItemName(item.name))
+  )];
+
+  const { data: imageMemory, error: imageMemoryError } = await supabase
+    .from("ingredient_images")
+    .select("normalized_name, image_url, source_url")
+    .eq("user_id", user.id)
+    .in("normalized_name", normalizedNames);
+
+  if (imageMemoryError) {
+    console.error(imageMemoryError);
   }
-}, [userEmail]);
+
+  const imageMemoryMap = new Map(
+    (imageMemory || []).map((item) => [item.normalized_name, item])
+  );
+
+  setShoppingList((data || []).map((item) => item.name));
+
+  setShoppingItemImages(
+    (data || []).reduce((images, item) => {
+      const memory = imageMemoryMap.get(normalizeItemName(item.name));
+
+      images[item.name] = item.image_url || memory?.image_url || "";
+
+      return images;
+    }, {} as Record<string, string>)
+  );
+
+  setShoppingItemUrls(
+    (data || []).reduce((urls, item) => {
+      const memory = imageMemoryMap.get(normalizeItemName(item.name));
+
+      urls[item.name] = item.source_url || memory?.source_url || "";
+
+      return urls;
+    }, {} as Record<string, string>)
+  );
+
+  setCheckedShoppingItems(
+    (data || [])
+      .filter((item) => item.is_checked)
+      .map((item) => item.id)
+  );
+}
 
 useEffect(() => {
   async function loadPantry() {
@@ -971,10 +987,12 @@ async function saveBulkPantryEdits() {
     await supabase
       .from("pantry_items")
       .update({
-  name: item.name,
-  quantity: item.quantity,
-  unit: item.unit || "",
-  category: item.category,
+  name: pantryModalItem.trim(),
+  quantity: pantryModalQuantity.trim() || "1",
+  unit: pantryModalUnit,
+  category: pantryModalCategory,
+  image_url: pantryModalImage.trim(),
+  source_url: pantryModalSourceUrl.trim(),
 })
       .eq("id", item.id);
   }
@@ -2851,6 +2869,42 @@ async function addShoppingItemToPantry(shoppingItem: string, count = 1) {
   showToast(`${cleanedName} ready to add to pantry.`);
 }
 
+async function refreshPantryImageFromUrl() {
+  const sourceUrl = pantryModalSourceUrl.trim();
+
+  if (!sourceUrl) {
+    showToast("Paste a product URL first.");
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/import-food", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: sourceUrl }),
+    });
+
+    const product = await response.json();
+
+    console.log("REFRESH PANTRY IMAGE RESULT", product);
+
+    if (!response.ok) {
+      showToast(product.error || "Could not import image.");
+      return;
+    }
+
+    if (product.title) setPantryModalItem(product.title);
+    if (product.image) setPantryModalImage(product.image);
+
+    showToast("Image refreshed.");
+  } catch (error) {
+    console.error(error);
+    showToast("Could not refresh image.");
+  }
+}
+
 async function resetPantry() {
   if (
     !confirm(
@@ -2880,6 +2934,43 @@ async function resetPantry() {
   showToast("Pantry reset.");
 }
 
+
+async function saveIngredientImageMemory(
+  name: string,
+  imageUrl: string,
+  sourceUrl: string
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const cleanName = name.trim();
+  if (!cleanName) return;
+
+  const { data, error } = await supabase
+    .from("ingredient_images")
+    .upsert(
+      {
+        user_id: user.id,
+        name: cleanName,
+        normalized_name: normalizeItemName(cleanName),
+        image_url: imageUrl.trim(),
+        source_url: sourceUrl.trim(),
+      },
+      {
+        onConflict: "user_id,normalized_name",
+      }
+    )
+    .select();
+
+  console.log("INGREDIENT IMAGE MEMORY RESULT", { data, error });
+
+  if (error) {
+    showToast(error.message);
+  }
+}
 async function savePantryModal() {
   const {
     data: { user },
@@ -2890,39 +2981,82 @@ async function savePantryModal() {
     return;
   }
 
-  if (!pantryModalItem.trim()) return;
+  let name = pantryModalItem.trim();
+  let imageUrl = pantryModalImage.trim();
+  const sourceUrl = pantryModalSourceUrl.trim();
+
+  const urlChanged =
+  sourceUrl !== "" && sourceUrl !== originalPantrySourceUrl.trim();
+
+const shouldImportProduct =
+  sourceUrl !== "" && (urlChanged || imageUrl === "");
+
+if (shouldImportProduct) {
+  try {
+    const response = await fetch("/api/import-food", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: sourceUrl }),
+    });
+
+    const product = await response.json();
+
+    console.log("PANTRY IMPORT RESULT", product);
+
+    if (response.ok) {
+      name = product.title || name;
+      imageUrl = product.image || "";
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+  if (!name) return;
+
+  const payload = {
+    name,
+    quantity: pantryModalQuantity.trim() || "1",
+    unit: pantryModalUnit,
+    category: pantryModalCategory,
+    image_url: imageUrl,
+    source_url: sourceUrl,
+  };
 
   if (editingPantryModalId) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("pantry_items")
-      .update({
-        name: pantryModalItem.trim(),
-        quantity: pantryModalQuantity.trim() || "1",
-        unit: pantryModalUnit,
-        category: pantryModalCategory,
-      })
-      .eq("id", editingPantryModalId);
+      .update(payload)
+      .eq("id", editingPantryModalId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
 
     if (error) {
       showToast(error.message);
       return;
     }
 
-    setPantryItems(
-      pantryItems.map((item) =>
+    setPantryItems((current) =>
+      current.map((item) =>
         item.id === editingPantryModalId
           ? {
               ...item,
-              name: pantryModalItem.trim(),
-              quantity: pantryModalQuantity.trim() || "1",
-              unit: pantryModalUnit,
-              category: pantryModalCategory,
+              name: data.name,
+              quantity: data.quantity || "1",
+              unit: data.unit || "",
+              category: data.category || "Other",
+              image: data.image_url || "",
+              sourceUrl: data.source_url || "",
             }
           : item
       )
     );
 
+    await saveIngredientImageMemory(name, imageUrl, sourceUrl);
+
     setEditingPantryModalId(null);
+    setOriginalPantrySourceUrl("");
     setShowPantryModal(false);
     return;
   }
@@ -2931,12 +3065,7 @@ async function savePantryModal() {
     .from("pantry_items")
     .insert({
       user_id: user.id,
-      name: pantryModalItem.trim(),
-      quantity: pantryModalQuantity.trim() || "1",
-      unit: pantryModalUnit,
-      category: pantryModalCategory,
-      image_url: shoppingItemImages[pantryModalShoppingItem] || "",
-source_url: "",
+      ...payload,
     })
     .select()
     .single();
@@ -2953,31 +3082,27 @@ source_url: "",
     unit: data.unit || "",
     category: data.category || "Other",
     createdAt: data.created_at,
-    image: data.image_url || shoppingItemImages[pantryModalShoppingItem] || "",
+    image: data.image_url || "",
+    sourceUrl: data.source_url || "",
   };
 
-  setPantryItems([newPantryItem, ...pantryItems]);
-  if (
-  pantryModalShoppingItem &&
-  shouldSaveAsFoodCard(pantryModalShoppingItem)
-) {
-  await saveShoppingItemAsFoodItem(pantryModalShoppingItem);
-}
+  setPantryItems((current) => [newPantryItem, ...current]);
+
+  await saveIngredientImageMemory(name, imageUrl, sourceUrl);
+
   setPantrySessionAddCount((count) => count + 1);
 
   if (addAnotherPantryItem) {
     setPantryModalItem("");
+    setPantryModalImage("");
+    setPantryModalSourceUrl("");
+    setOriginalPantrySourceUrl("");
     setPantryModalQuantity("1");
-    setPantryModalUnit("package");
-    setPantryModalCategory("Other");
     return;
   }
 
   setRecentlyAddedPantryId(newPantryItem.id);
-
-setTimeout(() => {
-  setRecentlyAddedPantryId(null);
-}, 2000);
+  setTimeout(() => setRecentlyAddedPantryId(null), 2000);
 
   setShowPantryModal(false);
 }
@@ -3122,7 +3247,29 @@ function PantryModal() {
           placeholder="Item name"
           className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
         />
+        <input
+  value={pantryModalSourceUrl}
+  onChange={(e) => setPantryModalSourceUrl(e.target.value)}
+  placeholder="Product URL (optional)"
+  className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+/>
 
+<input
+  value={pantryModalImage}
+  onChange={(e) => setPantryModalImage(e.target.value)}
+  placeholder="Image URL"
+  className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+/>
+
+
+
+  <button
+  type="button"
+  onClick={refreshPantryImageFromUrl}
+  className="mb-3 w-full rounded-full border border-[#a63a0a] py-2 text-sm font-bold text-[#a63a0a]"
+>
+  {editingPantryModalId ? "Update Item" : "Import Item"}
+</button>
         <div className="mb-3 flex items-center gap-2">
   <button
   type="button"
@@ -3225,11 +3372,18 @@ setPantrySessionAddCount(0);
 )}
 
         <button
-          onClick={savePantryModal}
-          className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
-        >
-          {editingPantryModalId ? "Save Changes" : "Save Item"}
-        </button>
+  onClick={savePantryModal}
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+>
+  {editingPantryModalId &&
+  pantryModalSourceUrl.trim() &&
+  (pantryModalSourceUrl.trim() !== originalPantrySourceUrl.trim() ||
+    !pantryModalImage.trim())
+    ? "Import Item"
+    : editingPantryModalId
+    ? "Save Changes"
+    : "Save Item"}
+</button>
       </div>
     </div>
   );
@@ -5459,10 +5613,17 @@ if (showPantry) {
 
       <button
        onClick={() => {
+  setEditingPantryModalId(null);
   setPantryModalItem("");
+  setPantryModalImage("");
+  setPantryModalSourceUrl("");
+  setPantryModalShoppingItem("");
   setPantryModalQuantity("1");
+
+  // keep smart defaults
   setPantryModalUnit("package");
   setPantryModalCategory("Other");
+
   setAddAnotherPantryItem(false);
   setShowPantryModal(true);
 }}
@@ -5848,7 +6009,19 @@ if (showPantry) {
       <p className="mt-1 text-[#6d5549]">
         {item.quantity || "1"} {item.unit}
       </p>
+
+      {item.sourceUrl && (
+  <a
+    href={item.sourceUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="mt-1 block text-sm font-bold text-[#a63a0a]"
+  >
+    🛒 View in Store
+  </a>
+)}
     </div>
+    
   </div>
 )}
 
@@ -5869,6 +6042,9 @@ if (showPantry) {
         setPantryModalCategory(item.category || "Other");
         setAddAnotherPantryItem(false);
         setShowPantryModal(true);
+        setPantryModalImage(item.image || "");
+setPantryModalSourceUrl(item.sourceUrl || "");
+setOriginalPantrySourceUrl(item.sourceUrl || "");
       }}
       className="text-sm font-bold text-[#a63a0a]"
     >
@@ -6517,10 +6693,7 @@ Bake for 25 minutes`}
 
   await addItemsToShoppingList([recipe.title], recipe);
 
-  await supabase
-    .from("pantry_items")
-    .update({ quantity: "0" })
-    .eq("name", recipe.title);
+  
 
   setPantryItems((current) =>
     current.map((item) =>
