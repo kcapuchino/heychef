@@ -3542,7 +3542,7 @@ function PantryModal() {
   onClick={refreshPantryImageFromUrl}
   className="mb-3 w-full rounded-full border border-[#a63a0a] py-2 text-sm font-bold text-[#a63a0a]"
 >
-  {editingPantryModalId ? "Update Item" : "Import Item"}
+  {editingPantryModalId ? "Update Pantry Item" : "Import Pantry Item"}
 </button>
         <div className="mb-3 flex items-center gap-2">
   <button
@@ -3651,7 +3651,7 @@ setPantrySessionAddCount(0);
         onClick={savePantryModal}
         className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
       >
-        {editingPantryModalId ? "Save Changes" : "Save Item"}
+        {editingPantryModalId ? "Save Pantry Changes" : "Save Pantry Item"}
       </button>
     </div>
   </div>
@@ -4492,7 +4492,7 @@ Contact support and we'll process your request.</p>
   }}
   className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
 >
-  🗑 Clear List
+  🗑 Clear Shopping List
 </button>
   </div>
 
@@ -4579,7 +4579,7 @@ setLastAddedShoppingItem(data);
 }}
       className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
     >
-      Add Item
+      Add Items to Shopping List 
     </button>
   </div>
 </section>
@@ -5903,7 +5903,7 @@ if (showPantry) {
   setShowPantryModal(true);
 }}
         className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white shadow-md transition hover:-translate-y-0.5 hover:shadow-lg md:w-auto"      >
-        + Add Items
+        + Add Pantry Items
       </button>
     </div>
 
@@ -7270,7 +7270,7 @@ Bake for 25 minutes`}
   className="w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
 >
   {selectedRecipe.type === "grocery"
-    ? "Edit Food Item"
+    ? "Edit Go-To Food Item"
     : "Edit Recipe"}
 </button>
 
@@ -7335,7 +7335,7 @@ Bake for 25 minutes`}
             {isEditingRecipe && selectedRecipe && (
   <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
     <h2 className="mb-4 text-2xl font-bold">
-      {selectedRecipe.type === "grocery" ? "Edit Food Item" : "Edit Recipe"}
+      {selectedRecipe.type === "grocery" ? "Edit Go-To Food Item" : "Edit Recipe"}
     </h2>
 
     <label className="mb-2 block font-bold">Title</label>
@@ -8059,7 +8059,7 @@ Bake for 25 minutes`}
   }}
   className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
 >
-  Add Item
+  Add Item to Shopping List
 </button>
      </div>
 
@@ -8127,7 +8127,7 @@ Bake for 25 minutes`}
         disabled={isImporting}
         className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
       >
-        {isImporting ? "Importing..." : "Import"}
+        {isImporting ? "Importing..." : "Import Recipe"}
       </button>
     </div>
 
@@ -8162,7 +8162,7 @@ Bake for 25 minutes`}
         disabled={isImporting}
         className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
       >
-        {isImporting ? "Importing..." : "Import Food"}
+        {isImporting ? "Importing..." : "Import Go-To Food"}
       </button>
     </div>
      <div className="my-5 flex items-center gap-4">
