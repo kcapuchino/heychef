@@ -301,6 +301,7 @@ const [signupName, setSignupName] = useState("");
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showFoodImport, setShowFoodImport] = useState(false);
+  const [showShoppingImport, setShowShoppingImport] = useState(false);
 const [foodUrl, setFoodUrl] = useState("");
 const [foodBrand, setFoodBrand] = useState("");
 const [foodTitle, setFoodTitle] = useState("");
@@ -356,6 +357,7 @@ const [editingPantryItemId, setEditingPantryItemId] = useState<string | null>(nu
 const [isBulkEditingPantry, setIsBulkEditingPantry] = useState(false);
 const [pantryDrafts, setPantryDrafts] = useState<Record<string, PantryItem>>({});
   const [newShoppingItem, setNewShoppingItem] = useState("");
+  const [lastAddedShoppingItem, setLastAddedShoppingItem] = useState<any>(null);
   const [newPantryItem, setNewPantryItem] = useState("");
  const [newPantryQuantity, setNewPantryQuantity] = useState("");
 const [newPantryCategory, setNewPantryCategory] = useState("Other");
@@ -2822,8 +2824,7 @@ function getMatchingPantryItem(ingredient: string) {
     }
 
     return (
-      cleanedIngredientName.includes(cleanedPantryName) ||
-      cleanedPantryName.includes(cleanedIngredientName)
+      cleanedIngredientName === cleanedPantryName
     );
   });
 }
@@ -4573,6 +4574,7 @@ setShoppingItemUrls({
   ...shoppingItemUrls,
   [data.name]: data.source_url || "",
 });
+setLastAddedShoppingItem(data);
   setNewShoppingItem("");
 }}
       className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
@@ -6747,49 +6749,39 @@ Bake for 25 minutes`}
       <div className="h-px flex-1 bg-[#ead7c8]" />
     </div>
 
-    <div className="grid gap-3 md:grid-cols-2">
-      <input
-        value={foodBrand}
-        onChange={(e) => setFoodBrand(e.target.value)}
-        placeholder="Brand, like Amy's"
-        className="rounded-full border border-[#ead7c8] px-5 py-3"
-      />
+    <div className="flex gap-4">
+  {lastAddedShoppingItem.image_url && (
+    <img
+      src={lastAddedShoppingItem.image_url}
+      alt={lastAddedShoppingItem.name}
+      className="h-24 w-24 rounded-2xl object-cover"
+    />
+  )}
 
-      <input
-        value={foodTitle}
-        onChange={(e) => setFoodTitle(e.target.value)}
-        placeholder="Food item name"
-        className="rounded-full border border-[#ead7c8] px-5 py-3"
-      />
+  <div>
+    <h3 className="font-bold text-[#2b1b14]">
+      {lastAddedShoppingItem.name}
+    </h3>
 
-      <input
-        value={foodPackageSize}
-        onChange={(e) => setFoodPackageSize(e.target.value)}
-        placeholder="Package size, like 6 oz"
-        className="rounded-full border border-[#ead7c8] px-5 py-3"
-      />
+    {lastAddedShoppingItem.brand && (
+      <p className="text-sm text-[#6d5549]">
+        {lastAddedShoppingItem.brand}
+      </p>
+    )}
 
-      <select
-        value={foodCategory}
-        onChange={(e) => setFoodCategory(e.target.value)}
-        className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-      >
-        <option value="Frozen Food">Frozen Food</option>
-        <option value="Boxed Meal">Boxed Meal</option>
-        <option value="Prepared Food">Prepared Food</option>
-        <option value="Canned Food">Canned Food</option>
-        <option value="Snack">Snack</option>
-        <option value="Drink">Drink</option>
-        <option value="Other">Other</option>
-      </select>
+    {lastAddedShoppingItem.package_size && (
+      <p className="text-sm text-[#6d5549]">
+        {lastAddedShoppingItem.package_size}
+      </p>
+    )}
 
-      <input
-        value={foodImage}
-        onChange={(e) => setFoodImage(e.target.value)}
-        placeholder="Image URL optional"
-        className="rounded-full border border-[#ead7c8] px-5 py-3 md:col-span-2"
-      />
-    </div>
+    {lastAddedShoppingItem.price && (
+      <p className="text-sm text-[#6d5549]">
+        {lastAddedShoppingItem.price}
+      </p>
+    )}
+  </div>
+</div>
 
     <button
       onClick={saveFoodItem}
@@ -7900,7 +7892,11 @@ Bake for 25 minutes`}
     <h2 className="text-2xl font-bold">Import a Recipe</h2>
 
     <button
-      onClick={() => setShowImport(false)}
+      onClick={() => {
+      setShowImport(false);
+      setLastAddedShoppingItem(null);
+      setNewShoppingItem("");
+    }}
       className="text-2xl text-[#6d5549]"
     >
       ✕
@@ -7915,10 +7911,11 @@ Bake for 25 minutes`}
   <button
     onClick={() => {
       setShowFoodImport(false);
+      setShowShoppingImport(false);
       setShowPantryModal(false);
     }}
     className={`rounded-full px-4 py-2 text-sm font-bold ${
-      !showFoodImport
+      !showFoodImport && !showShoppingImport
         ? "bg-[#a63a0a] text-white"
         : "border border-[#a63a0a] text-[#a63a0a]"
     }`}
@@ -7927,15 +7924,37 @@ Bake for 25 minutes`}
   </button>
 
   <button
-    onClick={() => setShowFoodImport(true)}
+  onClick={() => {
+    setShowFoodImport(true);
+    setShowShoppingImport(false);
+    setShowPantryModal(false);
+  }}
+    
     className={`rounded-full px-4 py-2 text-sm font-bold ${
       showFoodImport
         ? "bg-[#a63a0a] text-white"
         : "border border-[#a63a0a] text-[#a63a0a]"
     }`}
   >
-    Food Item
+    Pantry Staples
   </button>
+
+  <button
+  onClick={() => {
+    setShowFoodImport(false);
+    setShowPantryModal(false);
+    setShowShoppingImport(true);
+    setLastAddedShoppingItem(null);
+    setNewShoppingItem("");
+   }}
+  className={`rounded-full px-4 py-2 text-sm font-bold ${
+    showShoppingImport
+      ? "bg-[#a63a0a] text-white"
+      : "border border-[#a63a0a] text-[#a63a0a]"
+  }`}
+>
+  Shopping Item
+</button>
 
   <button
   onClick={() => {
@@ -7947,13 +7966,152 @@ Bake for 25 minutes`}
     setPantryModalCategory("Other");
     setAddAnotherPantryItem(false);
     setShowPantryModal(true);
+    setShowShoppingImport(false);
   }}
   className="rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
 >
   Pantry Item
 </button>
 </div>
+{showShoppingImport && (
+  <div className="flex flex-wrap gap-2">
+    <input
+      value={newShoppingItem}
+      onChange={(e) => setNewShoppingItem(e.target.value)}
+      placeholder="🛒 Add grocery item or paste url"
+      className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+    />
 
+    <button
+  onClick={async () => {
+    if (!newShoppingItem.trim()) return;
+
+    let itemName = newShoppingItem.trim();
+    let product: any = null;
+    const originalUrl = itemName;
+
+    if (originalUrl.includes("http")) {
+      try {
+        const response = await fetch("/api/import-food", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: originalUrl,
+          }),
+        });
+
+        product = await response.json();
+
+        if (product?.title) {
+          itemName = product.title;
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      showToast("Please log in again.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("shopping_items")
+      .insert({
+        user_id: user.id,
+        name: itemName,
+        brand: product?.brand || "",
+        package_size: product?.packageSize || "",
+        image_url: product?.image || "",
+        source_url: originalUrl.includes("http") ? originalUrl : "",
+        price: product?.price || "",
+      })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error(error);
+      showToast("Could not add shopping item.");
+      return;
+    }
+
+    setShoppingList([data.name, ...shoppingList]);
+
+    setShoppingItemImages({
+      ...shoppingItemImages,
+      [data.name]: data.image_url || "",
+    });
+
+    setShoppingItemUrls({
+      ...shoppingItemUrls,
+      [data.name]: data.source_url || "",
+    });
+
+    setLastAddedShoppingItem(data);
+    setNewShoppingItem("");
+    showToast(`${data.name} added to shopping list.`);
+  }}
+  className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
+>
+  Add Item
+</button>
+     </div>
+
+    )}
+  {showShoppingImport && lastAddedShoppingItem && (
+  <div className="mt-5 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+    <p className="mb-3 text-sm font-bold uppercase tracking-[0.25em] text-[#a63a0a]">
+      Added to Cart
+    </p>
+
+    <div className="grid gap-3 md:grid-cols-2">
+      <input
+        value={lastAddedShoppingItem.brand || ""}
+        readOnly
+        placeholder="Brand"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={lastAddedShoppingItem.name || ""}
+        readOnly
+        placeholder="Food item name"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={lastAddedShoppingItem.package_size || ""}
+        readOnly
+        placeholder="Package size"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={lastAddedShoppingItem.price || ""}
+        readOnly
+        placeholder="Price"
+        className="rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={lastAddedShoppingItem.image_url || ""}
+        readOnly
+        placeholder="Image URL"
+        className="rounded-full border border-[#ead7c8] px-5 py-3 md:col-span-2"
+      />
+   
+  </div>
+  </div>
+)}
+
+{!showShoppingImport && (
+  <>
 {!showFoodImport ? (
   <>
     <div className="flex flex-wrap gap-2">
@@ -8076,6 +8234,8 @@ Bake for 25 minutes`}
   >
     + Enter Food Item Manually
   </button>
+)}
+  </>
 )}
   </>
 )}
