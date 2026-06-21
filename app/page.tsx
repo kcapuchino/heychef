@@ -1924,26 +1924,33 @@ if (deleteError) {
   const mealPlanItems: any[] = [];
 
   for (const item of plannedMeals) {
-    console.log("PLANNED ITEM", item.title, item.type, item.source, item);
-    const isGroceryMeal =
-  item.type === "grocery" ||
-  item.source === "shopping_list" ||
-  item.source === "leftovers" ||
-  !item.ingredients ||
-  item.ingredients.length === 0;
+  console.log("PLANNED ITEM", item.title, item.type, item.source, item);
 
-    if (isGroceryMeal) {
-      mealPlanItems.push({
-        name: item.title,
-        mealPlanId: item.mealPlanId,
-        imageUrl: item.image || "",
-        sourceUrl: item.sourceUrl || "",
-        buyAnyway: true,
-      });
+  const shouldSkipShoppingList =
+    item.source === "shopping_list" ||
+    item.source === "leftovers";
 
-      continue;
-    }
+  if (shouldSkipShoppingList) {
+    continue;
+  }
 
+  const isGroceryMeal =
+    item.type === "grocery" ||
+    !item.ingredients ||
+    item.ingredients.length === 0;
+
+  if (isGroceryMeal) {
+    mealPlanItems.push({
+      name: item.title,
+      mealPlanId: item.mealPlanId,
+      imageUrl: item.image || "",
+      sourceUrl: item.sourceUrl || "",
+      buyAnyway: true,
+    });
+
+    continue;
+  }
+      
     const recipeId = item.id;
 
     const { data: fullRecipe, error } = await supabase
