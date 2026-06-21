@@ -248,16 +248,20 @@ function normalizeItemName(text?: string | null) {
     .split(",")[0]
     .replace(/[()]/g, " ")
     .replace(/\bor\b/g, " ")
+
+    // remove recipe fluff
+    .replace(/other sandwich toppings?.*/g, "")
+    .replace(/sandwich toppings?.*/g, "")
+
     .replace(
-      /\d+|cups?|cup|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|g|ml|cans?|can|pounds?|pound|lbs?|lb|small|large|medium/g,
+      /\b\d+|cups?|cup|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|g|ml|cans?|can|pounds?|pound|lbs?|lb|small|large|medium|fresh|organic|bunched|bunches|bunch|each|kroger\b/g,
       " "
     )
     .replace(
-      /\b(vegan|dairy-free|plant-based|plant|chopped|diced|sliced|minced|shredded)\b/g,
+      /\b(vegan|dairy-free|plant-based|plant|chopped|diced|sliced|minced|shredded|juiced|leaves)\b/g,
       " "
     )
     .replace(/[^a-z\s]/g, " ")
-    .replace(/\bleaves\b/g, "leaf")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -902,12 +906,27 @@ async function loadShoppingItems() {
   const imageMemoryMap = new Map(
     (imageMemory || []).map((item) => [item.normalized_name, item])
   );
+  function getImageMemoryForItem(itemName: string) {
+  const cleanedItem = normalizeItemName(itemName);
+
+  return (
+    imageMemoryMap.get(cleanedItem) ||
+    (imageMemory || []).find((memory) => {
+      const cleanedMemory = normalizeItemName(memory.normalized_name);
+
+      return (
+        cleanedItem.includes(cleanedMemory) ||
+        cleanedMemory.includes(cleanedItem)
+      );
+    })
+  );
+}
 
   setShoppingList((data || []).map((item) => item.name));
 
   setShoppingItemImages(
     (data || []).reduce((images, item) => {
-      const memory = imageMemoryMap.get(normalizeItemName(item.name));
+      const memory = getImageMemoryForItem(item.name);
 
       images[item.name] = item.image_url || memory?.image_url || "";
 
@@ -917,7 +936,7 @@ async function loadShoppingItems() {
 
   setShoppingItemUrls(
     (data || []).reduce((urls, item) => {
-      const memory = imageMemoryMap.get(normalizeItemName(item.name));
+      const memory = getImageMemoryForItem(item.name);
 
       urls[item.name] = item.source_url || memory?.source_url || "";
 
@@ -987,12 +1006,12 @@ async function saveBulkPantryEdits() {
     await supabase
       .from("pantry_items")
       .update({
-  name: pantryModalItem.trim(),
-  quantity: pantryModalQuantity.trim() || "1",
-  unit: pantryModalUnit,
-  category: pantryModalCategory,
-  image_url: pantryModalImage.trim(),
-  source_url: pantryModalSourceUrl.trim(),
+  name: item.name,
+  quantity: item.quantity || "1",
+  unit: item.unit || "",
+  category: item.category || "Other",
+  image_url: item.image || "",
+  source_url: item.sourceUrl || "",
 })
       .eq("id", item.id);
   }
@@ -1777,16 +1796,22 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
     return;
   }
 
+  const isGroceryItem = sourceRecipe?.type === "grocery";
+
   const rows = items.map((item) => ({
-  user_id: user.id,
-  name: item,
-  image_url: sourceRecipe?.image || "",
-  source_url: sourceRecipe?.sourceUrl || "",
-  brand: sourceRecipe?.brand || "",
-  package_size: sourceRecipe?.packageSize || "",
-  price: sourceRecipe?.price || "",
-  store_section: "Other",
-}));
+    user_id: user.id,
+    name: item,
+
+    // Only grocery/product cards keep images.
+    // Recipe ingredients should NOT inherit recipe image.
+    image_url: isGroceryItem ? sourceRecipe?.image || "" : "",
+    source_url: isGroceryItem ? sourceRecipe?.sourceUrl || "" : "",
+
+    brand: isGroceryItem ? sourceRecipe?.brand || "" : "",
+    package_size: isGroceryItem ? sourceRecipe?.packageSize || "" : "",
+    price: isGroceryItem ? sourceRecipe?.price || "" : "",
+    store_section: "Other",
+  }));
 
   const { data, error } = await supabase
     .from("shopping_items")
@@ -1799,11 +1824,23 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
   }
 
   const newItems = (data || []).map((item) => item.name);
- 
+
+
   setShoppingItemImages((current) => {
   const updated = { ...current };
+
   (data || []).forEach((item) => {
     updated[item.name] = item.image_url || "";
+  });
+
+  return updated;
+});
+
+setShoppingItemUrls((current) => {
+  const updated = { ...current };
+
+  (data || []).forEach((item) => {
+    updated[item.name] = item.source_url || "";
   });
 
   return updated;
@@ -1814,7 +1851,12 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
   );
 
   setShoppingList(sorted);
-  showToast("Ingredients added to your shopping list.");
+
+  showToast(
+    isGroceryItem
+      ? "Item added to your shopping list."
+      : "Ingredients added to your shopping list."
+  );
 }
 
 function addToShoppingList(recipe: Recipe) {
@@ -2332,45 +2374,141 @@ async function addCheckedItemsToPantry() {
   }
 
   const existingPantryNames = pantryItems.map((item) =>
-    normalizeItemName(item.name)
-  );
+  normalizeItemName(item.name)
+);
 
-  const pantryRows = (shoppingRows || [])
-    .filter(
-      (item) =>
-        !existingPantryNames.includes(
-          normalizeItemName(cleanPantryDisplayName(item.name))
-        )
+const uniqueShoppingRows = (shoppingRows || []).filter(
+  (item, index, array) =>
+    index ===
+    array.findIndex(
+      (other) =>
+        normalizeItemName(cleanPantryDisplayName(other.name)) ===
+        normalizeItemName(cleanPantryDisplayName(item.name))
     )
-    .map((item) => ({
+);
+
+const { data: imageMemory } = await supabase
+  .from("ingredient_images")
+  .select("normalized_name, image_url, source_url, name")
+  .eq("user_id", user.id);
+
+function getImageMemoryForPantryItem(itemName: string) {
+  const cleanedItem = normalizeItemName(itemName);
+
+  return (imageMemory || []).find((memory) => {
+    const cleanedMemory = normalizeItemName(
+      memory.normalized_name || memory.name
+    );
+
+    return (
+      cleanedItem === cleanedMemory ||
+      cleanedItem.includes(cleanedMemory) ||
+      cleanedMemory.includes(cleanedItem)
+    );
+  });
+}
+
+const pantryRows = uniqueShoppingRows
+  .filter(
+    (item) =>
+      !existingPantryNames.includes(
+        normalizeItemName(cleanPantryDisplayName(item.name))
+      )
+  )
+  .map((item) => {
+    const cleanName = cleanPantryDisplayName(item.name);
+    const memory = getImageMemoryForPantryItem(cleanName);
+
+    const hasProductData =
+      item.brand || item.package_size || item.price || item.image_url;
+
+    return {
       user_id: user.id,
-      name: cleanPantryDisplayName(item.name),
+      name: memory?.name || cleanName,
       quantity: "1",
-      unit: "package",
-      category: "Other",
+      unit: hasProductData || memory?.image_url ? "package" : "",
+      category: memory?.image_url ? "Produce" : "Other",
 
       brand: item.brand || "",
       package_size: item.package_size || "",
-      image_url: item.image_url || "",
-      source_url: item.source_url || "",
+      image_url: item.image_url || memory?.image_url || "",
+      source_url: item.source_url || memory?.source_url || "",
       price: item.price || "",
-    }));
+    };
+  });
 
-  let insertedPantryItems: any[] = [];
+let insertedPantryItems: any[] = [];
 
-  if (pantryRows.length > 0) {
-    const { data, error: pantryError } = await supabase
-      .from("pantry_items")
-      .insert(pantryRows)
-      .select();
+if (pantryRows.length > 0) {
+  const { data, error: pantryError } = await supabase
+    .from("pantry_items")
+    .insert(pantryRows)
+    .select();
 
-    if (pantryError) {
-      showToast(pantryError.message);
-      return;
-    }
-
-    insertedPantryItems = data || [];
+  if (pantryError) {
+    showToast(pantryError.message);
+    return;
   }
+
+  insertedPantryItems = data || [];
+}
+
+for (const item of pantryRows) {
+  const existingFoodCard = recipes.find(
+    (recipe) =>
+      recipe.type === "grocery" &&
+      normalizeItemName(recipe.title) === normalizeItemName(item.name)
+  );
+
+  if (existingFoodCard) {
+    continue;
+  }
+
+  const { data: newFoodCard, error: foodCardError } = await supabase
+    .from("recipes")
+    .insert({
+      user_id: user.id,
+      title: item.name,
+      image_url: item.image_url || "",
+      ingredients: [],
+      steps: [],
+      cook_time: "",
+      servings: "",
+      category: item.category || "Other",
+      source_url: item.source_url || "",
+      is_favorite: false,
+      is_planning_queue: false,
+      type: "grocery",
+      brand: item.brand || "",
+      package_size: item.package_size || "",
+      price: item.price || "",
+    })
+    .select()
+    .single();
+
+  if (!foodCardError && newFoodCard) {
+    setRecipes((current) => [
+      {
+        id: newFoodCard.id,
+        title: newFoodCard.title,
+        image: newFoodCard.image_url || "",
+        ingredients: [],
+        steps: [],
+        cookTime: "",
+        servings: "",
+        category: newFoodCard.category || "Other",
+        sourceUrl: newFoodCard.source_url || "",
+        isFavorite: false,
+        isPlanningQueue: false,
+        createdAt: newFoodCard.created_at,
+        type: "grocery",
+        brand: newFoodCard.brand || "",
+        packageSize: newFoodCard.package_size || "",
+      },
+      ...current,
+    ]);
+  }
+}
 
   for (const item of pantryRows) {
     const existingFoodCard = recipes.find(
@@ -5961,6 +6099,8 @@ if (showPantry) {
   </button>
 </div>
 
+
+
     
 <select
   value={pantryDrafts[item.id]?.unit || item.unit || ""}
@@ -6034,9 +6174,9 @@ if (showPantry) {
     </label>
   </>
 ) : (
+  
   <div className="flex min-w-0 items-center gap-3">
   {item.image &&
-  item.sourceUrl &&
   (item.sourceUrl ? (
     <a
       href={item.sourceUrl}
@@ -6076,7 +6216,6 @@ if (showPantry) {
   </a>
 )}
     </div>
-    
   </div>
 )}
 
@@ -6098,8 +6237,8 @@ if (showPantry) {
         setAddAnotherPantryItem(false);
         setShowPantryModal(true);
         setPantryModalImage(item.image || "");
-setPantryModalSourceUrl(item.sourceUrl || "");
-setOriginalPantrySourceUrl(item.sourceUrl || "");
+        setPantryModalSourceUrl(item.sourceUrl || "");
+        setOriginalPantrySourceUrl(item.sourceUrl || "");
       }}
       className="text-sm font-bold text-[#a63a0a]"
     >
@@ -6131,12 +6270,6 @@ setOriginalPantrySourceUrl(item.sourceUrl || "");
     </div>
 )}
   </div>
-
-  {editingPantryItemId === item.id && (
-    <div className="grid gap-3 bg-[#fffaf5] px-4 py-4 md:grid-cols-4">
-      {/* paste the big edit form here */}
-    </div>
-  )}
 </div>
                     ))}
                   </div>
@@ -6144,8 +6277,20 @@ setOriginalPantrySourceUrl(item.sourceUrl || "");
                 
               </div>
             );
-          })}
+             })}
+
+    {isBulkEditingPantry && (
+      <div className="mt-6 flex justify-center">
+        <button
+          onClick={saveBulkPantryEdits}
+          className="rounded-full bg-[#a63a0a] px-8 py-3 text-sm font-bold text-white"
+        >
+          Save All Changes
+        </button>
       </div>
+    )}
+</div>
+      
     </section>
   )}
 </div>
