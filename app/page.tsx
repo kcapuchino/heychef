@@ -1900,37 +1900,39 @@ function addToShoppingList(recipe: Recipe) {
     showToast("Please log in again.");
     return;
   }
+const { error: deleteError } = await supabase
+  .from("shopping_items")
+  .delete()
+  .eq("user_id", user.id)
+  .not("source_meal_plan_id", "is", null);
 
+if (deleteError) {
+  showToast(deleteError.message);
+  return;
+}
   showToast("Updating grocery list...");
-
-  // 1. Clear ONLY old meal-plan shopping rows.
-  // This keeps manual shopping list adds safe.
-  const { error: deleteError } = await supabase
-    .from("shopping_items")
-    .delete()
-    .eq("user_id", user.id)
-    .not("source_meal_plan_id", "is", null);
-
-  if (deleteError) {
-    showToast(deleteError.message);
-    return;
-  }
 
   const plannedMeals = Object.values(mealPlan)
     .flat()
     .filter((item: any) => !item.isMade);
 
+  if (plannedMeals.length === 0) {
+    showToast("No meal plan items to add.");
+    return;
+  }
+
   const mealPlanItems: any[] = [];
 
   for (const item of plannedMeals) {
-    const ingredients = item.ingredients || [];
+    console.log("PLANNED ITEM", item.title, item.type, item.source, item);
+    const isGroceryMeal =
+  item.type === "grocery" ||
+  item.source === "shopping_list" ||
+  item.source === "leftovers" ||
+  !item.ingredients ||
+  item.ingredients.length === 0;
 
-    const isStoreItem =
-      item.source === "shopping_list" ||
-      item.source === "leftovers" ||
-      ingredients.length === 0;
-
-    if (isStoreItem) {
+    if (isGroceryMeal) {
       mealPlanItems.push({
         name: item.title,
         mealPlanId: item.mealPlanId,
@@ -1942,20 +1944,35 @@ function addToShoppingList(recipe: Recipe) {
       continue;
     }
 
+    const recipeId = item.id;
+
+    const { data: fullRecipe, error } = await supabase
+      .from("recipes")
+      .select("ingredients, image_url, source_url")
+      .eq("id", recipeId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+
+    const ingredients = fullRecipe?.ingredients || item.ingredients || [];
+
     ingredients.forEach((ingredient: string) => {
-      mealPlanItems.push({
-        name: ingredient,
-        mealPlanId: item.mealPlanId,
-        imageUrl: item.image || "",
-        sourceUrl: item.sourceUrl || "",
-        buyAnyway: false,
-      });
-    });
+  mealPlanItems.push({
+    name: ingredient,
+    mealPlanId: item.mealPlanId,
+    imageUrl: "",
+    sourceUrl: "",
+    buyAnyway: false,
+  });
+});
   }
 
   if (mealPlanItems.length === 0) {
-    await loadShoppingItems();
-    showToast("No meal plan items to add.");
+    showToast("No ingredients found to add.");
     return;
   }
 
@@ -4431,25 +4448,32 @@ Contact support and we'll process your request.</p>
     </div>
 
     <button
-      onClick={async () => {
-        if (confirm("Clear your shopping list?")) {
-          const { error } = await supabase
-            .from("shopping_items")
-            .delete()
-            .neq("id", "00000000-0000-0000-0000-000000000000");
+  onClick={async () => {
+    if (confirm("Clear your shopping list?")) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-          if (error) {
-            showToast(error.message);
-            return;
-          }
+      if (!user) return;
 
-          setShoppingList([]);
-        }
-      }}
-      className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-    >
-      🗑 Clear List
-    </button>
+      const { error } = await supabase
+        .from("shopping_items")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (error) {
+        showToast(error.message);
+        return;
+      }
+
+      setShoppingList([]);
+      showToast("Shopping list cleared.");
+    }
+  }}
+  className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  🗑 Clear List
+</button>
   </div>
 
   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
@@ -6219,27 +6243,11 @@ if (showPantry) {
 ) : (
   
   <div className="flex min-w-0 items-center gap-3">
-  {item.image &&
-  (item.sourceUrl ? (
-    <a
-      href={item.sourceUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      title="View product"
-    >
-      <img
-        src={item.image}
-        alt={item.name}
-        className="h-12 w-12 shrink-0 rounded-xl object-cover transition hover:scale-105"
-      />
-    </a>
-  ) : (
-    <img
-      src={item.image}
-      alt={item.name}
-      className="h-12 w-12 shrink-0 rounded-xl object-cover"
-    />
-  ))}
+  <img
+  src={item.image || placeholderImage}
+  alt={item.name}
+  className="h-12 w-12 shrink-0 rounded-xl object-cover"
+/>
 
     <div className="min-w-0">
       <p className="break-words font-bold">{item.name}</p>
