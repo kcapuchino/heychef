@@ -5383,60 +5383,47 @@ setMealPlan(updatedMealPlan);
       </p>
 
       <select
-        value={plannerRecipeId}
-       onChange={(e) => {
-  setPlannerRecipeId(e.target.value);
-  setPlannerShoppingItemId("");
-  setPlannerLeftoverId("");
-}}
-        className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
-      >
-        <option value="">Choose a recipe</option>
-        {recipes
-          .filter((recipe) => recipe.isPlanningQueue || recipe.isFavorite)
-          .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite))
-          .map((recipe) => (
-            <option key={recipe.id} value={recipe.id}>
-              {recipe.title}
-            </option>
-          ))}
-      </select>
- <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
-      <select
-        value={plannerShoppingItemId}
-        onChange={(e) => {
-  setPlannerRecipeId(e.target.value);
-  setPlannerShoppingItemId("");
-  setPlannerLeftoverId("");
-}}
-        className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
-      >
-        <option value="">Plan from shopping list</option>
-        {shoppingList
-  .filter((item) => {
-    const alreadyPlannedCount = Object.values(mealPlan)
-      .flat()
-      .filter(
-        (planned) =>
-          planned.source === "shopping_list" &&
-          planned.title === item &&
-          !planned.isMade
-      ).length;
+  value={plannerRecipeId}
+  onChange={(e) => {
+    setPlannerRecipeId(e.target.value);
+    setPlannerShoppingItemId("");
+    setPlannerLeftoverId("");
+  }}
+  className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
+>
+  <option value="">Choose a recipe</option>
+  {recipes
+    .filter((recipe) => recipe.isPlanningQueue || recipe.isFavorite)
+    .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite))
+    .map((recipe) => (
+      <option key={recipe.id} value={recipe.id}>
+        {recipe.title}
+      </option>
+    ))}
+</select>
 
-    const cartCount = shoppingList.filter(
-      (cartItem) => cartItem === item
-    ).length;
+<p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
 
-    return alreadyPlannedCount < cartCount;
-  })
-  .map((item, index) => (
+<select
+  value={plannerShoppingItemId}
+  onChange={(e) => {
+    setPlannerShoppingItemId(e.target.value);
+    setPlannerRecipeId("");
+    setPlannerLeftoverId("");
+  }}
+  className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
+>
+  <option value="">Plan from shopping list</option>
+  {shoppingList.map((item, index) => (
     <option key={`${item}-${index}`} value={item}>
       {item}
     </option>
   ))}
-      </select>
- <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
-      <select
+</select>
+
+<p className="mb-3 text-center text-sm font-bold text-[#6d5549]">or</p>
+
+<select
   value={plannerLeftoverId}
   onChange={(e) => {
     setPlannerLeftoverId(e.target.value);
@@ -5446,7 +5433,6 @@ setMealPlan(updatedMealPlan);
   className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
 >
   <option value="">Plan leftovers</option>
-
   {Object.values(mealPlan)
     .flat()
     .filter((item) => !item.isMade)
