@@ -1084,7 +1084,7 @@ if (item.week_start === currentWeekStart) {
 }
 
 const mealDate = item.date || item.day;
-const key = getMealPlanKey(mealDate, item.meal);
+const key = getMealPlanKey(mealDate, item.meal, plannerWeek);
 
 if (!loadedPlan[key]) {
   loadedPlan[key] = [];
@@ -1092,29 +1092,27 @@ if (!loadedPlan[key]) {
 
 if (item.source === "shopping_list" || item.source === "leftovers") {
   loadedPlan[key].push({
-  id: item.recipes.id,
-  title: item.recipes.title,
-  image: item.recipes.image_url || "",
-  ingredients: item.recipes.ingredients || [],
-  steps: item.recipes.steps || [],
-  cookTime: item.recipes.cook_time || "",
-  servings: item.recipes.servings || "",
-  category: item.recipes.category || "",
-  sourceUrl: item.recipes.source_url || "",
-  isFavorite: item.recipes.is_favorite || false,
-  createdAt: item.recipes.created_at,
-  isMade: item.is_made || false,
-  mealPlanId: item.id,
-  plannedDate: item.date,
-  weekStart: item.week_start,
-
-  type: item.recipes.type || "recipe",
-  brand: item.recipes.brand || "",
-  packageSize: item.recipes.package_size || "",
-  price: item.recipes.price || "",
-});
-
-  if (!item.recipes) return;
+    id: item.recipes?.id || item.id,
+    title: item.recipes?.title || item.title || "Planned item",
+    image: item.recipes?.image_url || item.image_url || "",
+    ingredients: item.recipes?.ingredients || [],
+    steps: item.recipes?.steps || [],
+    cookTime: item.recipes?.cook_time || "",
+    servings: item.recipes?.servings || "",
+    category: item.recipes?.category || "Prepared Food",
+    sourceUrl: item.recipes?.source_url || "",
+    isFavorite: item.recipes?.is_favorite || false,
+    createdAt: item.recipes?.created_at || item.created_at,
+    isMade: item.is_made || false,
+    mealPlanId: item.id,
+    plannedDate: item.date,
+    weekStart: item.week_start,
+    source: item.source,
+    type: item.recipes?.type || "grocery",
+    brand: item.recipes?.brand || "",
+    packageSize: item.recipes?.package_size || "",
+    price: item.recipes?.price || "",
+  });
 
   return;
 }
