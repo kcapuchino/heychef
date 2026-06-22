@@ -1860,6 +1860,7 @@ setShoppingItemUrls((current) => {
     updated[item.name] = item.source_url || "";
   });
 
+  
   return updated;
 });
 
@@ -4565,7 +4566,7 @@ product = await response.json();
   .select()
   .single();
 
-  setShoppingList([data.name, ...shoppingList]);
+  setShoppingList((current) => [data.name, ...current]);
   setShoppingItemImages({
   ...shoppingItemImages,
   [data.name]: data.image_url || "",
@@ -8069,7 +8070,7 @@ Bake for 25 minutes`}
         [data.name]: data.source_url || "",
       });
 
-      setLastAddedShoppingItem(data);
+      setLastAddedShoppingItem(null);
       setNewShoppingItem("");
       showToast(`${data.name} added to shopping list.`);
     } finally {
