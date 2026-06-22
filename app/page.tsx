@@ -6099,7 +6099,7 @@ if (showPantry) {
   className={
     isBulkEditingPantry
       ? "grid gap-2 px-4 py-3 md:grid-cols-[1fr_180px_120px_180px_auto] md:items-center"
-      : "grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-4"
+      : "grid grid-cols-1 gap-4 px-4 py-4 md:grid-cols-[1fr_auto] md:items-center"
   }
 >
   {isBulkEditingPantry ? (
@@ -6266,7 +6266,7 @@ if (showPantry) {
 />
 
     <div className="min-w-0">
-      <p className="break-words font-bold">{item.name}</p>
+      <p className="font-bold leading-snug">{item.name}</p>
 
       <p className="mt-1 text-[#6d5549]">
         {item.quantity || "1"} {item.unit}
@@ -6287,7 +6287,7 @@ if (showPantry) {
 )}
 
     {!isBulkEditingPantry && (
-  <div className="flex items-center gap-4">
+  <div className="flex flex-wrap gap-3 md:items-center md:justify-end">
   <button
     onClick={() => savePantryItemAsFoodCard(item)}
     className="text-sm font-bold text-[#a63a0a]"
