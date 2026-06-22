@@ -302,6 +302,7 @@ const [signupName, setSignupName] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [showFoodImport, setShowFoodImport] = useState(false);
   const [showShoppingImport, setShowShoppingImport] = useState(false);
+  const [isAddingShoppingItem, setIsAddingShoppingItem] = useState(false);
 const [foodUrl, setFoodUrl] = useState("");
 const [foodBrand, setFoodBrand] = useState("");
 const [foodTitle, setFoodTitle] = useState("");
@@ -7901,7 +7902,7 @@ Bake for 25 minutes`}
     >
       ✕
     </button>
-  </div>
+  </div>fsetIsAddingShoppingItem(true);
 
   <p className="mb-4 text-[#6d5549]">
   Add a recipe, packaged food, or pantry item to Hey Chef.
@@ -7986,80 +7987,87 @@ Bake for 25 minutes`}
   onClick={async () => {
     if (!newShoppingItem.trim()) return;
 
-    let itemName = newShoppingItem.trim();
-    let product: any = null;
-    const originalUrl = itemName;
+    setIsAddingShoppingItem(true);
 
-    if (originalUrl.includes("http")) {
-      try {
-        const response = await fetch("/api/import-food", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            url: originalUrl,
-          }),
-        });
+    try {
+      let itemName = newShoppingItem.trim();
+      let product: any = null;
+      const originalUrl = itemName;
 
-        product = await response.json();
+      if (originalUrl.includes("http")) {
+        try {
+          const response = await fetch("/api/import-food", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              url: originalUrl,
+            }),
+          });
 
-        if (product?.title) {
-          itemName = product.title;
+          product = await response.json();
+
+          if (product?.title) {
+            itemName = product.title;
+          }
+        } catch (error) {
+          console.error(error);
         }
-      } catch (error) {
-        console.error(error);
       }
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        showToast("Please log in again.");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("shopping_items")
+        .insert({
+          user_id: user.id,
+          name: itemName,
+          brand: product?.brand || "",
+          package_size: product?.packageSize || "",
+          image_url: product?.image || "",
+          source_url: originalUrl.includes("http") ? originalUrl : "",
+          price: product?.price || "",
+        })
+        .select()
+        .single();
+
+      if (error || !data) {
+        console.error(error);
+        showToast("Could not add shopping item.");
+        return;
+      }
+
+      setShoppingList([data.name, ...shoppingList]);
+
+      setShoppingItemImages({
+        ...shoppingItemImages,
+        [data.name]: data.image_url || "",
+      });
+
+      setShoppingItemUrls({
+        ...shoppingItemUrls,
+        [data.name]: data.source_url || "",
+      });
+
+      setLastAddedShoppingItem(data);
+      setNewShoppingItem("");
+      showToast(`${data.name} added to shopping list.`);
+    } finally {
+      setIsAddingShoppingItem(false);
     }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      showToast("Please log in again.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("shopping_items")
-      .insert({
-        user_id: user.id,
-        name: itemName,
-        brand: product?.brand || "",
-        package_size: product?.packageSize || "",
-        image_url: product?.image || "",
-        source_url: originalUrl.includes("http") ? originalUrl : "",
-        price: product?.price || "",
-      })
-      .select()
-      .single();
-
-    if (error || !data) {
-      console.error(error);
-      showToast("Could not add shopping item.");
-      return;
-    }
-
-    setShoppingList([data.name, ...shoppingList]);
-
-    setShoppingItemImages({
-      ...shoppingItemImages,
-      [data.name]: data.image_url || "",
-    });
-
-    setShoppingItemUrls({
-      ...shoppingItemUrls,
-      [data.name]: data.source_url || "",
-    });
-
-    setLastAddedShoppingItem(data);
-    setNewShoppingItem("");
-    showToast(`${data.name} added to shopping list.`);
   }}
-  className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
+  disabled={isAddingShoppingItem}
+  className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white disabled:opacity-60"
 >
-  Add Item to Shopping List
+  {isAddingShoppingItem ? "Adding..." : "Add Item to Shopping List"}
 </button>
      </div>
 
