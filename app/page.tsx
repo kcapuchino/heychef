@@ -4629,6 +4629,16 @@ setLastAddedShoppingItem(data);
     </p>
   ) : (
     <div className="divide-y divide-[#ead7c8]">
+      {checkedShoppingItems.length > 0 && (
+  <div className="pb-3">
+    <button
+      onClick={addCheckedItemsToPantry}
+      className="w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+    >
+      Add Checked to Pantry
+    </button>
+  </div>
+)}
       {Object.values(
         shoppingList.reduce<Record<string, { item: string; count: number }>>(
           (groups, item) => {
@@ -4761,8 +4771,10 @@ const itemImage =
 
                 
               </label>
+              
 
               <div className="flex flex-wrap items-center gap-3 pl-7 md:pl-0">
+  
   {matchingPantryItem ? (
     <>
       <span className="text-sm text-[#6d5549]">
@@ -4845,7 +4857,7 @@ const itemImage =
         <div className="pt-5">
           <button
             onClick={addCheckedItemsToPantry}
-            className="rounded-full border border-[#a63a0a] px-5 py-3 text-sm font-bold text-[#a63a0a]"
+            className="w-full rounded-full border border-[#a63a0a] px-5 py-3 text-sm font-bold text-[#a63a0a]"
           >
             Add Checked to Pantry
           </button>
