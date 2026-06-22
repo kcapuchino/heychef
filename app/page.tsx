@@ -4500,17 +4500,20 @@ Contact support and we'll process your request.</p>
 
   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
     <input
-      value={newShoppingItem}
-      onChange={(e) => setNewShoppingItem(e.target.value)}
-      placeholder="🛒  Add grocery item or paste url"
-      className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
-    />
+  id="quick-shopping-item"
+  defaultValue=""
+  placeholder="🛒 Add grocery item or paste url"
+  className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+/>
 
     <button
       onClick={async () => {
-  if (!newShoppingItem.trim()) return;
+  const input = document.getElementById("quick-shopping-item") as HTMLInputElement | null;
+const rawShoppingItem = input?.value || "";
 
-  let itemName = newShoppingItem.trim();
+if (!rawShoppingItem.trim()) return;
+
+let itemName = rawShoppingItem.trim();
 let product: any = null;
 
   // Instacart product URL
@@ -4577,7 +4580,8 @@ setShoppingItemUrls({
   [data.name]: data.source_url || "",
 });
 setLastAddedShoppingItem(data);
-  setNewShoppingItem("");
+  if (input) input.value = "";
+setNewShoppingItem("");
 }}
       className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
     >
