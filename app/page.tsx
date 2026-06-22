@@ -7914,7 +7914,7 @@ Bake for 25 minutes`}
     >
       ✕
     </button>
-  </div>fsetIsAddingShoppingItem(true);
+  </div>
 
   <p className="mb-4 text-[#6d5549]">
   Add a recipe, packaged food, or pantry item to Hey Chef.
