@@ -96,7 +96,7 @@ export default function Page() {
             <div className="mb-6 flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-[#d8b36a]">
-                  Founding Chef
+                  Premium Memberships
                 </p>
 
                 <h2 className="mt-2 text-3xl font-bold">
