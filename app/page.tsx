@@ -291,6 +291,7 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
 const [signupName, setSignupName] = useState("");
+const [userCreatedAt, setUserCreatedAt] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
 
@@ -744,8 +745,14 @@ useEffect(() => {
   useEffect(() => {
   async function loadSession() {
     const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+setUserCreatedAt(user?.created_at || "");
+    const {
       data: { session },
     } = await supabase.auth.getSession();
+    
 
     if (session?.user?.email) {
       setUserEmail(session.user.email);
@@ -770,6 +777,7 @@ useEffect(() => {
       setRecipes([]);
     }
   });
+  
 
   return () => subscription.unsubscribe();
 }, []);
@@ -4187,83 +4195,140 @@ if (showProfile) {
 
 
         <section className="rounded-[2rem] bg-white p-6 shadow-xl">
-          <h1 className="mb-2 text-4xl font-bold">Profile</h1>
-          <p className="mb-6 text-[#6d5549]">
-            Update your name and account settings.
-          </p>
+  <h1 className="mb-2 text-4xl font-bold">Profile</h1>
+  <p className="mb-6 text-[#6d5549]">
+    Update your name and account settings.
+  </p>
 
-          <label className="mb-2 block font-semibold">Display name</label>
-          <input
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Chef"
-            className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-          />
+  <div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] bg-[#fbf7f2] p-5">
+    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p className="text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+          Membership
+        </p>
 
-          <label className="mb-2 block font-semibold">Email</label>
-          <input
-            value={userEmail}
-            disabled
-            className="mb-5 w-full rounded-full border border-[#ead7c8] bg-[#f8efe6] px-5 py-3 text-[#6d5549]"
-          />
+       <h2 className="text-2xl font-bold">
+        {userEmail.endsWith("@in.gov")
+          ? "🏛️ State Employee Chef"
+          : "⭐ Hey Chef Member"}
+      </h2>
 
-          <button
-            onClick={async () => {
-              const {
-                data: { user },
-              } = await supabase.auth.getUser();
+      <p className="mt-1 text-sm text-[#6d5549]">
+        {userEmail.endsWith("@in.gov")
+          ? "Complimentary Premium Access"
+          : "Free Membership"}
+      </p>
 
-              if (!user) {
-                showToast("Please log in again.");
-                return;
-              }
+      {userEmail.endsWith("@in.gov") && (
+        <p className="mt-2 text-sm text-[#6d5549]">
+          In appreciation of your public service.
+        </p>
+      )}
 
-              const { error } = await supabase
-                .from("profiles")
-                .update({
-                  display_name: displayName.trim() || null,
-                })
-                .eq("id", user.id);
+      <p className="mt-2 text-sm text-[#6d5549]">
+        Joined{" "}
+        {userCreatedAt
+          ? new Date(userCreatedAt).toLocaleDateString()
+          : "Recently"}
+      </p>
+    </div>
 
-              if (error) {
-                showToast(error.message);
-                return;
-              }
+      <button
+        onClick={() => {
+  window.location.href = "/founding-chef";
+}}
+        className="rounded-full border border-[#a63a0a] px-5 py-3 font-semibold text-[#a63a0a]"
+      >
+        Become a Founding Chef
+      </button>
+    </div>
+  </div>
 
-              showToast("Profile saved.");
-            }}
-            className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-          >
-            Save Profile
-          </button>
+  <div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] p-5">
+    <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
 
-          <button
-            onClick={changePasswordNow}
-            className="mt-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-          >
-            Change Password
-          </button>
-          <div className="mt-8 border-t border-[#ead7c8] pt-6">
-  <h2 className="mb-2 text-lg font-bold text-red-700">
-    Danger Zone
-  </h2>
+    <p className="font-semibold">{userEmail}</p>
 
-  <p className="mb-4 text-sm text-[#6d5549]">
-   Permanently delete your Hey Chef account and saved data.<br />
-  
-Contact support and we'll process your request.</p>
+    <p className="mt-1 text-sm text-[#6d5549]">
+      Account created{" "}
+      {userCreatedAt
+        ? new Date(userCreatedAt).toLocaleDateString()
+        : "Recently"}
+    </p>
+  </div>
+
+  <label className="mb-2 block font-semibold">
+    Display Name
+  </label>
+
+  <input
+    value={displayName}
+    onChange={(e) => setDisplayName(e.target.value)}
+    placeholder="Chef"
+    className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+  />
 
   <button
-  onClick={() => {
-    window.location.href =
-      "mailto:kcapuchino06@gmail.com?subject=Hey Chef Account Deletion Request";
-  }}
-  className="w-full rounded-full border border-red-600 px-6 py-3 font-semibold text-red-600"
->
-  Request Account Deletion
-</button>
-</div>
-        </section>
+    onClick={async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        showToast("Please log in again.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: displayName.trim() || null,
+        })
+        .eq("id", user.id);
+
+      if (error) {
+        showToast(error.message);
+        return;
+      }
+
+      showToast("Profile saved.");
+    }}
+    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+  >
+    Save Profile
+  </button>
+
+  <button
+    onClick={changePasswordNow}
+    className="mt-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+  >
+    Change Password
+  </button>
+
+  <div className="mt-8 border-t border-[#ead7c8] pt-6">
+    <h2 className="mb-2 text-lg font-bold text-red-700">
+      Danger Zone
+    </h2>
+
+    <p className="mb-4 text-sm text-[#6d5549]">
+      Permanently delete your Hey Chef account and saved data.
+      <br />
+      Contact support and we'll process your request.
+    </p>
+
+    <button
+      onClick={() => {
+        window.location.href =
+          "mailto:kcapuchino06@gmail.com?subject=Hey Chef Account Deletion Request";
+      }}
+      className="w-full rounded-full border border-red-600 px-6 py-3 font-semibold text-red-600"
+    >
+      Request Account Deletion
+    </button>
+  </div>
+</section>
       </section>
 
       <BottomNav />
@@ -7872,7 +7937,7 @@ Bake for 25 minutes`}
 
         <div className="grid gap-8">
   {/* INTRO */}
-  <section className="mb-8">
+  <section className="mb-1">
     <p className="mb-3 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
       {getGreeting()}
     </p>
@@ -8267,7 +8332,31 @@ Bake for 25 minutes`}
   </section>
 )}
   </section>
-  
+  <section className="mb-4 rounded-[2rem] border border-[#f4d8c4] bg-[#fff7ef] p-5 shadow-sm">
+  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <p className="mb-1 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
+        ❤️ Founding Chef
+      </p>
+
+      <h3 className="text-xl font-bold text-[#2b1b14]">
+        Help shape the future of Hey Chef
+      </h3>
+
+      <p className="mt-1 text-[#6d5549]">
+        Support development and help us build smarter meal planning,
+        pantry tracking, grocery imports, budgeting, and more.
+      </p>
+    </div>
+
+    <a
+      href="/founding-chef"
+      className="rounded-full bg-[#a63a0a] px-5 py-3 text-center font-bold text-white"
+    >
+      Learn More
+    </a>
+  </div>
+</section>
 
   {/* TODAY'S MENU */}
   <section className="rounded-[2rem] bg-white p-6 shadow-lg">
