@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/Archive/lib/supabase";
 
 export default function Page() {
     const [waitlistEmail, setWaitlistEmail] = useState("");

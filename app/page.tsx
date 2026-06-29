@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/Archive/lib/supabase";
 
 type Recipe = {
   id: string;
@@ -254,11 +254,11 @@ function normalizeItemName(text?: string | null) {
     .replace(/sandwich toppings?.*/g, "")
 
     .replace(
-      /\b\d+|cups?|cup|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|g|ml|cans?|can|pounds?|pound|lbs?|lb|small|large|medium|fresh|organic|bunched|bunches|bunch|each|kroger\b/g,
+      /\b\d+|cups?|cup|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|gram|g|kg|ml|l|liters?|cans?|can|packages?|package|packs?|pack|boxes?|box|bags?|bag|containers?|container|cartons?|carton|jars?|jar|bottles?|bottle|loaves?|loaf|bunches?|bunch|heads?|head|cloves?|clove|sticks?|stick|pounds?|pound|lbs?|lb|small|large|medium|extra|fresh|freshly|organic|each|kroger|simple truth|private selection\b/g,
       " "
     )
     .replace(
-      /\b(vegan|dairy-free|plant-based|plant|chopped|diced|sliced|minced|shredded|juiced|leaves)\b/g,
+      /\b(vegan|dairy[- ]free|plant[- ]based|plant|chopped|diced|sliced|minced|shredded|grated|julienned|juiced|peeled|seeded|crushed|ground|whole|halved|quartered|thinly|thickly|finely|coarsely|boneless|skinless|cooked|uncooked|frozen|thawed|drained|rinsed|optional|divided|to taste|for garnish|leaves|leaf)\b/g,
       " "
     )
     .replace(/[^a-z\s]/g, " ")
@@ -290,8 +290,8 @@ export default function Home() {
   
   const [userEmail, setUserEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-const [signupName, setSignupName] = useState("");
-const [userCreatedAt, setUserCreatedAt] = useState("");
+  const [signupName, setSignupName] = useState("");
+  const [userCreatedAt, setUserCreatedAt] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
 
@@ -304,12 +304,12 @@ const [userCreatedAt, setUserCreatedAt] = useState("");
   const [showFoodImport, setShowFoodImport] = useState(false);
   const [showShoppingImport, setShowShoppingImport] = useState(false);
   const [isAddingShoppingItem, setIsAddingShoppingItem] = useState(false);
-const [foodUrl, setFoodUrl] = useState("");
-const [foodBrand, setFoodBrand] = useState("");
-const [foodTitle, setFoodTitle] = useState("");
-const [foodPackageSize, setFoodPackageSize] = useState("");
-const [foodCategory, setFoodCategory] = useState("Frozen Food");
-const [foodImage, setFoodImage] = useState("");
+  const [foodUrl, setFoodUrl] = useState("");
+  const [foodBrand, setFoodBrand] = useState("");
+  const [foodTitle, setFoodTitle] = useState("");
+  const [foodPackageSize, setFoodPackageSize] = useState("");
+  const [foodCategory, setFoodCategory] = useState("Frozen Food");
+  const [foodImage, setFoodImage] = useState("");
   const importSectionRef = useRef<HTMLElement>(null);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -320,10 +320,11 @@ const [foodImage, setFoodImage] = useState("");
   const [shoppingList, setShoppingList] = useState<string[]>([])
   const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
   const [showShoppingList, setShowShoppingList] = useState(false);
+  const [shoppingItemCategories, setShoppingItemCategories] = useState<Record<string, string>>({});
 
   const [showMealPlanner, setShowMealPlanner] = useState(false);
-const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({})
-const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("current");
+  const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({})
+  const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("current");
 
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState("");
@@ -348,66 +349,66 @@ const [activePlannerWeek, setActivePlannerWeek] = useState<"current" | "next">("
   const [foodTypeFilter, setFoodTypeFilter] = useState<
   "all" | "recipe" | "grocery"
 >("all");
-const [recipeSort, setRecipeSort] = useState("newest");
+  const [recipeSort, setRecipeSort] = useState("newest");
 
   const [shoppingItemUrls, setShoppingItemUrls] = useState<Record<string, string>>({});
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
- const [hidePantryItems, setHidePantryItems] = useState(true);
+  const [hidePantryItems, setHidePantryItems] = useState(true);
   const [pantrySearch, setPantrySearch] = useState("");
-const [expandedPantryCategory, setExpandedPantryCategory] = useState<string | null>("all");
-const [editingPantryItemId, setEditingPantryItemId] = useState<string | null>(null);
-const [isBulkEditingPantry, setIsBulkEditingPantry] = useState(false);
-const [pantryDrafts, setPantryDrafts] = useState<Record<string, PantryItem>>({});
+  const [expandedPantryCategory, setExpandedPantryCategory] = useState<string | null>("all");
+  const [editingPantryItemId, setEditingPantryItemId] = useState<string | null>(null);
+  const [isBulkEditingPantry, setIsBulkEditingPantry] = useState(false);
+  const [pantryDrafts, setPantryDrafts] = useState<Record<string, PantryItem>>({});
   const [newShoppingItem, setNewShoppingItem] = useState("");
   const [lastAddedShoppingItem, setLastAddedShoppingItem] = useState<any>(null);
   const [newPantryItem, setNewPantryItem] = useState("");
- const [newPantryQuantity, setNewPantryQuantity] = useState("");
-const [newPantryCategory, setNewPantryCategory] = useState("Other");
-const [newPantryUnit, setNewPantryUnit] = useState("");
-const [showPantryModal, setShowPantryModal] = useState(false);
-const [pantrySessionAddCount, setPantrySessionAddCount] = useState(0);
-const [recentlyAddedPantryId, setRecentlyAddedPantryId] = useState<string | null>(null);
-const [pantryModalItem, setPantryModalItem] = useState("");
-const [pantryModalImage, setPantryModalImage] = useState("");
-const [pantryModalSourceUrl, setPantryModalSourceUrl] = useState("");
-const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
-const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
-const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
-const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
-const [pantryModalUnit, setPantryModalUnit] = useState("");
-const [pantryModalCategory, setPantryModalCategory] = useState("Other");
-const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
-const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
-const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
-const [checkedRecipeIngredients, setCheckedRecipeIngredients] = useState<string[]>([]);
-const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
-const [shoppingSort, setShoppingSort] = useState("az");
-const [showPantry, setShowPantry] = useState(false);
-const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
-const [pantrySort, setPantrySort] = useState("newest");
-const [cookingQueueFilter, setCookingQueueFilter] = useState("all");
-const [showAllCookingQueue, setShowAllCookingQueue] = useState(false);
-const [recentlyMade, setRecentlyMade] = useState<any[]>([]);
-const [showAllRecentlyMade, setShowAllRecentlyMade] = useState(false);
+  const [newPantryQuantity, setNewPantryQuantity] = useState("");
+  const [newPantryCategory, setNewPantryCategory] = useState("Other");
+  const [newPantryUnit, setNewPantryUnit] = useState("");
+  const [showPantryModal, setShowPantryModal] = useState(false);
+  const [pantrySessionAddCount, setPantrySessionAddCount] = useState(0);
+  const [recentlyAddedPantryId, setRecentlyAddedPantryId] = useState<string | null>(null);
+  const [pantryModalItem, setPantryModalItem] = useState("");
+  const [pantryModalImage, setPantryModalImage] = useState("");
+  const [pantryModalSourceUrl, setPantryModalSourceUrl] = useState("");
+  const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
+  const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
+  const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
+  const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
+  const [pantryModalUnit, setPantryModalUnit] = useState("");
+  const [pantryModalCategory, setPantryModalCategory] = useState("Other");
+  const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
+  const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
+  const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
+  const [checkedRecipeIngredients, setCheckedRecipeIngredients] = useState<string[]>([]);
+  const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
+  const [shoppingSort, setShoppingSort] = useState("az");
+  const [showPantry, setShowPantry] = useState(false);
+  const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
+  const [pantrySort, setPantrySort] = useState("newest");
+  const [cookingQueueFilter, setCookingQueueFilter] = useState("all");
+  const [showAllCookingQueue, setShowAllCookingQueue] = useState(false);
+  const [recentlyMade, setRecentlyMade] = useState<any[]>([]);
+  const [showAllRecentlyMade, setShowAllRecentlyMade] = useState(false);
 
-const [loginPassword, setLoginPassword] = useState("");
-const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
-const [authError, setAuthError] = useState("");
-const [sampleRecipe, setSampleRecipe] = useState<Recipe | null>(null);
-const [showPassword, setShowPassword] = useState(false);
+  const [loginPassword, setLoginPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
+  const [authError, setAuthError] = useState("");
+  const [sampleRecipe, setSampleRecipe] = useState<Recipe | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-const [isResettingPassword, setIsResettingPassword] = useState(false);
-const [newPassword, setNewPassword] = useState("");
-const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-const settingsRef = useRef<HTMLDivElement | null>(null);
-const mobileMenuRef = useRef<HTMLDivElement | null>(null);
-const [showProfile, setShowProfile] = useState(false);
-const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const settingsRef = useRef<HTMLDivElement | null>(null);
+  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
 
 
-const neededShoppingListCount = shoppingList.filter((item) => {
-  const matchingPantryItem = getMatchingPantryItem(item);
-  const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+  const neededShoppingListCount = shoppingList.filter((item) => {
+    const matchingPantryItem = getMatchingPantryItem(item);
+    const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
 
   return !matchingPantryItem && !isManuallyMarkedOnHand;
 }).length;
@@ -958,6 +959,13 @@ async function loadShoppingItems() {
     }, {} as Record<string, string>)
   );
 
+  setShoppingItemCategories(
+  (data || []).reduce((categories, item) => {
+    categories[item.name] = item.store_section || guessShoppingCategory(item.name);
+    return categories;
+  }, {} as Record<string, string>)
+);
+
   setCheckedShoppingItems(
     (data || [])
       .filter((item) => item.is_checked)
@@ -1284,11 +1292,7 @@ async function changePasswordNow() {
   localStorage.removeItem("hey-chef-current-user");
 }
 
-useEffect(() => {
-  if (userEmail) {
-    loadShoppingItems();
-  }
-}, [userEmail]);
+
 async function importFoodItem() {
   if (!foodUrl.trim()) {
     showToast("Paste a product URL first.");
@@ -1811,6 +1815,39 @@ function getIngredientQuantity(item: string) {
     .trim();
 }
 
+const shoppingCategories = [
+  "Produce",
+  "Refrigerated",
+  "Frozen",
+  "Meat & Protein",
+  "Canned Goods",
+  "Grains & Pasta",
+  "Baking",
+  "Spices",
+  "Beverages",
+  "Condiments",
+  "Snacks",
+  "Other",
+];
+
+function guessShoppingCategory(item: string) {
+  const clean = normalizeItemName(item);
+
+  if (/(lettuce|spinach|tomato|onion|garlic|pepper|apple|banana|fruit|vegetable|cilantro|avocado)/i.test(clean)) return "Produce";
+  if (/(milk|cheese|yogurt|butter|cream|eggs|tofu|hummus)/i.test(clean)) return "Refrigerated";
+  if (/(frozen|ice cream|pizza rolls)/i.test(clean)) return "Frozen";
+  if (/(chicken|beef|pork|turkey|fish|salmon|shrimp|beans|lentils|protein)/i.test(clean)) return "Meat & Protein";
+  if (/(can|canned|tomato sauce|beans|corn|soup)/i.test(clean)) return "Canned Goods";
+  if (/(rice|pasta|noodle|bread|tortilla|quinoa|oats|flour)/i.test(clean)) return "Grains & Pasta";
+  if (/(baking|sugar|flour|vanilla|yeast|baking powder|baking soda)/i.test(clean)) return "Baking";
+  if (/(salt|pepper|cumin|paprika|oregano|basil|seasoning|spice)/i.test(clean)) return "Spices";
+  if (/(juice|soda|coffee|tea|water|drink)/i.test(clean)) return "Beverages";
+  if (/(sauce|ketchup|mustard|mayo|dressing|vinegar|oil|salsa)/i.test(clean)) return "Condiments";
+  if (/(chips|crackers|cookies|granola|snack)/i.test(clean)) return "Snacks";
+
+  return "Other";
+}
+
 async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
   const {
     data: { user },
@@ -1835,7 +1872,9 @@ async function addItemsToShoppingList(items: string[], sourceRecipe?: Recipe) {
     brand: isGroceryItem ? sourceRecipe?.brand || "" : "",
     package_size: isGroceryItem ? sourceRecipe?.packageSize || "" : "",
     price: isGroceryItem ? sourceRecipe?.price || "" : "",
-    store_section: "Other",
+    store_section: isGroceryItem
+  ? sourceRecipe?.category || guessShoppingCategory(item)
+  : guessShoppingCategory(item),
   }));
 
   const { data, error } = await supabase
@@ -1994,16 +2033,16 @@ sourceUrl: fullRecipe?.source_url || item.sourceUrl || "",
   }
 
   const { error } = await supabase.from("shopping_items").insert(
-    mealPlanItems.map((item) => ({
-      user_id: user.id,
-      name: item.name,
-      source_meal_plan_id: item.mealPlanId,
-      store_section: "Other",
-      image_url: item.imageUrl,
-      source_url: item.sourceUrl,
-      buy_anyway: item.buyAnyway,
-    }))
-  );
+  mealPlanItems.map((item) => ({
+    user_id: user.id,
+    name: item.name,
+    source_meal_plan_id: item.mealPlanId,
+    store_section: guessShoppingCategory(item.name),
+    image_url: item.imageUrl,
+    source_url: item.sourceUrl,
+    buy_anyway: item.buyAnyway,
+  }))
+);
 
   if (error) {
     showToast(error.message);
@@ -2433,9 +2472,10 @@ async function addCheckedItemsToPantry() {
   }
 
   const { data: shoppingRows, error: shoppingError } = await supabase
-    .from("shopping_items")
-    .select("*")
-    .in("name", checkedShoppingItems);
+  .from("shopping_items")
+  .select("*")
+  .in("name", checkedShoppingItems)
+  .order("created_at", { ascending: false });
 
   if (shoppingError) {
     showToast(shoppingError.message);
@@ -2461,6 +2501,14 @@ const { data: imageMemory } = await supabase
   const cleanedName = cleanPantryDisplayName(item.name);
   const normalizedName = normalizeItemName(cleanedName);
 
+  const finalCategory =
+  shoppingItemCategories[item.name] &&
+  shoppingItemCategories[item.name] !== "Prepared Food"
+    ? shoppingItemCategories[item.name]
+    : item.store_section && item.store_section !== "Prepared Food"
+      ? item.store_section
+      : guessShoppingCategory(item.name) || "Other";
+
   const existingPantryItem = pantryItems.find(
     (pantryItem) =>
       normalizeItemName(pantryItem.name) === normalizedName
@@ -2474,9 +2522,10 @@ const { data: imageMemory } = await supabase
       .from("pantry_items")
       .update({
         quantity: String(currentQty + addQty),
+        category: finalCategory,
       })
       .eq("id", existingPantryItem.id);
-
+      
     if (error) {
       showToast(error.message);
       return;
@@ -2494,9 +2543,23 @@ const { data: imageMemory } = await supabase
     name: cleanedName,
     quantity: String(item.quantity || 1),
     unit: item.unit || "package",
-    category: item.category || "Other",
-    image_url: item.image_url || memoryMatch?.image_url || "",
-    source_url: item.source_url || memoryMatch?.source_url || "",
+    category:
+    shoppingItemCategories[item.name] ||
+    item.store_section ||
+    guessShoppingCategory(item.name) ||
+    item.category ||
+    "Other",
+    image_url:
+      item.image_url ||
+      shoppingItemImages[item.name] ||
+      memoryMatch?.image_url ||
+      "",
+
+    source_url:
+      item.source_url ||
+      shoppingItemUrls[item.name] ||
+      memoryMatch?.source_url ||
+      "",
     brand: item.brand || "",
     package_size: item.package_size || "",
     price: item.price || "",
@@ -2555,9 +2618,14 @@ for (const item of uniqueShoppingRows) {
     updatedPantryItems = updatedPantryItems.map((pantryItem) =>
       pantryItem.id === existingPantryItem.id
         ? {
-            ...pantryItem,
-            quantity: String(currentQty + addQty),
-          }
+        ...pantryItem,
+        quantity: String(currentQty + addQty),
+        category:
+          shoppingItemCategories[item.name] ||
+          item.store_section ||
+          guessShoppingCategory(item.name) ||
+        pantryItem.category
+      }
         : pantryItem
     );
 
@@ -2566,15 +2634,33 @@ for (const item of uniqueShoppingRows) {
 
   const shoppingImage = shoppingItemImages[item.name] || "";
   const shoppingUrl = shoppingItemUrls[item.name] || "";
+
   const hasProductData =
-    item.buy_anyway === true || item.brand || item.package_size || item.price;
+    item.buy_anyway === true ||
+    item.brand ||
+    item.package_size ||
+    item.price ||
+    item.source_url;
+
+  const assignedCategory =
+  shoppingItemCategories[item.name] ||
+  Object.entries(shoppingItemCategories).find(
+    ([savedName]) =>
+      normalizeItemName(savedName) === normalizeItemName(item.name)
+  )?.[1];
+
+const pantryCategory =
+  assignedCategory ||
+  item.store_section ||
+  guessShoppingCategory(item.name) ||
+  "Other";
 
   const pantryRow = {
     user_id: user.id,
     name: memory?.name || cleanName,
     quantity: String(item.quantity || 1),
     unit: hasProductData || memory?.image_url ? "package" : "",
-    category: memory?.image_url ? "Produce" : "Other",
+    category: pantryCategory,
     brand: item.brand || "",
     package_size: item.package_size || "",
     image_url: hasProductData
@@ -2825,6 +2911,9 @@ function getMatchingPantryItem(ingredient: string) {
   return pantryItems.find((pantryItem) => {
     const cleanedPantryName = normalizeItemName(pantryItem.name);
 
+    if (Number(pantryItem.quantity || 0) <= 0) {
+      return false;
+    }
     if (!cleanedIngredientName || !cleanedPantryName) {
       return false;
     }
@@ -2834,8 +2923,10 @@ function getMatchingPantryItem(ingredient: string) {
     }
 
     return (
-      cleanedIngredientName === cleanedPantryName
-    );
+    cleanedIngredientName === cleanedPantryName ||
+    cleanedIngredientName.includes(cleanedPantryName) ||
+    cleanedPantryName.includes(cleanedIngredientName)
+  );
   });
 }
 
@@ -2931,7 +3022,11 @@ async function saveShoppingItemAsFoodItem(itemName: string) {
     steps: [],
     cookTime: "",
     servings: "",
-    category: "Prepared Food",
+    category:
+    shoppingItemCategories[itemName] ||
+    shoppingRow?.store_section ||
+    guessShoppingCategory(itemName) ||
+    "Other",
     sourceUrl: shoppingRow?.source_url || "",
     isFavorite: false,
     isPlanningQueue: false,
@@ -3136,7 +3231,11 @@ async function addShoppingItemToPantry(shoppingItem: string, count = 1) {
   setPantryModalShoppingItem(shoppingItem);
   setPantryModalQuantity(String(count));
   setPantryModalUnit("package");
-  setPantryModalCategory("Prepared Food");
+  setPantryModalCategory(
+  shoppingItemCategories[shoppingItem] ||
+  guessShoppingCategory(shoppingItem) ||
+  "Other"
+);
   setShowPantryModal(true)
 
   showToast(`${cleanedName} ready to add to pantry.`);
@@ -4629,7 +4728,10 @@ product = await response.json();
     image_url: product?.image || "",
     source_url: originalUrl.includes("http") ? originalUrl : "",
     price: product?.price || "",
-    
+    store_section:
+  product?.category === "Prepared Food"
+    ? guessShoppingCategory(itemName)
+    : product?.category || guessShoppingCategory(itemName),
   })
   .select()
   .single();
@@ -4643,6 +4745,10 @@ product = await response.json();
 setShoppingItemUrls({
   ...shoppingItemUrls,
   [data.name]: data.source_url || "",
+});
+setShoppingItemCategories({
+  ...shoppingItemCategories,
+  [data.name]: data.store_section || guessShoppingCategory(data.name),
 });
 setLastAddedShoppingItem(data);
   if (input) input.value = "";
@@ -4678,6 +4784,9 @@ setNewShoppingItem("");
       >
         <option value="az">A–Z</option>
         <option value="za">Z–A</option>
+        <option value="newest">Newest to Oldest</option>
+        <option value="oldest">Oldest to Newest</option>
+        <option value="location">Location</option>
       </select>
 
       <button
@@ -4739,12 +4848,33 @@ setNewShoppingItem("");
   );
 })
         .sort((a, b) => {
-          if (shoppingSort === "za") {
-            return cleanForSort(b.item).localeCompare(cleanForSort(a.item));
-          }
+  if (shoppingSort === "za") {
+    return cleanForSort(b.item).localeCompare(cleanForSort(a.item));
+  }
 
-          return cleanForSort(a.item).localeCompare(cleanForSort(b.item));
-        })
+  if (shoppingSort === "newest") {
+    return shoppingList.indexOf(a.item) - shoppingList.indexOf(b.item);
+  }
+
+  if (shoppingSort === "oldest") {
+    return shoppingList.indexOf(b.item) - shoppingList.indexOf(a.item);
+  }
+
+  if (shoppingSort === "location") {
+    const categoryA = shoppingItemCategories[a.item] || guessShoppingCategory(a.item);
+    const categoryB = shoppingItemCategories[b.item] || guessShoppingCategory(b.item);
+
+    const categoryCompare =
+      shoppingCategories.indexOf(categoryA) -
+      shoppingCategories.indexOf(categoryB);
+
+    if (categoryCompare !== 0) return categoryCompare;
+
+    return cleanForSort(a.item).localeCompare(cleanForSort(b.item));
+  }
+
+  return cleanForSort(a.item).localeCompare(cleanForSort(b.item));
+})
         
         .map(({ item, count }) => {
           const matchingPantryItem = getMatchingPantryItem(item);
@@ -4844,6 +4974,40 @@ const itemImage =
               
 
               <div className="flex flex-wrap items-center gap-3 pl-7 md:pl-0">
+                <select
+  value={shoppingItemCategories[item] || guessShoppingCategory(item)}
+  onChange={async (e) => {
+    const newCategory = e.target.value;
+
+    setShoppingItemCategories((current) => ({
+      ...current,
+      [item]: newCategory,
+    }));
+
+    const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) return;
+
+const { error } = await supabase
+  .from("shopping_items")
+  .update({ store_section: newCategory })
+  .eq("user_id", user.id)
+  .eq("name", item);
+
+    if (error) {
+      showToast(error.message);
+    }
+  }}
+  className="rounded-full border border-[#ead7c8] bg-white px-4 py-2 text-sm"
+>
+  {shoppingCategories.map((category) => (
+    <option key={category} value={category}>
+      {category}
+    </option>
+  ))}
+</select>
   
   {matchingPantryItem ? (
     <>
@@ -6215,7 +6379,7 @@ if (showPantry) {
         [item.id]: {
           ...(pantryDrafts[item.id] || item),
           quantity: String(Math.max(0, nextQty)),
-          markedForDelete: nextQty <= 0,
+          markedForDelete: false,
         } as any,
       });
     }}
@@ -6234,7 +6398,7 @@ if (showPantry) {
         [item.id]: {
           ...(pantryDrafts[item.id] || item),
           quantity: nextValue,
-          markedForDelete: Number(nextValue) <= 0,
+          markedForDelete: false,
         } as any,
       });
     }}

@@ -1,21 +1,11 @@
-"use client";
-
-import { useState } from "react";
+/*"use client";
+import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import type { PlannedRecipe, Recipe } from "../types/heychef";
+import { loadMealPlan } from "../lib/heyChefActions";
+import { getWeekStartDate } from "../lib/helpers";
+import { supabase } from "../lib/supabase";
 
-type Recipe = {
-  id: string;
-  title: string;
-  image?: string;
-  ingredients: string[];
-  steps: string[];
-  createdAt: string;
-  isFavorite?: boolean;
-  isPlanningQueue?: boolean;
-  isMade?: boolean;
-  mealPlanId?: string;
-  source?: "recipe" | "shopping_list" | "leftovers";
-};
 
 const meals = ["Breakfast", "Lunch", "Dinner"];
 
@@ -28,14 +18,16 @@ export default function PlannerPage() {
   const [plannerPopup, setPlannerPopup] =
     useState<{ day: string; meal: string } | null>(null);
 
-  const [recipes] = useState<Recipe[]>([]);
-  const [shoppingList] = useState<string[]>([]);
-  const [mealPlan, setMealPlan] = useState<Record<string, Recipe[]>>({});
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [shoppingList, setShoppingList] = useState<any[]>([]);
+  const [mealPlan, setMealPlan] = useState<Record<string, PlannedRecipe[]>>({});
 
   const [plannerRecipeId, setPlannerRecipeId] = useState("");
   const [plannerShoppingItemId, setPlannerShoppingItemId] = useState("");
   const [plannerLeftoverId, setPlannerLeftoverId] = useState("");
   const [showAllCookingQueue] = useState(false);
+  
+
 
   const plannerDays = [
     { label: "Monday", date: "2026-06-22" },
@@ -47,20 +39,421 @@ export default function PlannerPage() {
     { label: "Sunday", date: "2026-06-28" },
   ];
 
-  function getMealPlanKey(day: string, meal: string) {
-    return `${activePlannerWeek}-${day}-${meal}`;
-  }
+  function getMealPlanKey(
+    day: string,
+    meal: string,
+    week: "current" | "next" = activePlannerWeek
+    ) {
+    return `${week}-${day}-${meal}`;
+    }
 
-  function addNewMealPlanItemsToShoppingList() {}
+  
   function resetWeek() {}
   function addRecipeFromPlanner() {}
-  function addShoppingListFromPlanner() {}
-  function addLeftoverFromPlanner() {}
-  function removeRecipeFromMealPlan(day: string, meal: string, mealPlanId?: string) {}
+  async function addShoppingListFromPlanner() {
+  if (!plannerPopup || !plannerShoppingItemId) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .insert({
+      user_id: user.id,
+      date: plannerPopup.day,
+      day: new Date(plannerPopup.day + "T00:00:00").toLocaleDateString("en-US", {
+        weekday: "long",
+      }),
+      meal: plannerPopup.meal,
+      week: activePlannerWeek,
+      week_start: getWeekStartDate(activePlannerWeek),
+      source: "shopping_list",
+      title: plannerShoppingItemId,
+      is_made: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const plannedRecipe: PlannedRecipe = {
+    id: data.id,
+    mealPlanId: data.id,
+    title: plannerShoppingItemId,
+    image: "",
+    ingredients: [],
+    steps: [],
+    cookTime: "",
+    servings: "",
+    category: "",
+    sourceUrl: "",
+    isFavorite: false,
+    isPlanningQueue: false,
+    createdAt: "",
+    type: "grocery",
+    source: "shopping_list",
+    plannedDate: plannerPopup.day,
+    isMade: false,
+    weekStart: getWeekStartDate(activePlannerWeek),
+  };
+
+  const key = getMealPlanKey(plannerPopup.day, plannerPopup.meal);
+
+  setMealPlan((current) => ({
+    ...current,
+    [key]: [...(current[key] || []), plannedRecipe],
+  }));
+
+  setPlannerPopup(null);
+  setPlannerShoppingItemId("");
+}
+
+async function addLeftoverFromPlanner() {
+  if (!plannerPopup || !plannerLeftoverId) return;
+
+  const originalItem = Object.values(mealPlan)
+    .flat()
+    .find((item) => item.mealPlanId === plannerLeftoverId);
+
+  if (!originalItem) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .insert({
+      user_id: user.id,
+      date: plannerPopup.day,
+      day: new Date(plannerPopup.day + "T00:00:00").toLocaleDateString("en-US", {
+        weekday: "long",
+      }),
+      meal: plannerPopup.meal,
+      week: activePlannerWeek,
+      week_start: getWeekStartDate(activePlannerWeek),
+      source: "leftovers",
+      title: originalItem.title,
+      image_url: originalItem.image || "",
+      is_made: false,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  const plannedRecipe: PlannedRecipe = {
+    ...originalItem,
+    id: data.id,
+    mealPlanId: data.id,
+    source: "leftovers",
+    plannedDate: plannerPopup.day,
+    isMade: false,
+    weekStart: getWeekStartDate(activePlannerWeek),
+  };
+
+  const key = getMealPlanKey(plannerPopup.day, plannerPopup.meal);
+
+  setMealPlan((current) => ({
+    ...current,
+    [key]: [...(current[key] || []), plannedRecipe],
+  }));
+
+  setPlannerPopup(null);
+  setPlannerLeftoverId("");
+}
+
+async function addNewMealPlanItemsToShoppingList() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    console.error("Please log in again.");
+    return;
+  }
+
+  const { error: deleteError } = await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("user_id", user.id)
+    .not("source_meal_plan_id", "is", null);
+
+  if (deleteError) {
+    console.error(deleteError.message);
+    return;
+  }
+
+  const plannedMeals = Object.values(mealPlan)
+    .flat()
+    .filter((item: any) => !item.isMade);
+
+  if (plannedMeals.length === 0) {
+    console.log("No meal plan items to add.");
+    return;
+  }
+
+  const mealPlanItems: any[] = [];
+
+  for (const item of plannedMeals) {
+    const shouldSkipShoppingList =
+      item.source === "shopping_list" || item.source === "leftovers";
+
+    if (shouldSkipShoppingList) continue;
+
+    const isGroceryMeal =
+      item.type === "grocery" || !item.ingredients || item.ingredients.length === 0;
+
+    if (isGroceryMeal) {
+      mealPlanItems.push({
+        name: item.title,
+        mealPlanId: item.mealPlanId,
+        imageUrl: item.image || "",
+        sourceUrl: item.sourceUrl || "",
+        buyAnyway: true,
+      });
+
+      continue;
+    }
+
+    const { data: fullRecipe, error } = await supabase
+      .from("recipes")
+      .select("ingredients, image_url, source_url")
+      .eq("id", item.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error(error.message);
+      return;
+    }
+
+    const ingredients = fullRecipe?.ingredients || item.ingredients || [];
+
+    ingredients.forEach((ingredient: string) => {
+      mealPlanItems.push({
+        name: ingredient,
+        mealPlanId: item.mealPlanId,
+        imageUrl: fullRecipe?.image_url || item.image || "",
+        sourceUrl: fullRecipe?.source_url || item.sourceUrl || "",
+        buyAnyway: false,
+      });
+    });
+  }
+
+  if (mealPlanItems.length === 0) {
+    console.log("No ingredients found to add.");
+    return;
+  }
+
+  const { error } = await supabase.from("shopping_items").insert(
+    mealPlanItems.map((item) => ({
+      user_id: user.id,
+      name: item.name,
+      source_meal_plan_id: item.mealPlanId,
+      store_section: "Other",
+      image_url: item.imageUrl,
+      source_url: item.sourceUrl,
+      buy_anyway: item.buyAnyway,
+    }))
+  );
+
+  if (error) {
+    console.error(error.message);
+    return;
+  }
+
+  console.log("Grocery list updated.");
+}
+
+async function removeRecipeFromMealPlan(
+  day: string,
+  meal: string,
+  mealPlanId?: string
+) {
+  if (!mealPlanId) return;
+
+  const { error } = await supabase
+    .from("meal_plan")
+    .delete()
+    .eq("id", mealPlanId);
+
+  if (error) {
+    console.error(error.message);
+    return;
+  }
+
+  const key = getMealPlanKey(day, meal);
+
+  setMealPlan((current) => ({
+    ...current,
+    [key]: (current[key] || []).filter(
+      (recipe) => recipe.mealPlanId !== mealPlanId
+    ),
+  }));
+}
 
   function normalizeItemName(text?: string | null) {
     return String(text || "").toLowerCase().trim();
   }
+  
+  useEffect(() => {
+  async function fetchMealPlan() {
+    try {
+      const data = await loadMealPlan();
+
+      const loadedPlan: Record<string, PlannedRecipe[]> = {};
+
+      (data || []).forEach((item: any) => {
+        const currentWeekStart = getWeekStartDate("current");
+        const nextWeekStart = getWeekStartDate("next");
+
+        let plannerWeek: "current" | "next" = item.week || "current";
+
+        if (item.week_start === currentWeekStart) {
+          plannerWeek = "current";
+        } else if (item.week_start === nextWeekStart) {
+          plannerWeek = "next";
+        }
+
+        const mealDate = item.date || item.day;
+        const key = getMealPlanKey(mealDate, item.meal, plannerWeek);
+
+        if (!loadedPlan[key]) {
+          loadedPlan[key] = [];
+        }
+
+        if (item.source === "shopping_list" || item.source === "leftovers") {
+          loadedPlan[key].push({
+            id: item.recipes?.id || item.id,
+            title: item.recipes?.title || item.title || "Planned item",
+            image: item.recipes?.image_url || item.image_url || "",
+            ingredients: item.recipes?.ingredients || [],
+            steps: item.recipes?.steps || [],
+            cookTime: item.recipes?.cook_time || "",
+            servings: item.recipes?.servings || "",
+            category: item.recipes?.category || "Prepared Food",
+            sourceUrl: item.recipes?.source_url || "",
+            isFavorite: item.recipes?.is_favorite || false,
+            isPlanningQueue: item.recipes?.is_planning_queue || false,
+            createdAt: item.recipes?.created_at || "",
+            isMade: item.is_made || false,
+            mealPlanId: item.id,
+            plannedDate: item.date,
+            weekStart: item.week_start,
+            source: item.source,
+            type: item.recipes?.type || "grocery",
+            brand: item.recipes?.brand || "",
+            packageSize: item.recipes?.package_size || "",
+            price: item.recipes?.price || "",
+          });
+
+          return;
+        }
+
+        if (!item.recipes) return;
+
+        loadedPlan[key].push({
+          id: item.recipes.id,
+          title: item.recipes.title,
+          image: item.recipes.image_url || "",
+          ingredients: item.recipes.ingredients || [],
+          steps: item.recipes.steps || [],
+          cookTime: item.recipes.cook_time || "",
+          servings: item.recipes.servings || "",
+          category: item.recipes.category || "",
+          sourceUrl: item.recipes.source_url || "",
+          isFavorite: item.recipes.is_favorite || false,
+          isPlanningQueue: item.recipes.is_planning_queue || false,
+          createdAt: item.recipes.created_at || "",
+          isMade: item.is_made || false,
+          mealPlanId: item.id,
+          plannedDate: item.date,
+          weekStart: item.week_start,
+          source: item.source || "recipe",
+          type: item.recipes.type || "recipe",
+          brand: item.recipes.brand || "",
+          packageSize: item.recipes.package_size || "",
+          price: item.recipes.price || "",
+        });
+      });
+
+      setMealPlan(loadedPlan);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  fetchMealPlan();
+}, []);
+
+useEffect(() => {
+  async function loadPlannerOptions() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data: recipeRows, error: recipeError } = await supabase
+      .from("recipes")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (recipeError) {
+      console.error(recipeError);
+      return;
+    }
+
+    setRecipes(
+      (recipeRows || []).map((recipe) => ({
+        id: recipe.id,
+        title: recipe.title,
+        image: recipe.image_url || "",
+        ingredients: recipe.ingredients || [],
+        steps: recipe.steps || [],
+        cookTime: recipe.cook_time || "",
+        servings: recipe.servings || "",
+        category: recipe.category || "",
+        sourceUrl: recipe.source_url || "",
+        isFavorite: recipe.is_favorite || false,
+        isPlanningQueue: recipe.is_planning_queue || false,
+        createdAt: recipe.created_at,
+        type: recipe.type || "recipe",
+        brand: recipe.brand || "",
+        packageSize: recipe.package_size || "",
+        price: recipe.price || "",
+      }))
+    );
+
+    const { data: shoppingRows, error: shoppingError } = await supabase
+      .from("shopping_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (shoppingError) {
+      console.error(shoppingError);
+      return;
+    }
+
+    setShoppingList(shoppingRows || []);
+  }
+
+  loadPlannerOptions();
+}, []);
 
   return (
     <AppShell>
@@ -145,11 +538,11 @@ export default function PlannerPage() {
               className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 pr-12 text-[#2b1a12]"
             >
               <option value="">Plan from shopping list</option>
-              {shoppingList.map((item, index) => (
-                <option key={`${item}-${index}`} value={item}>
-                  {item}
-                </option>
-              ))}
+              {shoppingList.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+               ))}
             </select>
 
             <p className="mb-3 text-center text-sm font-bold text-[#6d5549]">
@@ -349,4 +742,4 @@ export default function PlannerPage() {
       </div>
     </AppShell>
   );
-}
+}*/

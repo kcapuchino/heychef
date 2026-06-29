@@ -1,23 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
-
-type Recipe = {
-  id: string;
-  title: string;
-  image?: string;
-  ingredients: string[];
-  steps: string[];
-  cookTime?: string;
-  servings?: string;
-  category?: string;
-  sourceUrl?: string;
-  isFavorite?: boolean;
-  isPlanningQueue?: boolean;
-  createdAt: string;
-  type?: "recipe" | "grocery";
-};
+import { loadMealPlan } from "@/Archive/lib/heyChefActions";
+import { getWeekStartDate } from "@/Archive/lib/helpers";
+import type { PlannedRecipe, Recipe } from "../types/heychef";
+import { supabase } from "@/Archive/lib/supabase";
 
 type PantryItem = {
   id: string;
@@ -39,39 +27,102 @@ export default function RecipesPage() {
   const [showManualImport] = useState(false);
   const [foodUrl, setFoodUrl] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [foodTypeFilter, setFoodTypeFilter] = useState<"all" | "recipe" | "grocery">("all");
+  const [foodTypeFilter, setFoodTypeFilter] =
+    useState<"all" | "recipe" | "grocery">("all");
   const [recipeSort, setRecipeSort] = useState("newest");
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
 
-  const filteredRecipes = recipes;
+  useEffect(() => {
+  async function fetchRecipes() {
+    try {
+      const { data, error } = await supabase
+        .from("recipes")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-  function importRecipe() {}
-  function importManualRecipe() {}
-  function createNewRecipe() {}
-  function importFoodItem() {}
-  function saveFoodItem() {}
-  function toggleFavorite(recipeId: string) {}
-  function togglePlanningQueue(recipeId: string) {}
-  function deleteRecipe(recipeId: string) {}
-  async function addItemsToShoppingList(items: string[], recipe?: Recipe) {}
+      if (error) throw error;
 
-  function normalizeItemName(text?: string | null) {
-    return String(text || "").toLowerCase().trim();
+      const mappedRecipes = (data || []).map((recipe) => ({
+        id: recipe.id,
+        title: recipe.title,
+        image: recipe.image_url || "",
+        ingredients: recipe.ingredients || [],
+        steps: recipe.steps || [],
+        cookTime: recipe.cook_time || "",
+        servings: recipe.servings || "",
+        category: recipe.category || "",
+        sourceUrl: recipe.source_url || "",
+        isFavorite: recipe.is_favorite || false,
+        isPlanningQueue: recipe.is_planning_queue || false,
+        createdAt: recipe.created_at,
+        type: recipe.type || "recipe",
+        brand: recipe.brand || "",
+        packageSize: recipe.package_size || "",
+        price: recipe.price || "",
+      }));
+
+      setRecipes(mappedRecipes);
+    } catch (error: any) {
+      console.error(error);
+    }
   }
 
-  function getMatchingPantryItem(name: string) {
-    return pantryItems.find(
-      (item) => normalizeItemName(item.name) === normalizeItemName(name)
-    );
-  }
+  fetchRecipes();
+}, []);
 
-  function canMakeRecipeFromPantry(recipe: Recipe) {
-    if (recipe.type === "grocery") {
-      return Number(getMatchingPantryItem(recipe.title)?.quantity || 0) > 0;
+  const filteredRecipes = recipes
+  .filter((recipe) => {
+    if (foodTypeFilter === "recipe") {
+      return recipe.type !== "grocery";
     }
 
-    return false;
+    if (foodTypeFilter === "grocery") {
+      return recipe.type === "grocery";
+    }
+
+    return true;
+  })
+  .filter((recipe) => {
+    if (recipeSort === "ready") {
+      return canMakeRecipeFromPantry(recipe);
+    }
+
+    return true;
+  });
+
+function importRecipe() {}
+function importManualRecipe() {}
+function createNewRecipe() {}
+function importFoodItem() {}
+function saveFoodItem() {}
+
+function toggleFavorite(recipeId: string) {
+  setRecipes((current) =>
+    current.map((recipe) =>
+      recipe.id === recipeId
+        ? { ...recipe, isFavorite: !recipe.isFavorite }
+        : recipe
+    )
+  );
+}
+
+function normalizeItemName(text?: string | null) {
+  return String(text || "").toLowerCase().trim();
+}
+
+function getMatchingPantryItem(name: string) {
+  return pantryItems.find(
+    (item) => normalizeItemName(item.name) === normalizeItemName(name)
+  );
+}
+
+function canMakeRecipeFromPantry(recipe: Recipe) {
+  if (recipe.type === "grocery") {
+    return Number(getMatchingPantryItem(recipe.title)?.quantity || 0) > 0;
   }
+
+  return false;
+}
 
   return (
     <AppShell>
@@ -226,27 +277,61 @@ export default function RecipesPage() {
       <section className="mb-8 rounded-[2rem] bg-white p-4 shadow-lg">
         <div className="mb-4 grid gap-2 sm:grid-cols-2 md:grid-cols-4">
           <button
-            onClick={() => {
-              setFoodTypeFilter("all");
-              setCategoryFilter("all");
-              setRecipeSort("newest");
-            }}
-            className="rounded-full bg-[#a63a0a] px-4 py-2 font-bold text-white"
-          >
-            All
-          </button>
+  onClick={() => {
+    setFoodTypeFilter("all");
+    setCategoryFilter("all");
+    setRecipeSort("newest");
+  }}
+  className={`rounded-full px-4 py-2 font-bold ${
+    foodTypeFilter === "all" && recipeSort !== "ready"
+      ? "bg-[#a63a0a] text-white"
+      : "bg-[#fff4ef] text-[#a63a0a]"
+  }`}
+>
+  All
+</button>
 
-          <button onClick={() => setFoodTypeFilter("recipe")} className="rounded-full bg-[#fff4ef] px-4 py-2 font-bold text-[#a63a0a]">
-            Recipes
-          </button>
+<button
+  onClick={() => {
+    setFoodTypeFilter("recipe");
+    setRecipeSort("newest");
+  }}
+  className={`rounded-full px-4 py-2 font-bold ${
+    foodTypeFilter === "recipe" && recipeSort !== "ready"
+      ? "bg-[#a63a0a] text-white"
+      : "bg-[#fff4ef] text-[#a63a0a]"
+  }`}
+>
+  Recipes
+</button>
 
-          <button onClick={() => setFoodTypeFilter("grocery")} className="rounded-full bg-[#fff4ef] px-4 py-2 font-bold text-[#a63a0a]">
-            Go-To Foods
-          </button>
+<button
+  onClick={() => {
+    setFoodTypeFilter("grocery");
+    setRecipeSort("newest");
+  }}
+  className={`rounded-full px-4 py-2 font-bold ${
+    foodTypeFilter === "grocery" && recipeSort !== "ready"
+      ? "bg-[#a63a0a] text-white"
+      : "bg-[#fff4ef] text-[#a63a0a]"
+  }`}
+>
+  Go-To Foods
+</button>
 
-          <button onClick={() => setRecipeSort("ready")} className="rounded-full bg-[#e8f6df] px-4 py-2 font-bold text-[#315f25]">
-            ✓ Ready
-          </button>
+<button
+  onClick={() => {
+    setFoodTypeFilter("all");
+    setRecipeSort("ready");
+  }}
+  className={`rounded-full px-4 py-2 font-bold ${
+    recipeSort === "ready"
+      ? "bg-[#315f25] text-white"
+      : "bg-[#e8f6df] text-[#315f25]"
+  }`}
+>
+  ✓ Ready
+</button>
         </div>
       </section>
 

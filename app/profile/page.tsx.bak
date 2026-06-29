@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import AppShell from "../components/AppShell";
-import { supabase } from "@/lib/supabase";
+import AppShell from "../components/AppShell.tsx.bak";
+import { supabase } from "@/app/lib/supabase";
 
 export default function profilePage() {
   const [userEmail] = useState("");

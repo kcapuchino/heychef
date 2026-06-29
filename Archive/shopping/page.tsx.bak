@@ -1,7 +1,11 @@
-"use client";
+/*"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
+import { loadShoppingItems } from "@/app/lib/heyChefActions";
+import { loadMealPlan } from "../lib/heyChefActions";
+import { loadPantryItems } from "@/app/lib/heyChefActions";
+import { supabase } from "../lib/supabase";
 
 type Recipe = {
   id: string;
@@ -26,14 +30,18 @@ export default function ShoppingPage() {
   const [shoppingSort, setShoppingSort] = useState("az");
   const [hidePantryItems, setHidePantryItems] = useState(true);
 
-  const [shoppingItemImages] = useState<Record<string, string>>({});
-  const [shoppingItemUrls] = useState<Record<string, string>>({});
+  const [shoppingItemImages, setShoppingItemImages] =
+  useState<Record<string, string>>({});
+
+  const [shoppingItemUrls, setShoppingItemUrls] =
+  useState<Record<string, string>>({});
   const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
   const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
 
   const [recipes] = useState<Recipe[]>([]);
-  const [cookingQueue] = useState<Recipe[]>([]);
-  const [recentlyMade] = useState<any[]>([]);
+  const [mealPlan, setMealPlan] = useState<any[]>([]);
+  const [recentlyMade, setRecentlyMade] = useState<any[]>([]);
+  const [pantryItems, setPantryItems] = useState<any[]>([]);
 
   const [cookingQueueFilter, setCookingQueueFilter] = useState("all");
   const [showAllCookingQueue, setShowAllCookingQueue] = useState(false);
@@ -67,17 +75,43 @@ export default function ShoppingPage() {
     return "🛒";
   }
 
-  function getMatchingPantryItem(item: string) {
-    return null as any;
-  }
+  function getMatchingPantryItem(ingredient: string) {
+  const cleanedIngredientName = normalizeItemName(ingredient);
+
+  return pantryItems.find((pantryItem: any) => {
+    const cleanedPantryName = normalizeItemName(pantryItem.name);
+
+    if (!cleanedIngredientName || !cleanedPantryName) {
+      return false;
+    }
+
+    if (cleanedIngredientName.length < 3 || cleanedPantryName.length < 3) {
+      return false;
+    }
+
+    return cleanedIngredientName === cleanedPantryName;
+  });
+}
 
   function getRecipePantryGaps(recipe: Recipe) {
-    return recipe.ingredients || [];
-  }
+  return (recipe.ingredients || []).filter(
+    (ingredient: string) => !getMatchingPantryItem(ingredient)
+  );
+}
 
   function canMakeRecipeFromPantry(recipe: Recipe) {
-    return false;
+  if (recipe.type === "grocery") {
+    const matchingPantryItem = getMatchingPantryItem(recipe.title);
+
+    if (!matchingPantryItem) {
+      return false;
+    }
+
+    return Number(matchingPantryItem.quantity || 0) > 0;
   }
+
+  return getRecipePantryGaps(recipe).length === 0;
+}
 
   function getWeekStartDate(week: "current" | "next") {
     return "";
@@ -96,8 +130,156 @@ export default function ShoppingPage() {
     setShoppingList((current) => current.filter((savedItem) => savedItem !== item));
   }
 
-  function markRecipeMade(recipe: Recipe) {}
-  function togglePlanningQueue(recipeId: string) {}
+  async function markRecipeMade(recipe: Recipe) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+
+  if (recipe.type !== "grocery") {
+    const { error: madeError } = await supabase
+      .from("recently_made")
+      .insert({
+        user_id: user.id,
+        recipe_id: recipe.id,
+      });
+
+    if (madeError) {
+      showToast(madeError.message);
+      return;
+    }
+  }
+
+  if (recipe.mealPlanId) {
+    const { error: updateError } = await supabase
+      .from("meal_plan")
+      .update({ is_made: true })
+      .eq("id", recipe.mealPlanId);
+
+    if (updateError) {
+      showToast(updateError.message);
+      return;
+    }
+
+    setMealPlan((currentPlan) =>
+      currentPlan.map((item) =>
+        item.mealPlanId === recipe.mealPlanId
+          ? { ...item, isMade: true }
+          : item
+      )
+    );
+  }
+
+  await loadRecentlyMade();
+
+  showToast("Nice! Added to Recently Made.");
+}
+
+async function loadRecentlyMade() {
+  const { data, error } = await supabase
+    .from("recently_made")
+    .select(`
+      id,
+      cooked_at,
+      recipes (*)
+    `)
+    .order("cooked_at", { ascending: false })
+    .limit(showAllRecentlyMade ? 50 : 4);
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  setRecentlyMade(data || []);
+}
+
+  useEffect(() => {
+  async function fetchShoppingItems() {
+    try {
+      const data = await loadShoppingItems();
+
+      setShoppingList((data || []).map((item: any) => item.name));
+
+      const images: Record<string, string> = {};
+      const urls: Record<string, string> = {};
+
+      (data || []).forEach((item: any) => {
+        images[item.name] = item.image_url || "";
+        urls[item.name] = item.source_url || "";
+      });
+
+      setShoppingItemImages(images);
+      setShoppingItemUrls(urls);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  fetchShoppingItems();
+}, []);
+
+useEffect(() => {
+  async function loadCookingQueue() {
+    const data = await loadMealPlan();
+
+    const plannedItems = (data || [])
+      .filter((item: any) => !item.is_made)
+      .map((item: any) => {
+        const recipe = item.recipes;
+
+        return {
+          id: recipe?.id || item.id,
+          mealPlanId: item.id,
+          title: recipe?.title || item.title || "Planned item",
+          image: recipe?.image_url || item.image_url || "",
+          ingredients: recipe?.ingredients || [],
+          sourceUrl: recipe?.source_url || "",
+          source: item.source || "recipe",
+          type:
+            item.source === "shopping_list" || item.source === "leftovers"
+              ? "grocery"
+              : recipe?.type || "recipe",
+          isMade: item.is_made || false,
+          plannedDate: item.date,
+          weekStart: item.week_start,
+        };
+      });
+
+    setMealPlan(plannedItems);
+  }
+
+  loadCookingQueue();
+}, []);
+
+const cookingQueue = mealPlan
+  .filter((recipe: any) => {
+    const isReady = canMakeRecipeFromPantry(recipe);
+
+    if (cookingQueueFilter === "ready") return isReady;
+    if (cookingQueueFilter === "needs") return !isReady;
+
+    return true;
+  })
+  .sort((a: any, b: any) => {
+    return (
+      new Date(a.plannedDate || "").getTime() -
+      new Date(b.plannedDate || "").getTime()
+    );
+  });
+  
+  useEffect(() => {
+  async function fetchPantry() {
+    const data = await loadPantryItems();
+    setPantryItems(data || []);
+  }
+
+  fetchPantry();
+}, []);
 
   return (
     <AppShell>
@@ -213,21 +395,30 @@ export default function ShoppingPage() {
             )}
 
             {Object.values(
-              shoppingList.reduce<Record<string, { item: string; count: number }>>(
-                (groups, item) => {
-                  const key = cleanForSort(item);
+                shoppingList.reduce<Record<string, { item: string; count: number }>>(
+                    (groups, item) => {
+                    const key = cleanForSort(item);
 
-                  if (!groups[key]) {
-                    groups[key] = { item, count: 0 };
-                  }
+                    if (!groups[key]) {
+                        groups[key] = { item, count: 0 };
+                    }
 
-                  groups[key].count += 1;
-                  return groups;
-                },
-                {}
-              )
-            )
-              .sort((a, b) =>
+                    groups[key].count += 1;
+                    return groups;
+                    },
+                    {}
+                )
+                )
+                .filter(({ item }) => {
+                    const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+
+                    if (!hidePantryItems) {
+                    return true;
+                    }
+
+                    return !isManuallyMarkedOnHand;
+                })
+                .sort((a, b) =>
                 shoppingSort === "za"
                   ? cleanForSort(b.item).localeCompare(cleanForSort(a.item))
                   : cleanForSort(a.item).localeCompare(cleanForSort(b.item))
@@ -450,7 +641,7 @@ export default function ShoppingPage() {
                       </p>
 
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {recipe.ingredients.slice(0, 3).map((ingredient) => (
+                        {recipe.ingredients.slice(0, 3).map((ingredient: string) => (
                           <span
                             key={ingredient}
                             className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]"
@@ -510,4 +701,4 @@ export default function ShoppingPage() {
       )}
     </AppShell>
   );
-}
+}*/

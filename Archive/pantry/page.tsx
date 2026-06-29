@@ -1,22 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AppShell from "../components/AppShell";
-import { supabase } from "@/lib/supabase";
-
-type PantryItem = {
-  id: string;
-  name: string;
-  quantity: string;
-  unit?: string;
-  category: string;
-  createdAt: string;
-  image?: string;
-  sourceUrl?: string;
-  brand?: string;
-  packageSize?: string;
-  price?: string;
-};
+import {
+  loadPantryItems,
+  deletePantryItemById,
+  updatePantryItem,
+  savePantryItem,
+  addPantryItemToShoppingList,
+} from "@/Archive/lib/heyChefActions";
+import type { PantryItem } from "../types/heychef";
 
 const placeholderImage =
   "https://placehold.co/1200x800/f8efe6/a63a0a?text=Hey+Chef";
@@ -35,21 +28,22 @@ export default function PantryPage() {
   const [toastMessage, setToastMessage] = useState("");
 
   const [smartRestockItems] = useState<string[]>([]);
-const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
+  const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
 
-const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
+  const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
 
-const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
+  const [editingPantryModalId, setEditingPantryModalId] = useState<string | null>(null);
 
-const [pantryModalItem, setPantryModalItem] = useState("");
-const [pantryModalImage, setPantryModalImage] = useState("");
-const [pantryModalSourceUrl, setPantryModalSourceUrl] = useState("");
-const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
-const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
-const [pantryModalUnit, setPantryModalUnit] = useState("package");
-const [pantryModalCategory, setPantryModalCategory] = useState("Other");
-const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
-const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
+  const [pantryModalItem, setPantryModalItem] = useState("");
+  const [pantryModalImage, setPantryModalImage] = useState("");
+  const [pantryModalSourceUrl, setPantryModalSourceUrl] = useState("");
+  const [pantryModalShoppingItem, setPantryModalShoppingItem] = useState("");
+  const [pantryModalQuantity, setPantryModalQuantity] = useState("1");
+  const [pantryModalUnit, setPantryModalUnit] = useState("package");
+  const [pantryModalCategory, setPantryModalCategory] = useState("Other");
+  const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
+  const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
+
   
 
   function showToast(message: string) {
@@ -57,10 +51,81 @@ const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
     setTimeout(() => setToastMessage(""), 2500);
   }
 
-  function saveBulkPantryEdits() {}
-  function resetPantry() {}
+  async function saveBulkPantryEdits() {
+  try {
+    const drafts = Object.values(pantryDrafts);
+
+    for (const item of drafts) {
+      if ((item as any).markedForDelete || Number(item.quantity) <= 0) {
+        await deletePantryItemById(item.id);
+      } else {
+        await updatePantryItem(item);
+      }
+    }
+
+    const updatedPantry = await loadPantryItems();
+    setPantryItems(updatedPantry);
+    setIsBulkEditingPantry(false);
+    setPantryDrafts({});
+    showToast("Pantry updated.");
+  } catch (error: any) {
+    showToast(error.message || "Could not update pantry.");
+  }
+}
+ async function resetPantry() {
+  if (!confirm("Reset your pantry? This will remove all pantry items.")) return;
+
+  try {
+    for (const item of pantryItems) {
+      await deletePantryItemById(item.id);
+    }
+
+    setPantryItems([]);
+    showToast("Pantry reset.");
+  } catch (error: any) {
+    showToast(error.message || "Could not reset pantry.");
+  }
+}
   function savePantryItemAsFoodCard(item: PantryItem) {}
   function addItemsToShoppingList(items: string[], sourceItem?: any) {}
+
+  useEffect(() => {
+  async function fetchPantry() {
+    const data = await loadPantryItems();
+    setPantryItems(data);
+  }
+
+  fetchPantry();
+}, []);
+
+async function savePantryModalItem() {
+  if (!pantryModalItem.trim()) {
+    showToast("Enter an item name.");
+    return;
+  }
+
+  try {
+    await savePantryItem({
+      id: editingPantryModalId,
+      name: pantryModalItem,
+      quantity: pantryModalQuantity,
+      unit: pantryModalUnit,
+      category: pantryModalCategory,
+      image: pantryModalImage,
+      sourceUrl: pantryModalSourceUrl,
+    });
+
+    const updatedPantry = await loadPantryItems();
+    setPantryItems(updatedPantry);
+
+    setShowPantryModal(false);
+    setEditingPantryModalId(null);
+
+    showToast("Pantry saved.");
+  } catch (error: any) {
+    showToast(error.message || "Could not save pantry item.");
+  }
+}
 
   return (
     <AppShell>
@@ -528,22 +593,20 @@ const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
 
     <button
       onClick={async () => {
-        if (!confirm(`Delete ${item.name} from your pantry?`)) return;
+  if (!confirm(`Delete ${item.name} from your pantry?`)) return;
 
-        const { error } = await supabase
-          .from("pantry_items")
-          .delete()
-          .eq("id", item.id);
+  try {
+    await deletePantryItemById(item.id);
 
-        if (error) {
-          showToast(error.message);
-          return;
-        }
+    setPantryItems((current) =>
+      current.filter((p) => p.id !== item.id)
+    );
 
-        setPantryItems(
-          pantryItems.filter((p) => p.id !== item.id)
-        );
-      }}
+    showToast("Pantry item removed.");
+  } catch (error: any) {
+    showToast(error.message || "Could not delete pantry item.");
+  }
+}}
       className="text-sm text-[#a63a0a]"
     >
       Delete
@@ -575,6 +638,93 @@ const [originalPantrySourceUrl, setOriginalPantrySourceUrl] = useState("");
     </section>
   )}
 </div>
+{showPantryModal && (
+  <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0">
+    <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-2xl font-bold">
+          {editingPantryModalId ? "Edit Pantry Item" : "Add Pantry Item"}
+        </h2>
+
+        <button
+          onClick={() => setShowPantryModal(false)}
+          className="text-2xl text-[#6d5549]"
+        >
+          ✕
+        </button>
+      </div>
+
+      <input
+        value={pantryModalItem}
+        onChange={(e) => setPantryModalItem(e.target.value)}
+        placeholder="Item name"
+        className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={pantryModalQuantity}
+        onChange={(e) => setPantryModalQuantity(e.target.value)}
+        placeholder="Quantity"
+        className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <select
+        value={pantryModalUnit}
+        onChange={(e) => setPantryModalUnit(e.target.value)}
+        className="mb-3 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+      >
+        <option value="">Unit</option>
+        <option value="package">package</option>
+        <option value="count">count</option>
+        <option value="can">can</option>
+        <option value="box">box</option>
+        <option value="bag">bag</option>
+        <option value="bottle">bottle</option>
+        <option value="jar">jar</option>
+      </select>
+
+      <select
+        value={pantryModalCategory}
+        onChange={(e) => setPantryModalCategory(e.target.value)}
+        className="mb-3 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+      >
+        <option value="Produce">Produce</option>
+        <option value="Refrigerated">Refrigerated</option>
+        <option value="Frozen">Frozen</option>
+        <option value="Meat & Protein">Meat & Protein</option>
+        <option value="Canned Goods">Canned Goods</option>
+        <option value="Grains & Pasta">Grains & Pasta</option>
+        <option value="Baking">Baking</option>
+        <option value="Spices">Spices</option>
+        <option value="Condiments">Condiments</option>
+        <option value="Snacks">Snacks</option>
+        <option value="Beverages">Beverages</option>
+        <option value="Other">Other</option>
+      </select>
+
+      <input
+        value={pantryModalImage}
+        onChange={(e) => setPantryModalImage(e.target.value)}
+        placeholder="Image URL"
+        className="mb-3 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <input
+        value={pantryModalSourceUrl}
+        onChange={(e) => setPantryModalSourceUrl(e.target.value)}
+        placeholder="Store URL"
+        className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+      />
+
+      <button
+        onClick={savePantryModalItem}
+        className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+      >
+        {editingPantryModalId ? "Save Changes" : "Save Pantry Item"}
+      </button>
+    </div>
+  </div>
+)}
        </AppShell>
   );
 }
