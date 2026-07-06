@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabase } from "@/Archive/lib/supabase";
 
+
 export default function Page() {
     const [waitlistEmail, setWaitlistEmail] = useState("");
     const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
@@ -31,7 +32,31 @@ export default function Page() {
 
   setIsJoiningWaitlist(false);
 }
+async function startCheckout(
+  type: "founding" | "features" | "coffee" | "support"
+) {
+  const response = await fetch("/api/create-checkout-session", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ type }),
+  });
 
+  const text = await response.text();
+
+  if (!response.ok) {
+    console.error("Checkout failed:", text);
+    alert("Checkout failed. Check the console.");
+    return;
+  }
+
+  const data = JSON.parse(text);
+
+  if (data.url) {
+    window.location.href = data.url;
+  }
+}
   return (
     <main className="min-h-screen bg-[#f8efe6] px-6 py-10 text-[#2b1711]">
      
@@ -105,7 +130,7 @@ export default function Page() {
               </div>
 
               <span className="rounded-full border border-[#d8b36a] px-4 py-2 text-sm font-bold text-[#d8b36a]">
-                Coming Soon
+                Lifetime Access
               </span>
             </div>
 
@@ -127,15 +152,15 @@ export default function Page() {
               </ul>
             </div>
 
-            <button
-              onClick={() => setShowWaitlistModal(true)}
-              className="w-full rounded-full bg-[#d8b36a] px-6 py-4 font-bold text-[#1f1713]"
-            >
-              👑 Join the Waitlist
-            </button>
+           <button
+            onClick={() => startCheckout("founding")}
+            className="w-full rounded-full bg-[#d8b36a] px-6 py-4 font-bold text-[#1f1713] transition hover:bg-[#e6c67d]"
+          >
+            👨‍🍳 Become a Founding Chef
+          </button>
 
             <p className="mt-4 text-center text-sm text-[#d8b36a]">
-              Launching soon • Join the waitlist
+              Secure one-time payment • Lifetime Premium Access
             </p>
           </div>
 
@@ -147,30 +172,30 @@ export default function Page() {
             </p>
 
             <div className="grid gap-4">
-  {[
-    ["$5", "Support development", "Help with hosting and tools."],
-    ["$10", "Buy me a coffee", "Fuel more late-night building."],
-    ["$25", "Help fund new features", "Support future improvements."],
-  ].map(([amount, title, text]) => (
-    <button
-      key={amount}
-      onClick={() => setShowWaitlistModal(true)}
-      className="flex items-center justify-between rounded-[1.25rem] border border-[#ead7c8] bg-[#fffaf5] px-6 py-5 text-left shadow-sm transition hover:border-[#a63a0a]"
-    >
-      <div>
-        <p className="text-2xl font-bold text-[#a63a0a]">
-          {amount}
-        </p>
-        <p className="font-semibold">{title}</p>
-        <p className="text-sm text-[#6d5549]">{text}</p>
-      </div>
+            {[
+            ["$5", "Support development", "Help with hosting and tools.", "support"],
+            ["$10", "Buy me a coffee", "Fuel more late-night building.", "coffee"],
+            ["$25", "Help fund new features", "Support future improvements.", "features"],
+          ].map(([amount, title, text, type]) => (
+            <button
+              key={amount}
+              onClick={() =>
+                startCheckout(type as "support" | "coffee" | "features")
+              }
+              className="flex items-center justify-between rounded-[1.25rem] border border-[#ead7c8] bg-[#fffaf5] px-6 py-5 text-left shadow-sm transition hover:border-[#a63a0a]"
+            >
+              <div>
+                <p className="text-2xl font-bold text-[#a63a0a]">{amount}</p>
+                <p className="font-semibold">{title}</p>
+                <p className="text-sm text-[#6d5549]">{text}</p>
+              </div>
 
-      <span className="text-sm font-bold text-[#a63a0a]">
-        Join Waitlist
-      </span>
-    </button>
-  ))}
-</div>
+              <span className="text-sm font-bold text-[#a63a0a]">
+                Support
+              </span>
+            </button>
+          ))}   
+      </div>
 
             <p className="mt-6 text-center text-sm text-[#6d5549]">
               Secure one-time payment • No recurring fees
@@ -179,16 +204,16 @@ export default function Page() {
         </section>
 
         <section className="mb-8 rounded-[2rem] bg-white p-8 text-center shadow-xl">
-          <p className="mb-8 text-sm uppercase tracking-[0.3em] text-[#a63a0a]">
+          <p className="mb-8 text-lg uppercase tracking-[0.3em] text-[#a63a0a]">
             Your support helps fund
           </p>
 
-          <div className="grid gap-6 md:grid-cols-5">
-            <div>🛒<br />Grocery integrations</div>
-            <div>💵<br />Budget tracking</div>
-            <div>🥫<br />Pantry intelligence</div>
-            <div>💻<br />Hosting & development</div>
-            <div>✨<br />New features</div>
+          <div className="grid gap-6 md:grid-cols-5 ">
+            <div className="text-lg">🛒<br />Grocery integrations</div>
+            <div className="text-lg">💵<br />Budget tracking</div>
+            <div className="text-lg">🥫<br />Pantry intelligence</div>
+            <div className="text-lg">💻<br />Hosting & development</div>
+            <div className="text-lg">✨<br />New features</div>
           </div>
         </section>
 

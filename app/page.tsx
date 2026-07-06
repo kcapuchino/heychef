@@ -295,6 +295,11 @@ export default function Home() {
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
 
+  const [plan, setPlan] = useState("free");
+  const [foundingChef, setFoundingChef] = useState(false);
+  const [lifetimePremium, setLifetimePremium] = useState(false);
+  const [supportedAt, setSupportedAt] = useState<string | null>(null);
+
   const [currentPage, setCurrentPage] = useState<
   "home" | "recipes" | "planner" | "shopping" | "pantry" | "profile"
 >("home");
@@ -416,6 +421,7 @@ export default function Home() {
 
 const cookingQueue = Object.values(mealPlan)
   .flat()
+  .filter((recipe: PlannedRecipe) => !recipe.isMade)
   .filter((recipe: PlannedRecipe) => {
     const isReady = canMakeRecipeFromPantry(recipe);
 const neededCount = recipe.type === "grocery"
@@ -725,16 +731,26 @@ useEffect(() => {
 
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single();
+const { data, error } = await supabase
+  .from("profiles")
+  .select(`
+    display_name,
+    founding_chef,
+    lifetime_premium,
+    supported_at
+  `)
+  .eq("id", user.id)
+  .single();
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+if (error) {
+  console.error(error);
+  return;
+}
+
+setDisplayName(data?.display_name || "");
+setFoundingChef(Boolean(data?.founding_chef));
+setLifetimePremium(Boolean(data?.lifetime_premium));
+setSupportedAt(data?.supported_at || null);
 
     setDisplayName(data?.display_name || "");
   }
@@ -1124,7 +1140,7 @@ if (item.source === "shopping_list" || item.source === "leftovers") {
     createdAt: item.recipes?.created_at || item.created_at,
     isMade: item.is_made || false,
     mealPlanId: item.id,
-    plannedDate: item.date,
+    plannedDate: item.day,
     weekStart: item.week_start,
     source: item.source,
     type: item.recipes?.type || "grocery",
@@ -2310,6 +2326,8 @@ if (alreadyPlannedCount >= cartCount) {
   const plannedRecipe: PlannedRecipe = {
   ...newItem,
   mealPlanId: data.id,
+  plannedDate: plannerPopup.day,
+  weekStart: getWeekStartDate(activePlannerWeek),
 };
 
 setMealPlan((current) => ({
@@ -2787,42 +2805,52 @@ async function markRecipeMade(recipe: Recipe | PlannedRecipe) {
     return;
   }
 
-  const { error: madeError } = await supabase
-    .from("recently_made")
-    .insert({
-      user_id: user.id,
-      recipe_id: recipe.id,
-    });
+  const isLeftovers = "source" in recipe && recipe.source === "leftovers";
+  const isGrocery = "type" in recipe && recipe.type === "grocery";
 
-  if (madeError) {
-    showToast(madeError.message);
-    return;
+  if (!isLeftovers) {
+    const { error: madeError } = await supabase
+      .from("recently_made")
+      .insert({
+        user_id: user.id,
+        recipe_id: isGrocery ? null : recipe.id,
+        title: recipe.title,
+        image_url: recipe.image || null,
+        source_url: recipe.sourceUrl || null,
+        source_type: isGrocery ? "grocery" : "recipe",
+        cooked_at: new Date().toISOString(),
+      });
+
+    if (madeError) {
+      showToast(madeError.message);
+      return;
+    }
   }
 
   if ("mealPlanId" in recipe) {
     const { error: updateError } = await supabase
-  .from("meal_plan")
-  .update({ is_made: true })
-  .eq("id", recipe.mealPlanId);
+      .from("meal_plan")
+      .update({ is_made: true })
+      .eq("id", recipe.mealPlanId);
 
-if (updateError) {
-  showToast(updateError.message);
-  return;
-}
+    if (updateError) {
+      showToast(updateError.message);
+      return;
+    }
 
     setMealPlan((currentPlan) => {
-  const updatedPlan = { ...currentPlan };
+      const updatedPlan = { ...currentPlan };
 
-  Object.keys(updatedPlan).forEach((key) => {
-    updatedPlan[key] = updatedPlan[key].map((plannedRecipe) =>
-      plannedRecipe.mealPlanId === recipe.mealPlanId
-        ? { ...plannedRecipe, isMade: true }
-        : plannedRecipe
-    );
-  });
+      Object.keys(updatedPlan).forEach((key) => {
+        updatedPlan[key] = updatedPlan[key].map((plannedRecipe) =>
+          plannedRecipe.mealPlanId === recipe.mealPlanId
+            ? { ...plannedRecipe, isMade: true }
+            : plannedRecipe
+        );
+      });
 
-  return updatedPlan;
-});
+      return updatedPlan;
+    });
   }
 
   setRecipes(
@@ -2835,7 +2863,7 @@ if (updateError) {
 
   await loadRecentlyMade();
 
-  showToast("Nice! Added to Recently Made.");
+  showToast(isLeftovers ? "Marked as made." : "Nice! Added to Recently Made.");
 }
 
 async function loadRecentlyMade() {
@@ -2844,10 +2872,13 @@ async function loadRecentlyMade() {
     .select(`
       id,
       cooked_at,
+      title,
+      image_url,
+      source_url,
+      source_type,
       recipes (*)
     `)
-    .order("cooked_at", { ascending: false })
-    .limit(showAllRecentlyMade ? 50 : 4);
+    .order("cooked_at", { ascending: false });
 
   if (error) {
     console.error(error);
@@ -2856,7 +2887,37 @@ async function loadRecentlyMade() {
 
   setRecentlyMade(data || []);
 }
+async function makeRecentlyMadeAgain(item: any) {
+  const recipe = item.recipes;
 
+  if (recipe) {
+    togglePlanningQueue(recipe.id);
+    showToast("Added back to your meal plan options.");
+    return;
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return;
+
+  const { error } = await supabase.from("shopping_items").insert({
+  user_id: user.id,
+  name: item.title,
+  image_url: item.image_url || null,
+  source_url: item.source_url || null,
+  is_checked: false,
+});
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  await loadShoppingItems();
+  showToast("Added back to your meal plan options.");
+}
   async function removeShoppingItem(item: string) {
   const { data: row } = await supabase
     .from("shopping_items")
@@ -4300,29 +4361,21 @@ if (showProfile) {
   </p>
 
   <div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] bg-[#fbf7f2] p-5">
-    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p className="text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
-          Membership
-        </p>
+  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <p className="text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+        Membership
+      </p>
 
-       <h2 className="text-2xl font-bold">
-        {userEmail.endsWith("@in.gov")
-          ? "🏛️ State Employee Chef"
-          : "⭐ Hey Chef Member"}
+      <h2 className="text-2xl font-bold">
+        {foundingChef ? "👨‍🍳 Founding Chef" : "⭐ Hey Chef Member"}
       </h2>
 
       <p className="mt-1 text-sm text-[#6d5549]">
-        {userEmail.endsWith("@in.gov")
-          ? "Complimentary Premium Access"
-          : "Free Membership"}
+        {plan === "free" ? "Free Membership" : "Premium Membership"}
       </p>
 
-      {userEmail.endsWith("@in.gov") && (
-        <p className="mt-2 text-sm text-[#6d5549]">
-          In appreciation of your public service.
-        </p>
-      )}
+      
 
       <p className="mt-2 text-sm text-[#6d5549]">
         Joined{" "}
@@ -4330,74 +4383,83 @@ if (showProfile) {
           ? new Date(userCreatedAt).toLocaleDateString()
           : "Recently"}
       </p>
+
+      {foundingChef && supportedAt && (
+        <p className="mt-1 text-xs text-[#6d5549]">
+          Founding Chef since{" "}
+          {new Date(supportedAt).toLocaleDateString()}
+        </p>
+      )}
     </div>
 
+    {!foundingChef && (
       <button
         onClick={() => {
-  window.location.href = "/founding-chef";
-}}
-        className="rounded-full border border-[#a63a0a] px-5 py-3 font-semibold text-[#a63a0a]"
+          window.location.href = "/founding-chef";
+        }}
+        className="rounded-full border border-[#a63a0a] px-5 py-3 font-semibold text-[#a63a0a] transition hover:bg-[#a63a0a] hover:text-white"
       >
         Become a Founding Chef
       </button>
-    </div>
+    )}
   </div>
+</div>
 
   <div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] p-5">
-    <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
-      Account
-    </p>
+  <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+    Account
+  </p>
 
-    <p className="font-semibold">{userEmail}</p>
+  <p className="font-semibold">{userEmail}</p>
 
-    <p className="mt-1 text-sm text-[#6d5549]">
-      Account created{" "}
-      {userCreatedAt
-        ? new Date(userCreatedAt).toLocaleDateString()
-        : "Recently"}
-    </p>
-  </div>
+  <p className="mt-1 text-sm text-[#6d5549]">
+    Account created{" "}
+    {userCreatedAt
+      ? new Date(userCreatedAt).toLocaleDateString()
+      : "Recently"}
+  </p>
+</div>
 
-  <label className="mb-2 block font-semibold">
-    Display Name
-  </label>
+<label className="mb-2 block font-semibold">
+  Display Name
+</label>
 
-  <input
-    value={displayName}
-    onChange={(e) => setDisplayName(e.target.value)}
-    placeholder="Chef"
-    className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
-  />
+<input
+  value={displayName}
+  onChange={(e) => setDisplayName(e.target.value)}
+  placeholder="Chef"
+  className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
+/>
 
-  <button
-    onClick={async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+<button
+  onClick={async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      if (!user) {
-        showToast("Please log in again.");
-        return;
-      }
+    if (!user) {
+      showToast("Please log in again.");
+      return;
+    }
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName.trim() || null,
-        })
-        .eq("id", user.id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName.trim() || null,
+      })
+      .eq("id", user.id);
 
-      if (error) {
-        showToast(error.message);
-        return;
-      }
+    if (error) {
+      showToast(error.message);
+      return;
+    }
 
-      showToast("Profile saved.");
-    }}
-    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-  >
-    Save Profile
-  </button>
+    showToast("Profile saved.");
+  }}
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+>
+  Save Profile
+</button>
 
   <button
     onClick={changePasswordNow}
@@ -4553,15 +4615,37 @@ if (showProfile) {
       
 
           <button
-  onClick={() => {
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
 
           <button
             onClick={() => {
@@ -4599,16 +4683,37 @@ if (showProfile) {
 
       
 <button
-  onClick={() => {
-    setIsMenuOpen(false);
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -5153,13 +5258,14 @@ const { error } = await supabase
   </div>
 </div>
 
-  {cookingQueue.length === 0 ? (
+  {cookingQueue.filter((recipe) => !recipe.isMade).length === 0 ? (
   <p className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-[#6d5549]">
     No planned recipes yet. Add recipes to your meal planner to see them here.
   </p>
 ) : (
   <div className="space-y-3">
     {cookingQueue
+  .filter((recipe) => !recipe.isMade)
   .slice(0, showAllCookingQueue ? cookingQueue.length : 3)
   .map((recipe) => (
     
@@ -5176,17 +5282,19 @@ const { error } = await supabase
 
           <div>
             <span className="mb-1 inline-block rounded-full bg-[#fff4ef] px-3 py-1 text-xs font-bold text-[#a63a0a]">
-  {recipe.plannedDate
-    ? `${
-        recipe.weekStart === getWeekStartDate("current")
-          ? "This"
-          : "Next"
-      } ${new Date(
-        recipe.plannedDate + "T00:00:00"
-      ).toLocaleDateString("en-US", {
-        weekday: "long",
-      })}`
-    : "Planned"}
+  {recipe.source === "leftovers"
+  ? `Leftovers • ${new Date(
+      recipe.plannedDate + "T00:00:00"
+    ).toLocaleDateString("en-US", {
+      weekday: "long",
+    })}`
+  : recipe.plannedDate
+  ? `${
+      recipe.weekStart === getWeekStartDate("current") ? "This" : "Next"
+    } ${new Date(recipe.plannedDate + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "long",
+    })}`
+  : "Planned"}
 </span>
 
 
@@ -5249,14 +5357,14 @@ const { error } = await supabase
       </div>
         ))}
 
-    {cookingQueue.length > 3 && (
+    {cookingQueue.filter((recipe) => !recipe.isMade).length > 3 && (
       <button
         onClick={() => setShowAllCookingQueue(!showAllCookingQueue)}
         className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
       >
         {showAllCookingQueue
           ? "Show Less"
-          : `Show All ${cookingQueue.length}`}
+          : `Show All ${cookingQueue.filter((recipe) => !recipe.isMade).length}`}
       </button>
     )}
   </div>
@@ -5290,17 +5398,27 @@ const { error } = await supabase
   className="mt-2 text-sm font-bold text-[#a63a0a]"
 >
   {showAllRecentlyMade ? "Show recent 4" : "View full history"}
+  
 </button>
       </div>
     </div>
 
     <div className="grid gap-4 md:grid-cols-4">
-      {recentlyMade.map((item: any) => {
+      {(showAllRecentlyMade ? recentlyMade : recentlyMade.slice(0, 4)).map((item: any) => {
         const recipe = item.recipes;
-if (!recipe) return null;
 
-const recipeImage = recipe.image_url || recipe.image || placeholderImage;
-const recipeTitle = recipe.title;
+        const recipeImage =
+          recipe?.image_url ||
+          recipe?.image ||
+          item.image_url ||
+          placeholderImage;
+
+        const recipeTitle =
+          recipe?.title ||
+          item.title ||
+          "Recently made";
+
+        const isRecipe = !!recipe;
 
         return (
   <div
@@ -5310,6 +5428,7 @@ const recipeTitle = recipe.title;
     <button
       type="button"
       onClick={() => {
+        if (!isRecipe) return;
         setSelectedRecipe({
           id: recipe.id,
           title: recipe.title,
@@ -5341,7 +5460,9 @@ const recipeTitle = recipe.title;
         className="mb-3 h-24 w-full rounded-2xl object-cover"
       />
 
-      <h3 className="font-bold">{recipe.title}</h3>
+      <h3 className="font-bold text-[#2b1a12]">
+        {recipe?.title || item.title || "Recently made"}
+      </h3>
 
       <p className="text-sm text-[#6d5549]">
         Made {new Date(item.cooked_at).toLocaleDateString()}
@@ -5349,12 +5470,12 @@ const recipeTitle = recipe.title;
     </button>
 
     <button
-      type="button"
-      onClick={() => togglePlanningQueue(recipe.id)}
-      className="mt-3 w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
-    >
-      Make Again
-    </button>
+  type="button"
+  onClick={() => makeRecentlyMadeAgain(item)}
+  className="mt-3 w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+>
+  {isRecipe ? "Make Again" : "Buy Again"}
+</button>
   </div>
 );
       })}
@@ -5493,15 +5614,37 @@ const recipeTitle = recipe.title;
           
 
           <button
-  onClick={() => {
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
 
           <button
             onClick={() => {
@@ -5539,16 +5682,37 @@ const recipeTitle = recipe.title;
 
       
 <button
-  onClick={() => {
-    setIsMenuOpen(false);
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -5837,11 +6001,6 @@ setMealPlan(updatedMealPlan);
 }`}
   >
     {recipe.title}
-    {recipe.isMade && (
-  <p className="mt-1 text-xs font-bold text-[#8a8a8a]">
-    ✓ Made
-  </p>
-)}
 
   {recipe.source === "shopping_list" && (
     <p className="mt-1 text-xs font-bold text-[#3f7f32]">
@@ -6053,15 +6212,37 @@ if (showPantry) {
           
 
           <button
-  onClick={() => {
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
 
           <button
             onClick={() => {
@@ -6099,16 +6280,37 @@ if (showPantry) {
 
       
 <button
-  onClick={() => {
-    setIsMenuOpen(false);
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -6760,15 +6962,37 @@ if (showPantry) {
 
           
 <button
-  onClick={() => {
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
           <button
             onClick={() => {
               setShowSettingsMenu(false);
@@ -6805,16 +7029,37 @@ if (showPantry) {
 
       
 <button
-  onClick={() => {
-    setIsMenuOpen(false);
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -7377,15 +7622,37 @@ Bake for 25 minutes`}
 
         
 <button
-  onClick={() => {
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
           <button
             onClick={() => {
               setShowSettingsMenu(false);
@@ -7422,16 +7689,37 @@ Bake for 25 minutes`}
 
     
 <button
-  onClick={() => {
-    setIsMenuOpen(false);
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
@@ -8031,15 +8319,37 @@ Bake for 25 minutes`}
 
           
 <button
-  onClick={() => {
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
           <button
             onClick={() => {
               setShowSettingsMenu(false);
@@ -8076,16 +8386,37 @@ Bake for 25 minutes`}
 
       
 <button
-  onClick={() => {
-    setIsMenuOpen(false);
-    showToast(
-      "Install Hey Chef:\n\nOn iPhone: tap Share, then Add to Home Screen.\n\nOn Android: tap the browser menu, then Install App or Add to Home Screen."
-    );
-  }}
-  className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
->
-  📱 Install App
-</button>
+          onClick={() => {
+            setIsMenuOpen(false);
+
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
       <button
         onClick={() => {
           setIsMenuOpen(false);
