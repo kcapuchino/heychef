@@ -2528,9 +2528,10 @@ const { data: imageMemory } = await supabase
       : guessShoppingCategory(item.name) || "Other";
 
   const existingPantryItem = pantryItems.find(
-    (pantryItem) =>
-      normalizeItemName(pantryItem.name) === normalizedName
-  );
+  (pantryItem) =>
+    normalizeItemName(cleanPantryDisplayName(pantryItem.name)) ===
+    normalizedName
+);
 
   if (existingPantryItem) {
     const currentQty = Number(existingPantryItem.quantity || 0);
@@ -2539,9 +2540,9 @@ const { data: imageMemory } = await supabase
     const { error } = await supabase
       .from("pantry_items")
       .update({
-        quantity: String(currentQty + addQty),
-        category: finalCategory,
-      })
+  quantity: String(currentQty + addQty),
+  category: existingPantryItem.category || finalCategory,
+})
       .eq("id", existingPantryItem.id);
       
     if (error) {
@@ -4076,6 +4077,8 @@ if (!userEmail) {
             {renderAuthCard()}
           </div>
 
+          
+
           <div className="my-6 rounded-[2rem] bg-white p-5 shadow-sm">
   <p className="mb-4 text-[#6d5549]">
     Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
@@ -4098,6 +4101,7 @@ if (!userEmail) {
     </button>
   </div>
 </div>
+
 
           <div
   onClick={() => setSampleRecipe(sampleRecipes[0])}
@@ -4178,6 +4182,7 @@ if (!userEmail) {
           {renderAuthCard()}
         </div>
       </section>
+    
 
       {sampleRecipe && (
   <div
@@ -4194,6 +4199,7 @@ if (!userEmail) {
       >
         ×
       </button>
+
 
       <img
         src={sampleRecipe.image || placeholderImage}
