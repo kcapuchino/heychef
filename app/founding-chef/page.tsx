@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/Archive/lib/supabase";
 
 
@@ -9,7 +9,24 @@ export default function Page() {
     const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
     const [showWaitlistModal, setShowWaitlistModal] = useState(false);
 
-    async function joinWaitlist() {
+    const FOUNDING_CHEF_LIMIT = 250;
+    const [foundingChefCount, setFoundingChefCount] = useState(0);
+
+    async function loadFoundingChefCount() {
+      const { count, error } = await supabase
+        .from("founding_chefs")
+        .select("*", { count: "exact", head: true });
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setFoundingChefCount(count || 0);
+    }
+
+
+async function joinWaitlist() {
   if (!waitlistEmail.trim()) return;
 
   setIsJoiningWaitlist(true);
@@ -57,7 +74,11 @@ async function startCheckout(
     window.location.href = data.url;
   }
 }
+useEffect(() => {
+  loadFoundingChefCount();
+}, []);
   return (
+  
     <main className="min-h-screen bg-[#f8efe6] px-6 py-10 text-[#2b1711]">
      
       <section className="mx-auto max-w-6xl">
@@ -152,69 +173,98 @@ async function startCheckout(
               </ul>
             </div>
 
-           <button
-            onClick={() => startCheckout("founding")}
-            className="w-full rounded-full bg-[#d8b36a] px-6 py-4 font-bold text-[#1f1713] transition hover:bg-[#e6c67d]"
-          >
-            👨‍🍳 Become a Founding Chef
-          </button>
+          <div className="mb-8 rounded-[1.5rem] border border-[#d8b36a]/40 bg-[#2b211b] p-5">
+  <div className="mb-3 flex items-center justify-between gap-3">
+    <p className="font-bold text-[#f7e7c7]">
+      {foundingChefCount} of {FOUNDING_CHEF_LIMIT} claimed
+    </p>
+
+    <p className="text-sm font-bold text-[#d8b36a]">
+      {Math.max(FOUNDING_CHEF_LIMIT - foundingChefCount, 0)} left
+    </p>
+  </div>
+
+  <div className="h-3 overflow-hidden rounded-full bg-[#4a3a30]">
+    <div
+      className="h-full rounded-full bg-[#d8b36a]"
+      style={{
+        width: `${Math.min(
+          (foundingChefCount / FOUNDING_CHEF_LIMIT) * 100,
+          100
+        )}%`,
+      }}
+    />
+  </div>
+
+  <p className="mt-3 text-sm text-[#f1e5d7]">
+    Limited to the first {FOUNDING_CHEF_LIMIT} supporters.
+  </p>
+</div>
+
+<button
+  onClick={() => startCheckout("founding")}
+  disabled={foundingChefCount >= FOUNDING_CHEF_LIMIT}
+  className="w-full rounded-full bg-[#d8b36a] px-6 py-4 font-bold text-[#1f1713] transition hover:bg-[#e6c67d] disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {foundingChefCount >= FOUNDING_CHEF_LIMIT
+    ? "Founding Chef Sold Out"
+    : "👨‍🍳 Become a Founding Chef"}
+</button>
 
             <p className="mt-4 text-center text-sm text-[#d8b36a]">
               Secure one-time payment • Lifetime Premium Access
             </p>
           </div>
 
-          <div className="rounded-[2rem] bg-white p-8 shadow-xl">
-            <h2 className="mb-3 text-3xl font-bold">❤️ Just Want to Help?</h2>
+         <div className="flex h-full flex-col rounded-[2rem] bg-white p-8 shadow-xl">
+  <h2 className="text-3xl font-bold">❤️ Just Want to Help?</h2>
 
-            <p className="mb-6 text-[#6d5549]">
-              Every little bit helps keep Hey Chef growing.
-            </p>
+  <p className="mt-3 text-[#6d5549]">
+    Every contribution helps us build a smarter meal planning experience for
+    everyone.
+  </p>
 
-            <div className="grid gap-4">
-            {[
-            ["$5", "Support development", "Help with hosting and tools.", "support"],
-            ["$10", "Buy me a coffee", "Fuel more late-night building.", "coffee"],
-            ["$25", "Help fund new features", "Support future improvements.", "features"],
-          ].map(([amount, title, text, type]) => (
-            <button
-              key={amount}
-              onClick={() =>
-                startCheckout(type as "support" | "coffee" | "features")
-              }
-              className="flex items-center justify-between rounded-[1.25rem] border border-[#ead7c8] bg-[#fffaf5] px-6 py-5 text-left shadow-sm transition hover:border-[#a63a0a]"
-            >
-              <div>
-                <p className="text-2xl font-bold text-[#a63a0a]">{amount}</p>
-                <p className="font-semibold">{title}</p>
-                <p className="text-sm text-[#6d5549]">{text}</p>
-              </div>
+  <div className="mt-8 flex flex-1 flex-col gap-4">
+    {[
+      ["$5", "Support development", "Help with hosting and tools.", "support"],
+      ["$10", "Buy me a coffee", "Fuel more late-night building.", "coffee"],
+      ["$25", "Help fund new features", "Support future improvements.", "features"],
+    ].map(([amount, title, text, type]) => (
+      <button
+        key={amount}
+        onClick={() =>
+          startCheckout(type as "support" | "coffee" | "features")
+        }
+        className="flex items-center justify-between rounded-[1.5rem] border border-[#ead7c8] bg-[#fffaf5] px-6 py-5 text-left transition hover:border-[#a63a0a] hover:shadow-md"
+      >
+        <div>
+          <p className="text-2xl font-bold text-[#a63a0a]">{amount}</p>
+          <p className="font-semibold text-[#2b1b14]">{title}</p>
+          <p className="text-sm text-[#6d5549]">{text}</p>
+        </div>
 
-              <span className="text-sm font-bold text-[#a63a0a]">
-                Support
-              </span>
-            </button>
-          ))}   
-      </div>
+        <span className="rounded-full bg-[#fff1e7] px-4 py-2 text-sm font-bold text-[#a63a0a]">
+          Support
+        </span>
+      </button>
+    ))}
+  </div>
 
-            <p className="mt-6 text-center text-sm text-[#6d5549]">
-              Secure one-time payment • No recurring fees
-            </p>
-          </div>
-        </section>
+  <div className="mt-6 rounded-[1.25rem] border border-[#ead7c8] bg-[#fffaf5] p-5">
+  <p className="mb-4 text-center text-xs font-bold uppercase tracking-[0.25em] text-[#a63a0a]">
+    Your support helps fund
+  </p>
 
-        <section className="mb-8 rounded-[2rem] bg-white p-8 text-center shadow-xl">
-          <p className="mb-8 text-lg uppercase tracking-[0.3em] text-[#a63a0a]">
-            Your support helps fund
-          </p>
+  <div className="flex flex-wrap justify-center gap-3 text-sm font-semibold text-[#2b1b14]">
+    <span>🛒 Grocery integrations</span>
+    <span>💵 Budget tracking</span>
+    <span>🥫 Pantry intelligence</span>
+    <span>💻 Hosting</span>
+    <span>✨ New features</span>
+  </div>
+</div>
 
-          <div className="grid gap-6 md:grid-cols-5 ">
-            <div className="text-lg">🛒<br />Grocery integrations</div>
-            <div className="text-lg">💵<br />Budget tracking</div>
-            <div className="text-lg">🥫<br />Pantry intelligence</div>
-            <div className="text-lg">💻<br />Hosting & development</div>
-            <div className="text-lg">✨<br />New features</div>
-          </div>
+</div>
         </section>
 
         <section className="rounded-[2rem] overflow-hidden bg-white shadow-xl">
@@ -249,7 +299,7 @@ async function startCheckout(
     className="text-xl font-semibold text-[#a63a0a]"
     style={{ fontFamily: "'Dancing Script', cursive" }}
   >
-    Thank you for believing in the idea. ❤️
+    Thank you for believing in me. ❤️
   </p>
       </div>
     </div>

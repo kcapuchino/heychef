@@ -2968,6 +2968,21 @@ async function makeRecentlyMadeAgain(item: any) {
 });
 }
 
+function pantryNamesMatch(ingredient: string, pantryName: string) {
+  const cleanIngredient = normalizeItemName(ingredient);
+  const cleanPantry = normalizeItemName(pantryName);
+
+  if (!cleanIngredient || !cleanPantry) return false;
+
+  if (cleanIngredient === cleanPantry) return true;
+
+  const ingredientWords = cleanIngredient.split(" ");
+  const pantryWords = cleanPantry.split(" ");
+
+  return ingredientWords.every((word) => pantryWords.includes(word)) ||
+    pantryWords.every((word) => ingredientWords.includes(word));
+}
+
 function getMatchingPantryItem(ingredient: string) {
   const cleanedIngredientName = normalizeItemName(ingredient);
 
@@ -2985,11 +3000,7 @@ function getMatchingPantryItem(ingredient: string) {
       return false;
     }
 
-    return (
-    cleanedIngredientName === cleanedPantryName ||
-    cleanedIngredientName.includes(cleanedPantryName) ||
-    cleanedPantryName.includes(cleanedIngredientName)
-  );
+    return pantryNamesMatch(ingredient, pantryItem.name);
   });
 }
 
