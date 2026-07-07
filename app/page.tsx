@@ -2527,31 +2527,42 @@ const { data: imageMemory } = await supabase
       ? item.store_section
       : guessShoppingCategory(item.name) || "Other";
 
-  const existingPantryItem = pantryItems.find(
-  (pantryItem) =>
-    normalizeItemName(cleanPantryDisplayName(pantryItem.name)) ===
-    normalizedName
-);
+  console.log("Shopping:", cleanedName);
+console.log("Normalized shopping:", normalizedName);
+
+pantryItems.forEach((item) => {
+  console.log(
+    "Pantry:",
+    item.name,
+    "=>",
+    normalizeItemName(cleanPantryDisplayName(item.name))
+  );
+});    
+
+  const existingPantryItem = pantryItems.find((pantryItem) => {
+  const pantryName = normalizeItemName(cleanPantryDisplayName(pantryItem.name));
+
+  return pantryName === normalizedName;
+});
 
   if (existingPantryItem) {
-    const currentQty = Number(existingPantryItem.quantity || 0);
-    const addQty = Number(item.quantity || 1);
+  const currentQty = Number(existingPantryItem.quantity || 0);
+  const addQty = Number(item.quantity || 1);
 
-    const { error } = await supabase
-      .from("pantry_items")
-      .update({
+  const { error } = await supabase
+    .from("pantry_items")
+    .update({
   quantity: String(currentQty + addQty),
-  category: existingPantryItem.category || finalCategory,
 })
-      .eq("id", existingPantryItem.id);
-      
-    if (error) {
-      showToast(error.message);
-      return;
-    }
+    .eq("id", existingPantryItem.id);
 
-    continue;
+  if (error) {
+    showToast(error.message);
+    return;
   }
+
+  continue;
+}
 
   const memoryMatch = (imageMemory || []).find(
     (memory) => memory.normalized_name === normalizedName
@@ -2562,12 +2573,7 @@ const { data: imageMemory } = await supabase
     name: cleanedName,
     quantity: String(item.quantity || 1),
     unit: item.unit || "package",
-    category:
-    shoppingItemCategories[item.name] ||
-    item.store_section ||
-    guessShoppingCategory(item.name) ||
-    item.category ||
-    "Other",
+    category: finalCategory,
     image_url:
       item.image_url ||
       shoppingItemImages[item.name] ||
@@ -2635,17 +2641,12 @@ for (const item of uniqueShoppingRows) {
     }
 
     updatedPantryItems = updatedPantryItems.map((pantryItem) =>
-      pantryItem.id === existingPantryItem.id
-        ? {
+  pantryItem.id === existingPantryItem.id
+    ? {
         ...pantryItem,
         quantity: String(currentQty + addQty),
-        category:
-          shoppingItemCategories[item.name] ||
-          item.store_section ||
-          guessShoppingCategory(item.name) ||
-        pantryItem.category
       }
-        : pantryItem
+    : pantryItem
     );
 
     continue;
