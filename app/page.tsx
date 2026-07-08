@@ -307,6 +307,7 @@ export default function Home() {
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showFoodImport, setShowFoodImport] = useState(false);
+  const [foodPreview, setFoodPreview] = useState<any>(null);
   const [showShoppingImport, setShowShoppingImport] = useState(false);
   const [isAddingShoppingItem, setIsAddingShoppingItem] = useState(false);
   const [foodUrl, setFoodUrl] = useState("");
@@ -335,6 +336,7 @@ export default function Home() {
   const [importError, setImportError] = useState("");
   const [showManualImport, setShowManualImport] = useState(false);
   const [manualRecipe, setManualRecipe] = useState("");
+  
 
   const [selectedDay, setSelectedDay] = useState("Monday");
   const [selectedMeal, setSelectedMeal] = useState("Dinner");
@@ -1339,6 +1341,15 @@ async function importFoodItem() {
     setFoodPackageSize(data.packageSize || "");
     setFoodCategory(data.category || "Prepared Food");
     setFoodImage(data.image || "");
+
+    setFoodPreview({
+      name: data.title || "",
+      brand: data.brand || "",
+      package_size: data.packageSize || "",
+      price: data.price || "",
+      image_url: data.image || "",
+      source_url: foodUrl,
+    });
 
     showToast("Product details imported.");
   } catch {
@@ -4378,7 +4389,7 @@ if (showProfile) {
     Update your name and account settings.
   </p>
 
-  <div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] bg-[#fbf7f2] p-5">
+<div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] bg-[#fbf7f2] p-5">
   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
     <div>
       <p className="text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
@@ -4892,11 +4903,13 @@ setNewShoppingItem("");
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-[#a63a0a]">Shopping List</h2>
-        <p className="text-sm font-medium text-[#6d5549]">
-  {neededShoppingListCount} items still needed
-</p>
-      </div>
+  <h2 className="text-2xl font-bold text-[#a63a0a]">
+    Shopping List
+  </h2>
+  <p className="text-sm font-medium text-[#6d5549]">
+    {neededShoppingListCount} items still needed
+  </p>
+</div>
     </div>
 
     <div className="grid w-full gap-3 md:w-auto md:grid-cols-[160px_auto_auto]">
@@ -4920,8 +4933,8 @@ setNewShoppingItem("");
       </button>
 
       <div className="rounded-full bg-[#f8efe6] px-6 py-3 text-center font-bold">
-        {shoppingList.length} Total Items 
-      </div>
+  {shoppingList.length - neededShoppingListCount} On Hand
+</div>
     </div>
   </div>
 
@@ -6396,58 +6409,62 @@ if (showPantry) {
     </div>
   </div>
 
-  <section className="mb-6 rounded-[2rem] border border-[#ead7c8] bg-white p-5 shadow-sm">
-  <div className="flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
-        Smart restock
-      </p>
+  <section className="mb-6 rounded-[2rem] border border-[#ead7c8] bg-white p-6 shadow-sm">
+  <div>
+    <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+      Smart Restock
+    </p>
 
-      <h2 className="text-xl font-bold">Restock Suggestions</h2>
+    <h2 className="text-2xl font-bold text-[#2b1a12]">
+      Restock Suggestions
+    </h2>
 
-      <p className="text-sm text-[#6d5549]">
-        Based on favorite recipes and items not already on your shopping list.
-      </p>
-    </div>
+    <p className="mt-1 text-[#6d5549]">
+      Based on your favorite recipes and items not already on your shopping list.
+    </p>
 
-    <div className="flex flex-wrap items-center gap-2">
-      {smartRestockItems.length === 0 ? (
+    {smartRestockItems.length === 0 ? (
+      <div className="mt-5">
         <span className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium text-[#6d5549]">
-          Nothing to restock right now
+          You're all stocked up.
         </span>
-      ) : (
-        <>
+      </div>
+    ) : (
+      <>
+        <div className="mt-5 flex flex-wrap gap-2">
           {smartRestockItems.map((item) => (
-  <div
-    key={item}
-    className="flex items-center overflow-hidden rounded-full bg-[#fff4ef] text-sm font-medium"
-  >
-    <button
-      onClick={() => addItemsToShoppingList([item])}
-      className="px-4 py-2 hover:bg-[#f6e7dc]"
-    >
-      Add {item}
-    </button>
+            <div
+              key={item}
+              className="flex items-center overflow-hidden rounded-full border border-[#f3d7c6] bg-[#fff7f2]"
+            >
+              <button
+                onClick={() => addItemsToShoppingList([item])}
+                className="px-4 py-2 text-sm font-medium text-[#2b1a12] hover:bg-[#fdf0e7]"
+              >
+                {item}
+              </button>
 
-    <button
-  onClick={() =>
-    setDismissedRestockItems((current) => [...current, item])
-  }
-  className="px-3 py-2 text-[#a63a0a] hover:bg-[#f6e7dc]"
->
-  ✕
-</button>
-  </div>
-))}
-          <button
-            onClick={() => addItemsToShoppingList(smartRestockItems)}
-            className="rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
-          >
-            Add {smartRestockItems.length} to Shopping List
-          </button>
-        </>
-      )}
-    </div>
+              <button
+                onClick={() =>
+                  setDismissedRestockItems((current) => [...current, item])
+                }
+                className="px-2 py-2 text-[#b68b77] hover:text-[#a63a0a]"
+                aria-label={`Dismiss ${item}`}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => addItemsToShoppingList(smartRestockItems)}
+          className="mt-5 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white hover:bg-[#8f3208]"
+        >
+          Add All ({smartRestockItems.length})
+        </button>
+      </>
+    )}
   </div>
 </section>
 
@@ -7117,9 +7134,12 @@ if (showPantry) {
 
   <button
     onClick={() => {
-      setShowFoodImport(true);
-      setShowImport(false);
-    }}
+  setShowFoodImport(true);
+  setShowImport(false);
+  setFoodPreview(null);
+  setFoodUrl("");
+  setImportError("");
+}}
     className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] md:w-auto"
   >
     Add Go-To Food
@@ -7218,7 +7238,7 @@ Bake for 25 minutes`}
 {showFoodImport && (
   <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-2xl font-bold">Add a Go-To Foods</h2>
+      <h2 className="text-2xl font-bold">Add a Go-To Food</h2>
 
       <button
         onClick={() => setShowFoodImport(false)}
@@ -7260,13 +7280,35 @@ Bake for 25 minutes`}
     </div>
 
     <div className="flex gap-4">
-  {lastAddedShoppingItem.image_url && (
-    <img
-      src={lastAddedShoppingItem.image_url}
-      alt={lastAddedShoppingItem.name}
-      className="h-24 w-24 rounded-2xl object-cover"
-    />
-  )}
+  {foodPreview && (
+  <div className="flex gap-4">
+    {foodPreview.image_url && (
+      <img
+        src={foodPreview.image_url}
+        alt={foodPreview.name}
+        className="h-24 w-24 rounded-2xl object-cover"
+      />
+    )}
+
+    <div>
+      <h3 className="font-bold text-[#2b1b14]">
+        {foodPreview.name}
+      </h3>
+
+      {foodPreview.brand && (
+        <p className="text-sm text-[#6d5549]">{foodPreview.brand}</p>
+      )}
+
+      {foodPreview.package_size && (
+        <p className="text-sm text-[#6d5549]">{foodPreview.package_size}</p>
+      )}
+
+      {foodPreview.price && (
+        <p className="text-sm text-[#6d5549]">{foodPreview.price}</p>
+      )}
+    </div>
+  </div>
+)}
 
   <div>
     <h3 className="font-bold text-[#2b1b14]">
