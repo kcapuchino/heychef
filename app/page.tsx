@@ -778,9 +778,19 @@ setUserCreatedAt(user?.created_at || "");
     
 
     if (session?.user?.email) {
-      setUserEmail(session.user.email);
-      setHasLoadedUser(true);
-    } else {
+  // Clear anything from the previous user immediately
+  setRecipes([]);
+  setMealPlan({});
+  setShoppingList([]);
+  setPantryItems([]);
+  setRecentlyMade([]);
+  setSelectedRecipe(null);
+
+  // Now load the new user
+  setUserEmail(session.user.email);
+  setHasLoadedUser(true);
+}
+ else {
       setUserEmail("");
       setHasLoadedUser(true);
     }
@@ -888,9 +898,10 @@ if (page === "pantry") {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("recipes")
-      .select("*")
-      .order("created_at", { ascending: false });
+  .from("recipes")
+  .select("*")
+  .eq("user_id", user.id)
+  .order("created_at", { ascending: false });
 
     if (error) {
       console.error(error);
@@ -1024,9 +1035,10 @@ useEffect(() => {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("pantry_items")
-      .select("*")
-      .order("created_at", { ascending: false });
+  .from("pantry_items")
+  .select("*")
+  .eq("user_id", user.id)
+  .order("created_at", { ascending: false });
 
     if (error) {
       console.error(error);
