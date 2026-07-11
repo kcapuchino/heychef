@@ -1,13 +1,25 @@
 {
-  "name": "Hey Chef",
+  "id": "/",
+  "name": "Hey Chef — Recipes, Meal Planning & Pantry",
   "short_name": "Hey Chef",
-  "description": "Save recipes, plan meals, build shopping lists, and track pantry items.",
+  "description": "Save recipes, organize weekly meals, build smart shopping lists, track pantry items, and make better use of the food you already have.",
   "start_url": "/",
   "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "orientation": "portrait",
   "background_color": "#f8efe6",
   "theme_color": "#a63a0a",
+  "categories": [
+    "food",
+    "lifestyle",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -26,6 +38,60 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add a Recipe",
+      "short_name": "Add Recipe",
+      "description": "Import or create a recipe in Hey Chef.",
+      "url": "/?action=add-recipe",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Open Meal Planner",
+      "short_name": "Meal Planner",
+      "description": "Plan meals for this week and next week.",
+      "url": "/?page=planner",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Open Shopping List",
+      "short_name": "Shopping List",
+      "description": "View the items you still need.",
+      "url": "/?page=shopping",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Open Pantry",
+      "short_name": "My Pantry",
+      "description": "See and update the food you already have.",
+      "url": "/?page=pantry",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

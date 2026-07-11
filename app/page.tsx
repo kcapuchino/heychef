@@ -852,6 +852,26 @@ setPantryItems(
     setRecipeUrl(sharedUrl);
   }
 
+  const action = params.get("action");
+const page = params.get("page");
+
+if (action === "add-recipe") {
+  setCurrentPage("recipes");
+  setShowImport(true);
+}
+
+if (page === "planner") {
+  setCurrentPage("planner");
+}
+
+if (page === "shopping") {
+  setCurrentPage("shopping");
+}
+
+if (page === "pantry") {
+  setCurrentPage("pantry");
+}
+
   window.history.replaceState({}, "", "/");
 }, []);
 
