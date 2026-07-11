@@ -1,17 +1,25 @@
 "use client";
+import Image from "next/image";
 export default function OfflinePage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f8efe6] px-6">
-      <section className="w-full max-w-md rounded-[2rem] border border-[#ead7c8] bg-white p-8 text-center shadow-sm">
-        <div className="text-5xl">🍳</div>
+      <section className="w-full max-w-lg rounded-[2rem] border border-[#ead7c8] bg-white p-10 text-center shadow-lg">
+        <Image
+  src="/hey-chef-logo.png"
+  alt="Hey Chef"
+  width={184}
+  height={77}
+  priority
+  className="mx-auto mb-6"
+/>
 
         <h1 className="mt-4 text-3xl font-bold text-[#2b1b14]">
-          You’re offline
+          Preparing your kitchen
         </h1>
 
         <p className="mt-3 text-[#6d5549]">
-          Hey Chef needs an internet connection to sync your recipes, meal
-          plans, shopping list and pantry.
+          We'll reconnect automatically when you're
+back online.
         </p>
 
         <button
