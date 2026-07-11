@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "Hey Chef",
   description:
     "Save recipes, plan meals, build shopping lists, and track pantry items.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     title: "Hey Chef",
@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     icon: "/icon-192.png",
     apple: "/icon-192.png",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#a63a0a",
 };
 
 export default function RootLayout({
