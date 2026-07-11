@@ -83,12 +83,13 @@ export default function ContactPage() {
           </form>
         </div>
 
-        <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+         <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
           <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-          <div className="mt-3 flex justify-center gap-6">
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
             <a href="/privacy">Privacy</a>
             <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
             <a href="/contact">Contact</a>
           </div>
         </footer>

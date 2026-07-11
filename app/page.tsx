@@ -300,9 +300,15 @@ export default function Home() {
   const [lifetimePremium, setLifetimePremium] = useState(false);
   const [supportedAt, setSupportedAt] = useState<string | null>(null);
 
-  const [currentPage, setCurrentPage] = useState<
-  "home" | "recipes" | "planner" | "shopping" | "pantry" | "profile"
->("home");
+  type AppPage =
+  | "home"
+  | "recipes"
+  | "planner"
+  | "shopping"
+  | "pantry"
+  | "profile";
+
+const [currentPage, setCurrentPage] = useState<AppPage>("home");
 
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
@@ -608,6 +614,29 @@ const smartRestockItems = [
       new Date(a.createdAt).getTime()
     );
   });
+
+  function showPage(page: AppPage) {
+  setCurrentPage(page);
+
+  setShowAllRecipes(page === "recipes");
+  setShowMealPlanner(page === "planner");
+  setShowShoppingList(page === "shopping");
+  setShowPantry(page === "pantry");
+  setShowProfile(page === "profile");
+
+  if (page === "home") {
+    setSelectedRecipe(null);
+  }
+}
+
+function navigateTo(page: AppPage) {
+  showPage(page);
+
+  const url = page === "home" ? "/" : `/?page=${page}`;
+
+  window.history.pushState({ page }, "", url);
+}
+
 function getMealPlanKey(day: string, meal: string, week = activePlannerWeek) {
   return `${week}-${day}-${meal}`;
 }
@@ -659,6 +688,63 @@ const homeMenuDate = addDays(
 
 const homeMenuWeek =
   homeMenuDate >= nextWeekStart ? "next" : "current";
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const pageFromUrl = params.get("page") as AppPage | null;
+
+  const validPages: AppPage[] = [
+    "home",
+    "recipes",
+    "planner",
+    "shopping",
+    "pantry",
+    "profile",
+  ];
+
+  if (pageFromUrl && validPages.includes(pageFromUrl)) {
+    showPage(pageFromUrl);
+
+    showPage("home");
+
+    window.history.replaceState(
+      {
+        page: pageFromUrl,
+      },
+      "",
+      window.location.href
+    );
+  } else {
+    window.history.replaceState(
+      {
+        page: "home",
+      },
+      "",
+      window.location.href
+    );
+  }
+
+  function handlePopState(event: PopStateEvent) {
+    const page = event.state?.page as AppPage | undefined;
+
+    showPage(page || "home");
+
+    setSelectedRecipe(null);
+    setShowImport(false);
+    setShowFoodImport(false);
+    setShowShoppingImport(false);
+    setShowPantryModal(false);
+    setPlannerPopup(null);
+    setIsMenuOpen(false);
+    setShowSettingsMenu(false);
+  }
+
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, []);
 
 useEffect(() => {
   const saved = localStorage.getItem("hey-chef-on-hand-items");
@@ -3671,7 +3757,7 @@ if (shouldImportProduct) {
 }
 
 function goAllRecipes() {
-  setCurrentPage("recipes");
+  navigateTo("recipes");
 
   setSelectedRecipe(null);
   setShowMealPlanner(false);
@@ -3689,7 +3775,7 @@ function goAllRecipes() {
 }
 
 function goMealPlanner() {
-  setCurrentPage("planner");
+  navigateTo("planner");
 
   setSelectedRecipe(null);
   setShowAllRecipes(false);
@@ -3707,7 +3793,7 @@ function goMealPlanner() {
 }
 
 function goShoppingList() {
-  setCurrentPage("shopping");
+  navigateTo("shopping");
 
   setSelectedRecipe(null);
   setShowAllRecipes(false);
@@ -3725,7 +3811,7 @@ function goShoppingList() {
 }
 
 function goPantry() {
-  setCurrentPage("pantry");
+  navigateTo("pantry");
 
   setSelectedRecipe(null);
   setShowAllRecipes(false);
@@ -4441,15 +4527,16 @@ if (!userEmail) {
     </div>
   </div>
 )}
-<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+ <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy">Privacy</a>
-    <a href="/terms">Terms</a>
-    <a href="/contact">Contact</a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
     </main>
   );
 }
@@ -4682,23 +4769,16 @@ if (showProfile) {
       </section>
 
       <BottomNav />
-      <footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+       <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
     </main>
   );
 }
@@ -4792,10 +4872,10 @@ if (showProfile) {
         <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
           <button
             onClick={() => {
-              setShowSettingsMenu(false);
-              setCurrentPage("profile");
-              setShowProfile(true);
-            }}
+  setShowSettingsMenu(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             👤 Profile
@@ -4861,10 +4941,10 @@ if (showProfile) {
 
       <button
         onClick={() => {
-          setIsMenuOpen(false);
-          setCurrentPage("profile");
-          setShowProfile(true);
-        }}
+  setIsMenuOpen(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         👤 Profile
@@ -5683,23 +5763,16 @@ const { error } = await supabase
   </div>
 )}
 <BottomNav />
-<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+ <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
       </main>
     );
   }
@@ -5793,10 +5866,10 @@ const { error } = await supabase
         <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
           <button
             onClick={() => {
-              setShowSettingsMenu(false);
-              setCurrentPage("profile");
-              setShowProfile(true);
-            }}
+  setShowSettingsMenu(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             👤 Profile
@@ -5862,10 +5935,10 @@ const { error } = await supabase
 
       <button
         onClick={() => {
-          setIsMenuOpen(false);
-          setCurrentPage("profile");
-          setShowProfile(true);
-        }}
+  setIsMenuOpen(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         👤 Profile
@@ -6259,23 +6332,16 @@ setMealPlan(updatedMealPlan);
 </div>
         </section>
 <BottomNav />
-<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+ <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
       </main>
     );
   }
@@ -6391,10 +6457,10 @@ if (showPantry) {
         <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
           <button
             onClick={() => {
-              setShowSettingsMenu(false);
-              setCurrentPage("profile");
-              setShowProfile(true);
-            }}
+  setShowSettingsMenu(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             👤 Profile
@@ -6460,10 +6526,10 @@ if (showPantry) {
 
       <button
         onClick={() => {
-          setIsMenuOpen(false);
-          setCurrentPage("profile");
-          setShowProfile(true);
-        }}
+  setIsMenuOpen(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         👤 Profile
@@ -7037,23 +7103,16 @@ if (showPantry) {
     {toastMessage}
   </div>
 )}
-<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+ <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
     </main>
   );
 }
@@ -7146,10 +7205,10 @@ if (showPantry) {
         <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
           <button
             onClick={() => {
-              setShowSettingsMenu(false);
-              setCurrentPage("profile");
-              setShowProfile(true);
-            }}
+  setShowSettingsMenu(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             👤 Profile
@@ -7213,10 +7272,10 @@ if (showPantry) {
 
       <button
         onClick={() => {
-          setIsMenuOpen(false);
-          setCurrentPage("profile");
-          setShowProfile(true);
-        }}
+  setIsMenuOpen(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         👤 Profile
@@ -7721,23 +7780,16 @@ Bake for 25 minutes`}
       </section>
       <BottomNav />
 
-      <footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+       <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
     </main>
   );
 }
@@ -7831,10 +7883,10 @@ Bake for 25 minutes`}
         <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
           <button
             onClick={() => {
-              setShowSettingsMenu(false);
-              setCurrentPage("profile");
-              setShowProfile(true);
-            }}
+  setShowSettingsMenu(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             👤 Profile
@@ -7898,10 +7950,10 @@ Bake for 25 minutes`}
 
       <button
         onClick={() => {
-          setIsMenuOpen(false);
-          setCurrentPage("profile");
-          setShowProfile(true);
-        }}
+  setIsMenuOpen(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         👤 Profile
@@ -8424,26 +8476,46 @@ Bake for 25 minutes`}
         </section>
         
 <BottomNav />
-<footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+ <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
       </main>
     );
   }
+if (!hasLoadedUser) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f8efe6] px-6">
+      <div
+        className="text-center"
+        role="status"
+        aria-live="polite"
+        aria-label="Loading Hey Chef"
+      >
+        <img
+          src="/hey-chef-logo.png"
+          alt="Hey Chef"
+          className="mx-auto h-auto w-[184px]"
+        />
+
+        <div
+          className="mx-auto mt-8 h-12 w-12 animate-spin rounded-full border-4 border-[#ead7c8] border-t-[#a63a0a]"
+          aria-hidden="true"
+        />
+
+        <p className="mt-4 font-bold text-[#6d5549]">
+          Preparing your kitchen…
+        </p>
+      </div>
+    </main>
+  );
+}
 
   return (
   <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
@@ -8528,10 +8600,10 @@ Bake for 25 minutes`}
         <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
           <button
             onClick={() => {
-              setShowSettingsMenu(false);
-              setCurrentPage("profile");
-              setShowProfile(true);
-            }}
+  setShowSettingsMenu(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             👤 Profile
@@ -8595,10 +8667,10 @@ Bake for 25 minutes`}
 
       <button
         onClick={() => {
-          setIsMenuOpen(false);
-          setCurrentPage("profile");
-          setShowProfile(true);
-        }}
+  setIsMenuOpen(false);
+  navigateTo("profile");
+  setShowProfile(true);
+}}
         className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
       >
         👤 Profile
@@ -9386,23 +9458,16 @@ Bake for 25 minutes`}
 )}
 
       <BottomNav />
-      <footer className="mt-20 border-t border-[#ead7c8] pt-8 text-center text-sm text-[#6d5549]">
-  <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+       <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
-  <div className="mt-3 flex justify-center gap-6">
-    <a href="/privacy" className="hover:text-[#a63a0a]">
-      Privacy
-    </a>
-
-    <a href="/terms" className="hover:text-[#a63a0a]">
-      Terms
-    </a>
-
-    <a href="/contact" className="hover:text-[#a63a0a]">
-      Contact
-    </a>
-  </div>
-</footer>
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
     </main>
   );
 }
