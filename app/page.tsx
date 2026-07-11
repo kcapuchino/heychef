@@ -410,6 +410,10 @@ export default function Home() {
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] =
+  useState(false);
+  const [deleteAccountText, setDeleteAccountText] = useState("");
   const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
 
 
@@ -1330,6 +1334,65 @@ async function changePasswordNow() {
   localStorage.removeItem("hey-chef-current-user");
 }
 
+async function deleteAccount() {
+  if (deleteAccountText.trim().toUpperCase() !== "DELETE") {
+    showToast('Type "DELETE" to confirm.');
+    return;
+  }
+
+  setIsDeletingAccount(true);
+
+  try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError || !session?.access_token) {
+      showToast("Please log in again before deleting your account.");
+      return;
+    }
+
+    const response = await fetch("/api/delete-account", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      showToast(data.error || "Could not delete your account.");
+      return;
+    }
+
+    await supabase.auth.signOut();
+
+    localStorage.removeItem("hey-chef-current-user");
+    localStorage.removeItem("hey-chef-on-hand-items");
+    localStorage.removeItem("hey-chef-checked-recipe-ingredients");
+    localStorage.removeItem("hey-chef-onboarding-complete");
+
+    setUserEmail("");
+    setRecipes([]);
+    setMealPlan({});
+    setShoppingList([]);
+    setPantryItems([]);
+    setRecentlyMade([]);
+    setSelectedRecipe(null);
+
+    setShowDeleteAccountConfirm(false);
+    setDeleteAccountText("");
+
+    window.location.href = "/";
+  } catch (error) {
+    console.error("Account deletion failed:", error);
+    showToast("Something went wrong while deleting your account.");
+  } finally {
+    setIsDeletingAccount(false);
+  }
+}
 
 async function importFoodItem() {
   if (!foodUrl.trim()) {
@@ -4518,26 +4581,91 @@ if (showProfile) {
   </button>
 
   <div className="mt-8 border-t border-[#ead7c8] pt-6">
-    <h2 className="mb-2 text-lg font-bold text-red-700">
+  <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-5">
+    <p className="mb-1 text-sm font-bold uppercase tracking-[0.2em] text-red-700">
       Danger Zone
-    </h2>
-
-    <p className="mb-4 text-sm text-[#6d5549]">
-      Permanently delete your Hey Chef account and saved data.
-      <br />
-      Contact support and we'll process your request.
     </p>
 
-    <button
-      onClick={() => {
-        window.location.href =
-          "mailto:kcapuchino06@gmail.com?subject=Hey Chef Account Deletion Request";
-      }}
-      className="w-full rounded-full border border-red-600 px-6 py-3 font-semibold text-red-600"
-    >
-      Request Account Deletion
-    </button>
+    <h2 className="text-xl font-bold text-[#2b1b14]">
+      Delete your account
+    </h2>
+
+    <p className="mt-2 text-sm leading-6 text-[#6d5549]">
+      Permanently delete your Hey Chef account, recipes, meal plans,
+      shopping-list items, pantry items, and account history. This cannot be
+      undone.
+    </p>
+
+    {!showDeleteAccountConfirm ? (
+      <button
+        type="button"
+        onClick={() => {
+          setShowDeleteAccountConfirm(true);
+          setDeleteAccountText("");
+        }}
+        className="mt-5 w-full rounded-full border border-red-600 px-6 py-3 font-semibold text-red-700 transition hover:bg-red-600 hover:text-white focus:outline-none focus:ring-4 focus:ring-red-200"
+      >
+        Delete My Account
+      </button>
+    ) : (
+      <div className="mt-5 rounded-[1.25rem] border border-red-200 bg-white p-4">
+        <p className="font-bold text-red-700">
+          Are you absolutely sure?
+        </p>
+
+        <p className="mt-2 text-sm text-[#6d5549]">
+          Type <strong>DELETE</strong> below to permanently remove your account
+          and saved data.
+        </p>
+
+        <label
+          htmlFor="delete-account-confirmation"
+          className="mt-4 block font-semibold text-[#2b1b14]"
+        >
+          Confirmation
+        </label>
+
+        <input
+          id="delete-account-confirmation"
+          value={deleteAccountText}
+          onChange={(event) => setDeleteAccountText(event.target.value)}
+          placeholder="Type DELETE"
+          autoComplete="off"
+          disabled={isDeletingAccount}
+          className="mt-2 w-full rounded-full border border-red-300 px-5 py-3 focus:border-red-600 focus:outline-none focus:ring-4 focus:ring-red-100"
+        />
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => {
+              setShowDeleteAccountConfirm(false);
+              setDeleteAccountText("");
+            }}
+            disabled={isDeletingAccount}
+            className="w-full rounded-full border border-[#ead7c8] px-5 py-3 font-semibold text-[#6d5549] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={deleteAccount}
+            disabled={
+              isDeletingAccount ||
+              deleteAccountText.trim().toUpperCase() !== "DELETE"
+            }
+            className="w-full rounded-full bg-red-700 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isDeletingAccount
+              ? "Deleting Account…"
+              : "Permanently Delete Account"}
+          </button>
+        </div>
+      </div>
+    )}
   </div>
+</div>
 </section>
       </section>
 
