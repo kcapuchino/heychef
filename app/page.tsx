@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/Archive/lib/supabase";
+import Image from "next/image";
 
 type Recipe = {
   id: string;
@@ -289,6 +290,7 @@ function getUpcomingWeekLabel() {
 export default function Home() {
   
   const [userEmail, setUserEmail] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupName, setSignupName] = useState("");
   const [userCreatedAt, setUserCreatedAt] = useState("");
@@ -431,45 +433,60 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
 }).length;
 
 
-const cookingQueue = Object.values(mealPlan)
-  .flat()
-  .filter((recipe: PlannedRecipe) => !recipe.isMade)
-  .filter((recipe: PlannedRecipe) => {
-    const isReady = canMakeRecipeFromPantry(recipe);
-const neededCount = recipe.type === "grocery"
-  ? isReady ? 0 : 1
-  : getRecipePantryGaps(recipe).length;
+const cookingQueue = useMemo(() => {
+  return Object.values(mealPlan)
+    .flat()
+    .filter((recipe: PlannedRecipe) => !recipe.isMade)
+    .filter((recipe: PlannedRecipe) => {
+      const isReady = canMakeRecipeFromPantry(recipe);
 
-if (cookingQueueFilter === "ready") return isReady;
-if (cookingQueueFilter === "needs") return !isReady;
+      if (cookingQueueFilter === "ready") {
+        return isReady;
+      }
 
-    return true;
-  })
-  .sort((a: PlannedRecipe, b: PlannedRecipe) => {
-    if (a.isMade !== b.isMade) {
-      return a.isMade ? 1 : -1;
-    }
+      if (cookingQueueFilter === "needs") {
+        return !isReady;
+      }
 
-    return (
-      new Date(a.plannedDate || "").getTime() -
-      new Date(b.plannedDate || "").getTime()
-    );
-  });
+      return true;
+    })
+    .sort((a: PlannedRecipe, b: PlannedRecipe) => {
+      return (
+        new Date(a.plannedDate || "").getTime() -
+        new Date(b.plannedDate || "").getTime()
+      );
+    });
+}, [mealPlan, cookingQueueFilter, pantryItems]);
 
-  const favoriteRecipes = recipes.filter((recipe) => recipe.isFavorite);
-  const homeRecipes = recipes
-  .filter((recipe) => recipe.isFavorite)
-  .slice(-6)
-  .reverse();
-  const homeSectionTitle = favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
-  const ingredientCounts = recipes
-  .flatMap((recipe) => recipe.ingredients)
-  .map((ingredient) => cleanPantryDisplayName(ingredient))
-  .filter(Boolean)
-  .reduce((counts: Record<string, number>, ingredient) => {
-    counts[ingredient] = (counts[ingredient] || 0) + 1;
-    return counts;
-  }, {});
+  const favoriteRecipes = useMemo(
+  () => recipes.filter((recipe) => recipe.isFavorite),
+  [recipes]
+);
+
+const homeRecipes = useMemo(
+  () =>
+    recipes
+      .filter((recipe) => recipe.isFavorite)
+      .slice(-6)
+      .reverse(),
+  [recipes]
+);
+
+const homeSectionTitle =
+  favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
+
+const ingredientCounts = useMemo(
+  () =>
+    recipes
+      .flatMap((recipe) => recipe.ingredients)
+      .map((ingredient) => cleanPantryDisplayName(ingredient))
+      .filter(Boolean)
+      .reduce((counts: Record<string, number>, ingredient) => {
+        counts[ingredient] = (counts[ingredient] || 0) + 1;
+        return counts;
+      }, {}),
+  [recipes]
+);
 
   function cleanIngredientName(name: string) {
   return name
@@ -550,70 +567,84 @@ const smartRestockItems = [
   .filter((item) => !dismissedRestockItems.includes(item))
   .slice(0, 8);
   
-  const filteredRecipes = recipes
-  .filter((recipe) => {
-  if (foodTypeFilter === "all") return true;
+  const filteredRecipes = useMemo(() => {
+  return recipes
+    .filter((recipe) => {
+      if (foodTypeFilter === "all") return true;
 
-  if (foodTypeFilter === "recipe") {
-    return recipe.type !== "grocery";
-  }
+      if (foodTypeFilter === "recipe") {
+        return recipe.type !== "grocery";
+      }
 
-  return recipe.type === "grocery";
-})
-  .filter((recipe) =>
-    categoryFilter === "all"
-      ? true
-      : recipe.category === categoryFilter
-  )
-  .filter((recipe) => {
-    if (recipeSort !== "ready") return true;
+      return recipe.type === "grocery";
+    })
+    .filter((recipe) =>
+      categoryFilter === "all"
+        ? true
+        : recipe.category === categoryFilter
+    )
+    .filter((recipe) => {
+      if (recipeSort !== "ready") return true;
 
-    return canMakeRecipeFromPantry(recipe);
-  })
-  .filter((recipe) => {
-  if (recipe.type !== "grocery") return true;
+      return canMakeRecipeFromPantry(recipe);
+    })
+    .filter((recipe) => {
+      if (recipe.type !== "grocery") return true;
 
-  const isAlreadyInShoppingList = shoppingList.some(
-    (item) =>
-      normalizeItemName(item) === normalizeItemName(recipe.title) ||
-      normalizeItemName(item).includes(normalizeItemName(recipe.title)) ||
-      normalizeItemName(recipe.title).includes(normalizeItemName(item))
-  );
+      const normalizedRecipeTitle = normalizeItemName(recipe.title);
 
-  return !isAlreadyInShoppingList;
-})
-  .sort((a, b) => {
-    if (recipeSort === "az") {
-      return a.title.localeCompare(b.title);
-    }
+      const isAlreadyInShoppingList = shoppingList.some((item) => {
+        const normalizedShoppingItem = normalizeItemName(item);
 
-    if (recipeSort === "za") {
-      return b.title.localeCompare(a.title);
-    }
+        return (
+          normalizedShoppingItem === normalizedRecipeTitle ||
+          normalizedShoppingItem.includes(normalizedRecipeTitle) ||
+          normalizedRecipeTitle.includes(normalizedShoppingItem)
+        );
+      });
 
-    if (recipeSort === "newest") {
+      return !isAlreadyInShoppingList;
+    })
+    .sort((a, b) => {
+      if (recipeSort === "az") {
+        return a.title.localeCompare(b.title);
+      }
+
+      if (recipeSort === "za") {
+        return b.title.localeCompare(a.title);
+      }
+
+      if (recipeSort === "newest") {
+        return (
+          new Date(b.createdAt).getTime() -
+          new Date(a.createdAt).getTime()
+        );
+      }
+
+      if (recipeSort === "oldest") {
+        return (
+          new Date(a.createdAt).getTime() -
+          new Date(b.createdAt).getTime()
+        );
+      }
+
+      if (a.isFavorite !== b.isFavorite) {
+        return a.isFavorite ? -1 : 1;
+      }
+
       return (
         new Date(b.createdAt).getTime() -
         new Date(a.createdAt).getTime()
       );
-    }
-
-    if (recipeSort === "oldest") {
-      return (
-        new Date(a.createdAt).getTime() -
-        new Date(b.createdAt).getTime()
-      );
-    }
-
-    if (a.isFavorite !== b.isFavorite) {
-      return a.isFavorite ? -1 : 1;
-    }
-
-    return (
-      new Date(b.createdAt).getTime() -
-      new Date(a.createdAt).getTime()
-    );
-  });
+    });
+}, [
+  recipes,
+  foodTypeFilter,
+  categoryFilter,
+  recipeSort,
+  shoppingList,
+  pantryItems,
+]);
 
   function showPage(page: AppPage) {
   setCurrentPage(page);
@@ -705,7 +736,7 @@ useEffect(() => {
   if (pageFromUrl && validPages.includes(pageFromUrl)) {
     showPage(pageFromUrl);
 
-    showPage("home");
+  
 
     window.history.replaceState(
       {
@@ -808,13 +839,7 @@ useEffect(() => {
     document.removeEventListener("mousedown", handleClickOutside);
   };
 }, []);
-  useEffect(() => {
-    const savedUser = localStorage.getItem("hey-chef-current-user");
-
-    if (savedUser) {
-      loadUser(savedUser);
-    }
-  }, []);
+  
 useEffect(() => {
   async function loadProfile() {
     const {
@@ -835,7 +860,12 @@ const { data, error } = await supabase
   .single();
 
 if (error) {
-  console.error(error);
+  console.error("loadRecentlyMade failed:", {
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+    code: error.code,
+  });
   return;
 }
 
@@ -844,7 +874,6 @@ setFoundingChef(Boolean(data?.founding_chef));
 setLifetimePremium(Boolean(data?.lifetime_premium));
 setSupportedAt(data?.supported_at || null);
 
-    setDisplayName(data?.display_name || "");
   }
 
   if (userEmail) {
@@ -853,79 +882,69 @@ setSupportedAt(data?.supported_at || null);
 }, [userEmail]);
   useEffect(() => {
   async function loadSession() {
-    const {
-  data: { user },
-} = await supabase.auth.getUser();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-setUserCreatedAt(user?.created_at || "");
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    
+  const user = session?.user;
 
-    if (session?.user?.email) {
-  // Clear anything from the previous user immediately
-  setRecipes([]);
-  setMealPlan({});
-  setShoppingList([]);
-  setPantryItems([]);
-  setRecentlyMade([]);
-  setSelectedRecipe(null);
+  setUserCreatedAt(user?.created_at || "");
 
-  // Now load the new user
-  setUserEmail(session.user.email);
-  setHasLoadedUser(true);
-}
- else {
-      setUserEmail("");
-      setHasLoadedUser(true);
-    }
+  if (user?.email) {
+    // Clear anything from the previous user immediately
+    setRecipes([]);
+    setMealPlan({});
+    setShoppingList([]);
+    setPantryItems([]);
+    setRecentlyMade([]);
+    setSelectedRecipe(null);
+
+    // Save the signed-in user once
+    setCurrentUserId(user.id);
+    setUserEmail(user.email);
+    setHasLoadedUser(true);
+  } else {
+    setCurrentUserId("");
+    setUserEmail("");
+    setUserCreatedAt("");
+    setHasLoadedUser(true);
   }
+}
 
   loadSession();
 
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
-    if (session?.user?.email) {
-      setUserEmail(session.user.email);
-      setHasLoadedUser(true);
-    } else {
-      setUserEmail("");
-      setHasLoadedUser(true);
-      setRecipes([]);
-    }
-  });
+  if (session?.user?.email) {
+    setRecipes([]);
+    setMealPlan({});
+    setShoppingList([]);
+    setPantryItems([]);
+    setRecentlyMade([]);
+    setSelectedRecipe(null);
+
+    setCurrentUserId(session.user.id);
+    setUserEmail(session.user.email);
+    setHasLoadedUser(true);
+  } else {
+    setCurrentUserId("");
+    setUserEmail("");
+    setRecipes([]);
+    setMealPlan({});
+    setShoppingList([]);
+    setPantryItems([]);
+    setRecentlyMade([]);
+    setSelectedRecipe(null);
+    setHasLoadedUser(true);
+  }
+});
   
 
   return () => subscription.unsubscribe();
 }, []);
 
-  function loadUser(email: string) {
-    const normalizedEmail = email.trim().toLowerCase();
-    const savedData = localStorage.getItem(`hey-chef-data-${normalizedEmail}`);
-
-    if (savedData) {
-      const parsed: SavedUserData = JSON.parse(savedData);
-      setRecipes(parsed.recipes || []);
-setMealPlan(parsed.mealPlan || {});
-setPantryItems(
-  (parsed.pantryItems || []).map((item) => ({
-    ...item,
-    category: item.category || "Other",
-  }))
-);
-    } else {
-  setRecipes([]);
-  setMealPlan({});
-  setPantryItems([]);
-  setPlannerRecipeId("");
-}
-
-    setUserEmail(normalizedEmail);
-    localStorage.setItem("hey-chef-current-user", normalizedEmail);
-    setHasLoadedUser(true);
-  }
+  
 
  useEffect(() => {
   const params = new URLSearchParams(window.location.search);
@@ -977,16 +996,12 @@ if (page === "pantry") {
 
   useEffect(() => {
   async function loadRecipes() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) return;
+    if (!currentUserId) return;
 
     const { data, error } = await supabase
   .from("recipes")
   .select("*")
-  .eq("user_id", user.id)
+  .eq("user_id", currentUserId)
   .order("created_at", { ascending: false });
 
     if (error) {
@@ -1018,19 +1033,15 @@ packageSize: recipe.package_size || "",
   if (userEmail) {
     loadRecipes();
   }
-}, [userEmail]);
+}, [currentUserId]);
 
 async function loadShoppingItems() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return;
+  if (!currentUserId) return;
 
   const { data, error } = await supabase
     .from("shopping_items")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUserId)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -1042,15 +1053,25 @@ async function loadShoppingItems() {
     (data || []).map((item) => normalizeItemName(item.name))
   )];
 
-  const { data: imageMemory, error: imageMemoryError } = await supabase
+  let imageMemory: {
+  normalized_name: string;
+  image_url: string | null;
+  source_url: string | null;
+}[] = [];
+
+if (normalizedNames.length > 0) {
+  const { data, error: imageMemoryError } = await supabase
     .from("ingredient_images")
     .select("normalized_name, image_url, source_url")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUserId)
     .in("normalized_name", normalizedNames);
 
   if (imageMemoryError) {
     console.error(imageMemoryError);
+  } else {
+    imageMemory = data || [];
   }
+}
 
   const imageMemoryMap = new Map(
     (imageMemory || []).map((item) => [item.normalized_name, item])
@@ -1215,21 +1236,43 @@ useEffect(() => {
   source,
   title,
   image_url,
-  recipes (*)
+  recipes (
+  id,
+  title,
+  image_url,
+  ingredients,
+  steps,
+  cook_time,
+  servings,
+  category,
+  source_url,
+  is_favorite,
+  is_planning_queue,
+  created_at,
+  type,
+  brand,
+  package_size,
+  price
+)
 `)
   .eq("user_id", user.id);
 
     if (error) {
-  console.error(error);
+  console.error(
+    "loadMealPlan failed:",
+    error.message,
+    error.details,
+    error.hint,
+    error.code
+  );
   return;
 }
 
-console.log("MEAL PLAN DATA", data);
 
 const loadedPlan: Record<string, PlannedRecipe[]> = {};
 
     (data || []).forEach((item: any) => {
-      console.log(item.week_start);
+      
 
 const currentWeekStart = getWeekStartDate("current");
 const nextWeekStart = getWeekStartDate("next");
@@ -1306,10 +1349,10 @@ loadedPlan[key].push({
 }, [userEmail]);
 
 useEffect(() => {
-  if (userEmail) {
+  if (currentUserId) {
     loadRecentlyMade();
   }
-}, [userEmail, showAllRecentlyMade]);
+}, [currentUserId]);
 
 
   async function loginUser(email: string, password: string, name?: string) {
@@ -3061,6 +3104,8 @@ async function markRecipeMade(recipe: Recipe | PlannedRecipe) {
 }
 
 async function loadRecentlyMade() {
+  if (!currentUserId) return;
+
   const { data, error } = await supabase
     .from("recently_made")
     .select(`
@@ -3070,14 +3115,38 @@ async function loadRecentlyMade() {
       image_url,
       source_url,
       source_type,
-      recipes (*)
+      recipes (
+        id,
+        title,
+        image_url,
+        ingredients,
+        steps,
+        cook_time,
+        servings,
+        category,
+        source_url,
+        is_favorite,
+        is_planning_queue,
+        created_at,
+        type,
+        brand,
+        package_size,
+        price
+      )
     `)
+    .eq("user_id", currentUserId)
     .order("cooked_at", { ascending: false });
 
   if (error) {
-    console.error(error);
-    return;
-  }
+  console.error(
+    "loadRecentlyMade failed:",
+    error.message,
+    error.details,
+    error.hint,
+    error.code
+  );
+  return;
+}
 
   setRecentlyMade(data || []);
 }
@@ -4312,11 +4381,14 @@ if (!userEmail) {
   className="cursor-pointer rounded-[2rem] bg-white p-5 shadow-sm transition hover:shadow-lg"
 >
   <div className="flex flex-col gap-4 md:flex-row">
-    <img
-      src={sampleRecipes[0].image || placeholderImage}
-      alt={sampleRecipes[0].title}
-      className="h-40 w-full rounded-2xl object-cover md:w-64"
-    />
+    <Image
+  src={sampleRecipes[0].image || placeholderImage}
+  alt={sampleRecipes[0].title}
+  width={256}
+  height={160}
+  className="h-40 w-full rounded-2xl object-cover md:w-64"
+  priority
+/>
 
     <div className="flex-1">
       <h3 className="mb-2 text-2xl font-bold">
@@ -4405,11 +4477,14 @@ if (!userEmail) {
       </button>
 
 
-      <img
-        src={sampleRecipe.image || placeholderImage}
-        alt={sampleRecipe.title}
-        className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
-      />
+      <Image
+  src={sampleRecipe.image || placeholderImage}
+  alt={sampleRecipe.title}
+  width={800}
+  height={480}
+  className="mb-6 h-60 w-full rounded-[1.5rem] object-cover"
+  priority
+/>
 
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
@@ -9007,6 +9082,50 @@ if (!hasLoadedUser) {
         {isImporting ? "Importing..." : "Import Recipe"}
       </button>
     </div>
+
+    {importError && (
+  <p className="mt-4 text-sm text-red-700">
+    {importError}
+  </p>
+)}
+
+{showManualImport && (
+  <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+    <h3 className="mb-2 text-xl font-bold">
+      Can&apos;t Import This Recipe?
+    </h3>
+
+    <p className="mb-4 text-[#6d5549]">
+      Some websites block imports. Paste the recipe below and Hey Chef will
+      organize it into ingredients and steps.
+    </p>
+
+    <textarea
+      value={manualRecipe}
+      onChange={(e) => setManualRecipe(e.target.value)}
+      rows={12}
+      placeholder={`Paste Text: Recipe Title
+
+Ingredients
+2 cups flour
+2 cups sugar
+1 cup butter
+
+Directions
+Mix ingredients
+Bake for 25 minutes`}
+      className="w-full rounded-2xl border border-[#ead7c8] p-4"
+    />
+
+    <button
+      onClick={importManualRecipe}
+      disabled={!manualRecipe.trim()}
+      className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white disabled:opacity-60"
+    >
+      Create Recipe
+    </button>
+  </div>
+)}
 
     <div className="my-5 flex items-center gap-4">
       <div className="h-px flex-1 bg-[#ead7c8]" />
