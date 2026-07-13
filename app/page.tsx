@@ -435,10 +435,19 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
 }).length;
 
 
+const currentCookingWeekStart = getWeekStartDate("current");
+const nextCookingWeekStart = getWeekStartDate("next");
+
 const cookingQueue = useMemo(() => {
   return Object.values(mealPlan)
     .flat()
     .filter((recipe: PlannedRecipe) => !recipe.isMade)
+    .filter((recipe: PlannedRecipe) => {
+      return (
+        recipe.weekStart === currentCookingWeekStart ||
+        recipe.weekStart === nextCookingWeekStart
+      );
+    })
     .filter((recipe: PlannedRecipe) => {
       const isReady = canMakeRecipeFromPantry(recipe);
 
@@ -458,7 +467,13 @@ const cookingQueue = useMemo(() => {
         new Date(b.plannedDate || "").getTime()
       );
     });
-}, [mealPlan, cookingQueueFilter, pantryItems]);
+}, [
+  mealPlan,
+  cookingQueueFilter,
+  pantryItems,
+  currentCookingWeekStart,
+  nextCookingWeekStart,
+]);
 
   const favoriteRecipes = useMemo(
   () => recipes.filter((recipe) => recipe.isFavorite),
