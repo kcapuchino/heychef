@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/Archive/lib/supabase";
 import Image from "next/image";
+import RemindersPage from "./reminders/page";
 
 type Recipe = {
   id: string;
@@ -308,7 +309,8 @@ export default function Home() {
   | "planner"
   | "shopping"
   | "pantry"
-  | "profile";
+  | "profile"
+  | "reminders";
 
 const [currentPage, setCurrentPage] = useState<AppPage>("home");
 
@@ -4281,6 +4283,9 @@ function renderAuthCard() {
     
   );
 }
+if (currentPage === "reminders") {
+  return <RemindersPage />;
+}
   if (isResettingPassword) {
   return (
     <main className="min-h-screen bg-[#f8efe6] p-8 text-[#2b1a12]">
@@ -4942,7 +4947,17 @@ if (showProfile) {
           >
             👤 Profile
           </button>
-
+          
+          <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
       
 
           <button
@@ -5012,7 +5027,17 @@ if (showProfile) {
         👤 Profile
       </button>
 
-      
+      <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -5937,7 +5962,16 @@ const { error } = await supabase
             👤 Profile
           </button>
 
-          
+          <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
           <button
           onClick={() => {
@@ -6006,6 +6040,16 @@ const { error } = await supabase
         👤 Profile
       </button>
 
+      <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
       
 <button
           onClick={() => {
@@ -6528,7 +6572,16 @@ if (showPantry) {
             👤 Profile
           </button>
 
-          
+          <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
           <button
           onClick={() => {
@@ -6597,7 +6650,17 @@ if (showPantry) {
         👤 Profile
       </button>
 
-      
+      <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -7276,7 +7339,17 @@ if (showPantry) {
             👤 Profile
           </button>
 
-          
+          <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -7343,7 +7416,17 @@ if (showPantry) {
         👤 Profile
       </button>
 
-      
+      <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -7954,7 +8037,17 @@ Bake for 25 minutes`}
             👤 Profile
           </button>
 
-        
+        <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -8021,7 +8114,17 @@ Bake for 25 minutes`}
         👤 Profile
       </button>
 
-    
+      <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -8671,7 +8774,17 @@ if (!hasLoadedUser) {
             👤 Profile
           </button>
 
-          
+          <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
@@ -8738,7 +8851,17 @@ if (!hasLoadedUser) {
         👤 Profile
       </button>
 
-      
+      <button
+            type="button"
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
+
 <button
           onClick={() => {
             setIsMenuOpen(false);
