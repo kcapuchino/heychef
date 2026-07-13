@@ -260,6 +260,26 @@ export default function RemindersPage() {
     });
   }
 
+function getMealNotification(
+  mealType: "breakfast" | "lunch" | "dinner",
+  plannedMealTitle?: string | null
+) {
+  const mealLabel =
+    mealType.charAt(0).toUpperCase() + mealType.slice(1);
+
+  if (plannedMealTitle) {
+    return {
+      title: `${mealLabel} is coming up`,
+      body: `You planned: ${plannedMealTitle}`,
+    };
+  }
+
+  return {
+    title: `Time for ${mealType}`,
+    body: `Remember to eat ${mealType} 💛`,
+  };
+}
+
   async function saveReminderSettings() {
     if (!userId) {
       setMessage("Please sign in before saving reminders.");
