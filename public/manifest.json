@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Hey Chef — Recipes, Meal Planning & Pantry",
+  "name": "Hey Chef",
   "short_name": "Hey Chef",
-  "description": "Save recipes, organize weekly meals, build smart shopping lists, track pantry items, and make better use of the food you already have.",
+  "description": "Save recipes, plan meals, build shopping lists, and track pantry items.",
   "start_url": "/",
   "scope": "/",
   "lang": "en-US",
@@ -13,13 +13,14 @@
     "standalone"
   ],
   "orientation": "portrait",
-  "background_color": "#f8efe6",
+  "background_color": "#fffaf5",
   "theme_color": "#a63a0a",
   "categories": [
     "food",
     "lifestyle",
     "productivity"
   ],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
@@ -42,9 +43,9 @@
   ],
   "shortcuts": [
     {
-      "name": "Add a Recipe",
-      "short_name": "Add Recipe",
-      "description": "Import or create a recipe in Hey Chef.",
+      "name": "Add Recipe",
+      "short_name": "Recipe",
+      "description": "Import or create a recipe.",
       "url": "/?action=add-recipe",
       "icons": [
         {
@@ -55,9 +56,9 @@
       ]
     },
     {
-      "name": "Open Meal Planner",
-      "short_name": "Meal Planner",
-      "description": "Plan meals for this week and next week.",
+      "name": "Meal Planner",
+      "short_name": "Planner",
+      "description": "Plan your meals.",
       "url": "/?page=planner",
       "icons": [
         {
@@ -68,9 +69,9 @@
       ]
     },
     {
-      "name": "Open Shopping List",
-      "short_name": "Shopping List",
-      "description": "View the items you still need.",
+      "name": "Shopping List",
+      "short_name": "Shopping",
+      "description": "View your shopping list.",
       "url": "/?page=shopping",
       "icons": [
         {
@@ -81,9 +82,9 @@
       ]
     },
     {
-      "name": "Open Pantry",
-      "short_name": "My Pantry",
-      "description": "See and update the food you already have.",
+      "name": "Pantry",
+      "short_name": "Pantry",
+      "description": "Browse your pantry.",
       "url": "/?page=pantry",
       "icons": [
         {
@@ -91,7 +92,59 @@
           "sizes": "192x192",
           "type": "image/png"
         }
-      ]
+      ],
+      "screenshots": [
+  {
+    "src": "/screenshots/home-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "View today's meals and manage your kitchen dashboard"
+  },
+  {
+    "src": "/screenshots/recipe-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "View recipe details, cooking time, and servings"
+  },
+  {
+    "src": "/screenshots/library-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "Organize recipes and favorite go-to foods"
+  },
+  {
+    "src": "/screenshots/library-detail-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "Save packaged foods and ready-to-eat favorites"
+  },
+  {
+    "src": "/screenshots/meal-plan-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "Plan breakfast, lunch, and dinner for the week"
+  },
+  {
+    "src": "/screenshots/Shopping-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "Build and organize your shopping list"
+  },
+  {
+    "src": "/screenshots/Pantry-mobile.jpeg",
+    "sizes": "710x1537",
+    "type": "image/jpeg",
+    "form_factor": "narrow",
+    "label": "Track pantry items and get smart restock suggestions"
+  }
+]
     }
+    
   ]
 }
