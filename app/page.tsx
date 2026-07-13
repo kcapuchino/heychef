@@ -1258,7 +1258,7 @@ useEffect(() => {
       type,
       brand,
       package_size
-    )
+      )
   `)
   .eq("user_id", user.id);
 
@@ -3111,37 +3111,39 @@ async function loadRecentlyMade() {
   if (!currentUserId) return;
 
   const { data, error } = await supabase
-    .from("recently_made")
-    .select(`
+  .from("recently_made")
+  .select(`
+    id,
+    cooked_at,
+    title,
+    image_url,
+    source_url,
+    source_type,
+    recipes (
       id,
-      cooked_at,
       title,
       image_url,
+      ingredients,
+      steps,
+      cook_time,
+      servings,
+      category,
       source_url,
-      source_type,
-      recipes (
-        id,
-        title,
-        image_url,
-        ingredients,
-        steps,
-        cook_time,
-        servings,
-        category,
-        source_url,
-        is_favorite,
-        is_planning_queue,
-        created_at,
-        type,
-        brand,
-        package_size,
-        price
-      )
-    `)
-    .eq("user_id", currentUserId)
-    .order("cooked_at", { ascending: false });
+      is_favorite,
+      is_planning_queue,
+      created_at,
+      type,
+      brand,
+      package_size
+    )
+  `)
+  .eq("user_id", currentUserId)
+  .order("cooked_at", { ascending: false });
 
-  if (error) {
+console.log("Recently made user:", currentUserId);
+console.log("Recently made response:", { data, error });
+
+if (error) {
   console.error(
     "loadRecentlyMade failed:",
     error.message,
