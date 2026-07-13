@@ -1252,7 +1252,6 @@ useEffect(() => {
   type,
   brand,
   package_size,
-  price
 )
 `)
   .eq("user_id", user.id);
