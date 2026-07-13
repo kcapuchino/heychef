@@ -882,69 +882,58 @@ setSupportedAt(data?.supported_at || null);
 }, [userEmail]);
   useEffect(() => {
   async function loadSession() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  const user = session?.user;
+    const user = session?.user;
 
-  setUserCreatedAt(user?.created_at || "");
+    if (user?.email) {
+      setCurrentUserId(user.id);
+      setUserEmail(user.email);
+      setUserCreatedAt(user.created_at || "");
+    } else {
+      setCurrentUserId("");
+      setUserEmail("");
+      setUserCreatedAt("");
+    }
 
-  if (user?.email) {
-    // Clear anything from the previous user immediately
-    setRecipes([]);
-    setMealPlan({});
-    setShoppingList([]);
-    setPantryItems([]);
-    setRecentlyMade([]);
-    setSelectedRecipe(null);
-
-    // Save the signed-in user once
-    setCurrentUserId(user.id);
-    setUserEmail(user.email);
-    setHasLoadedUser(true);
-  } else {
-    setCurrentUserId("");
-    setUserEmail("");
-    setUserCreatedAt("");
     setHasLoadedUser(true);
   }
-}
 
   loadSession();
 
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, session) => {
-  if (session?.user?.email) {
-    setRecipes([]);
-    setMealPlan({});
-    setShoppingList([]);
-    setPantryItems([]);
-    setRecentlyMade([]);
-    setSelectedRecipe(null);
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log("Auth event:", event);
 
-    setCurrentUserId(session.user.id);
-    setUserEmail(session.user.email);
-    setHasLoadedUser(true);
-  } else {
-    setCurrentUserId("");
-    setUserEmail("");
-    setRecipes([]);
-    setMealPlan({});
-    setShoppingList([]);
-    setPantryItems([]);
-    setRecentlyMade([]);
-    setSelectedRecipe(null);
-    setHasLoadedUser(true);
-  }
-});
-  
+    if (event === "SIGNED_OUT") {
+      setCurrentUserId("");
+      setUserEmail("");
+      setUserCreatedAt("");
+
+      setRecipes([]);
+      setMealPlan({});
+      setShoppingList([]);
+      setPantryItems([]);
+      setRecentlyMade([]);
+      setSelectedRecipe(null);
+
+      setHasLoadedUser(true);
+      return;
+    }
+
+    if (session?.user) {
+      setCurrentUserId(session.user.id);
+      setUserEmail(session.user.email || "");
+      setUserCreatedAt(session.user.created_at || "");
+      setHasLoadedUser(true);
+    }
+  });
 
   return () => subscription.unsubscribe();
 }, []);
-
-  
 
  useEffect(() => {
   const params = new URLSearchParams(window.location.search);
@@ -1226,34 +1215,34 @@ useEffect(() => {
     const { data, error } = await supabase
   .from("meal_plan")
   .select(`
-  id,
-  date,
-  day,
-  meal,
-  week,
-  week_start,
-  is_made,
-  source,
-  title,
-  image_url,
-  recipes (
-  id,
-  title,
-  image_url,
-  ingredients,
-  steps,
-  cook_time,
-  servings,
-  category,
-  source_url,
-  is_favorite,
-  is_planning_queue,
-  created_at,
-  type,
-  brand,
-  package_size,
-)
-`)
+    id,
+    date,
+    day,
+    meal,
+    week,
+    week_start,
+    is_made,
+    source,
+    title,
+    image_url,
+    recipes (
+      id,
+      title,
+      image_url,
+      ingredients,
+      steps,
+      cook_time,
+      servings,
+      category,
+      source_url,
+      is_favorite,
+      is_planning_queue,
+      created_at,
+      type,
+      brand,
+      package_size
+    )
+  `)
   .eq("user_id", user.id);
 
     if (error) {
@@ -1312,7 +1301,6 @@ if (item.source === "shopping_list" || item.source === "leftovers") {
     type: item.recipes?.type || "grocery",
     brand: item.recipes?.brand || "",
     packageSize: item.recipes?.package_size || "",
-    price: item.recipes?.price || "",
   });
 
   return;
