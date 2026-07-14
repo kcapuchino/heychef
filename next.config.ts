@@ -10,6 +10,35 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  async rewrites() {
+    return [
+      {
+        source: "/recipes",
+        destination: "/",
+      },
+      {
+        source: "/planner",
+        destination: "/",
+      },
+      {
+        source: "/shopping",
+        destination: "/",
+      },
+      {
+        source: "/pantry",
+        destination: "/",
+      },
+      {
+        source: "/profile",
+        destination: "/",
+      },
+      {
+        source: "/reminders",
+        destination: "/",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
