@@ -747,6 +747,46 @@ const homeMenuWeek =
   
 
 useEffect(() => {
+  const path = window.location.pathname;
+
+  if (path === "/recipes") {
+    setCurrentPage("recipes");
+    setShowAllRecipes(true);
+    setShowMealPlanner(false);
+    setShowShoppingList(false);
+    setShowPantry(false);
+    return;
+  }
+
+  if (path === "/planner") {
+    setCurrentPage("planner");
+    setShowAllRecipes(false);
+    setShowMealPlanner(true);
+    setShowShoppingList(false);
+    setShowPantry(false);
+    return;
+  }
+
+  if (path === "/shopping") {
+    setCurrentPage("shopping");
+    setShowAllRecipes(false);
+    setShowMealPlanner(false);
+    setShowShoppingList(true);
+    setShowPantry(false);
+    return;
+  }
+
+  if (path === "/pantry") {
+    setCurrentPage("pantry");
+    setShowAllRecipes(false);
+    setShowMealPlanner(false);
+    setShowShoppingList(false);
+    setShowPantry(true);
+    return;
+  }
+}, []);
+
+useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const pageFromUrl = params.get("page") as AppPage | null;
 
