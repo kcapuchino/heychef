@@ -294,6 +294,7 @@ export default function Home() {
   const [currentUserId, setCurrentUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupName, setSignupName] = useState("");
+  const [isInstalledApp, setIsInstalledApp] = useState(false);
   const [userCreatedAt, setUserCreatedAt] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
@@ -854,6 +855,35 @@ useEffect(() => {
 
   return () => {
     document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
+useEffect(() => {
+  const checkInstalledMode = () => {
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      Boolean(
+        (window.navigator as Navigator & {
+          standalone?: boolean;
+        }).standalone
+      );
+
+    setIsInstalledApp(isStandalone);
+  };
+
+  checkInstalledMode();
+
+  const displayModeQuery = window.matchMedia(
+    "(display-mode: standalone)"
+  );
+
+  displayModeQuery.addEventListener("change", checkInstalledMode);
+
+  return () => {
+    displayModeQuery.removeEventListener(
+      "change",
+      checkInstalledMode
+    );
   };
 }, []);
   
@@ -4338,6 +4368,51 @@ if (currentPage === "reminders") {
 }
 
 if (!userEmail) {
+  if (isInstalledApp) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f8efe6] px-5 py-8 text-[#2b1a12]">
+        <section className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <img
+              src="/hey-chef-logo.png"
+              alt="Hey Chef"
+              className="mx-auto h-auto w-[180px]"
+            />
+
+            <h1 className="mt-6 text-4xl font-bold leading-tight">
+              Welcome to your kitchen.
+            </h1>
+
+            <p className="mx-auto mt-3 max-w-sm text-lg leading-7 text-[#6d5549]">
+              Save recipes, plan meals, use what you have, and shop smarter.
+            </p>
+          </div>
+
+          <div className="rounded-[2rem] bg-white p-6 shadow-xl">
+            {renderAuthCard()}
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-3 text-center text-sm text-[#6d5549]">
+            <div className="rounded-2xl bg-white/70 p-3">
+              <span className="mb-1 block text-2xl">📖</span>
+              Save recipes
+            </div>
+
+            <div className="rounded-2xl bg-white/70 p-3">
+              <span className="mb-1 block text-2xl">📅</span>
+              Plan meals
+            </div>
+
+            <div className="rounded-2xl bg-white/70 p-3">
+              <span className="mb-1 block text-2xl">🛒</span>
+              Shop smarter
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
      <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-7xl items-center gap-12 py-8 md:grid-cols-[1.2fr_0.8fr] md:py-16">

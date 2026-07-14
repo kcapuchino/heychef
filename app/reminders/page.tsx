@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/Archive/lib/supabase";
+import { requestFirebaseNotificationToken } from "../lib/firebaseNotifications";
 
 type HydrationInterval = 1 | 2 | 3;
 
@@ -80,6 +81,7 @@ export default function RemindersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [firebaseToken, setFirebaseToken] = useState("");
   const [showDeviceInstructions, setShowDeviceInstructions] =
     useState(false);
   const [notificationPermission, setNotificationPermission] =
@@ -94,6 +96,65 @@ export default function RemindersPage() {
       setNotificationPermission("unsupported");
     }
   }, []);
+
+  async function createFirebaseToken() {
+  setMessage("");
+
+  try {
+    if (!userId) {
+      throw new Error(
+        "Please sign in before enabling notifications."
+      );
+    }
+
+    const token =
+      await requestFirebaseNotificationToken();
+
+    const { error: tokenError } = await supabase
+      .from("push_tokens")
+      .upsert(
+        {
+          user_id: userId,
+          token,
+          device_name:
+            navigator.platform || "Unknown device",
+          user_agent: navigator.userAgent,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "token",
+        }
+      );
+
+    if (tokenError) {
+      throw tokenError;
+    }
+
+    setFirebaseToken(token);
+    setNotificationPermission("granted");
+
+    setMessage(
+      "This device is connected to Hey Chef notifications."
+    );
+
+    console.log(
+      "Firebase notification token saved:",
+      token
+    );
+  } catch (error) {
+    console.error(
+      "Could not connect this device:",
+      error
+    );
+
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : "Could not connect this device to notifications."
+    );
+  }
+}
 
   async function loadReminderSettings() {
     setIsLoading(true);
@@ -449,6 +510,7 @@ export default function RemindersPage() {
                 Allow this browser or installed app to show
                 notifications.
               </p>
+              
             </div>
 
             {notificationPermission === "granted" ? (
