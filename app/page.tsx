@@ -346,6 +346,7 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [showTomorrow, setShowTomorrow] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [showFoodImport, setShowFoodImport] = useState(false);
+  const [showRecipeImport, setShowRecipeImport] = useState(false);
   const [foodPreview, setFoodPreview] = useState<any>(null);
   const [showShoppingImport, setShowShoppingImport] = useState(false);
   const [isAddingShoppingItem, setIsAddingShoppingItem] = useState(false);
@@ -694,6 +695,14 @@ const smartRestockItems = [
 ]);
 
   function showPage(page: AppPage) {
+  // Close any open import panels
+  setShowImport(false);
+  setShowFoodImport(false);
+  setShowRecipeImport(false);
+  setShowShoppingImport(false);
+  setFoodPreview(null);
+  setImportError("");
+
   setCurrentPage(page);
 
   setShowAllRecipes(page === "recipes");
@@ -817,38 +826,31 @@ useEffect(() => {
 
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
-  const pageFromUrl = params.get("page") as AppPage | null;
+  const page = params.get("page");
 
   const validPages: AppPage[] = [
-  "home",
-  "recipes",
-  "planner",
-  "shopping",
-  "pantry",
-  "profile",
-  "reminders",
-];
+    "home",
+    "recipes",
+    "planner",
+    "shopping",
+    "pantry",
+    "profile",
+    "reminders",
+  ];
 
-  if (pageFromUrl && validPages.includes(pageFromUrl)) {
-    showPage(pageFromUrl);
+  if (page && validPages.includes(page as AppPage)) {
+    window.history.replaceState({}, "", page === "home" ? "/" : `/${page}`);
+  }
 
-  
+  const path = window.location.pathname;
 
-    window.history.replaceState(
-      {
-        page: pageFromUrl,
-      },
-      "",
-      window.location.href
-    );
-  } else {
-    window.history.replaceState(
-      {
-        page: "home",
-      },
-      "",
-      window.location.href
-    );
+  if (path === "/recipes") {
+    setCurrentPage("recipes");
+    setShowAllRecipes(true);
+    setShowMealPlanner(false);
+    setShowShoppingList(false);
+    setShowPantry(false);
+    return;
   }
 
   function handlePopState(event: PopStateEvent) {
@@ -4118,7 +4120,13 @@ function PantryModal() {
   if (!showPantryModal) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40 px-4 pb-6 md:items-center md:justify-center md:pb-0">
+    <div
+  className={`fixed inset-0 flex items-end px-4 pb-6 md:items-center md:justify-center md:pb-0 ${
+    onboardingTourStep > 0
+      ? "z-[6000] bg-black/20"
+      : "z-50 bg-black/40"
+  }`}
+>
       <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl md:max-w-md">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-2xl font-bold">
@@ -8313,73 +8321,60 @@ Bake for 25 minutes`}
     )}
 
     <div className="my-6 flex items-center gap-3 text-sm text-[#6d5549]">
-      <div className="h-px flex-1 bg-[#ead7c8]" />
-      OR
-      <div className="h-px flex-1 bg-[#ead7c8]" />
-    </div>
-
-    <div className="flex gap-4">
-  {foodPreview && (
-  <div className="flex gap-4">
-    {foodPreview.image_url && (
-      <img
-        src={foodPreview.image_url}
-        alt={foodPreview.name}
-        className="h-24 w-24 rounded-2xl object-cover"
-      />
-    )}
-
-    <div>
-      <h3 className="font-bold text-[#2b1b14]">
-        {foodPreview.name}
-      </h3>
-
-      {foodPreview.brand && (
-        <p className="text-sm text-[#6d5549]">{foodPreview.brand}</p>
-      )}
-
-      {foodPreview.package_size && (
-        <p className="text-sm text-[#6d5549]">{foodPreview.package_size}</p>
-      )}
-
-      {foodPreview.price && (
-        <p className="text-sm text-[#6d5549]">{foodPreview.price}</p>
-      )}
-    </div>
-  </div>
-)}
-
-  <div>
-    <h3 className="font-bold text-[#2b1b14]">
-      {lastAddedShoppingItem.name}
-    </h3>
-
-    {lastAddedShoppingItem.brand && (
-      <p className="text-sm text-[#6d5549]">
-        {lastAddedShoppingItem.brand}
-      </p>
-    )}
-
-    {lastAddedShoppingItem.package_size && (
-      <p className="text-sm text-[#6d5549]">
-        {lastAddedShoppingItem.package_size}
-      </p>
-    )}
-
-    {lastAddedShoppingItem.price && (
-      <p className="text-sm text-[#6d5549]">
-        {lastAddedShoppingItem.price}
-      </p>
-    )}
-  </div>
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+  OR
+  <div className="h-px flex-1 bg-[#ead7c8]" />
 </div>
 
-    <button
-      onClick={saveFoodItem}
-      className="mt-5 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
-    >
-      Save Go-To Food
-    </button>
+<div className="grid gap-3 md:grid-cols-2">
+  <input
+    value={foodBrand}
+    onChange={(e) => setFoodBrand(e.target.value)}
+    placeholder="Brand"
+    className="rounded-full border border-[#ead7c8] px-5 py-3"
+  />
+
+  <input
+    value={foodTitle}
+    onChange={(e) => setFoodTitle(e.target.value)}
+    placeholder="Food item name"
+    className="rounded-full border border-[#ead7c8] px-5 py-3"
+  />
+
+  <input
+    value={foodPackageSize}
+    onChange={(e) => setFoodPackageSize(e.target.value)}
+    placeholder="Package size, like 6 oz"
+    className="rounded-full border border-[#ead7c8] px-5 py-3"
+  />
+
+  <select
+    value={foodCategory}
+    onChange={(e) => setFoodCategory(e.target.value)}
+    className="rounded-full border border-[#ead7c8] px-5 py-3"
+  >
+    <option value="Prepared Food">Prepared Food</option>
+    <option value="Frozen Food">Frozen Food</option>
+    <option value="Refrigerated">Refrigerated</option>
+    <option value="Snacks">Snacks</option>
+    <option value="Beverages">Beverages</option>
+    <option value="Other">Other</option>
+  </select>
+
+  <input
+    value={foodImage}
+    onChange={(e) => setFoodImage(e.target.value)}
+    placeholder="Image URL"
+    className="rounded-full border border-[#ead7c8] px-5 py-3 md:col-span-2"
+  />
+</div>
+
+<button
+  onClick={saveFoodItem}
+  className="mt-5 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+>
+  Save Go-To Food
+</button>
   </section>
 )}
 
@@ -8565,28 +8560,7 @@ Bake for 25 minutes`}
     ? "− Meal Plan Queue"
     : "+ Meal Plan Queue"}
 </button>
-{recipe.type === "grocery" && !canMakeRecipeFromPantry(recipe) && (
-  <button
-    onClick={async (e) => {
-  e.stopPropagation();
 
-  await addItemsToShoppingList([recipe.title], recipe);
-
-  
-
-  setPantryItems((current) =>
-    current.map((item) =>
-      normalizeItemName(item.name) === normalizeItemName(recipe.title)
-        ? { ...item, quantity: "0" }
-        : item
-    )
-  );
-}}
-    className="mt-4 mr-2 rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
-  >
-    Buy Again
-  </button>
-)}
 
                 <button
   onClick={(e) => {
@@ -9833,7 +9807,7 @@ if (!hasLoadedUser) {
     ref={importSectionRef}
     className={`relative rounded-3xl bg-white p-6 shadow-lg ${
       onboardingTourStep > 0
-        ? "z-[5040]"
+        ? "z-[5000]"
         : ""
     }`}
   >
@@ -10072,10 +10046,10 @@ if (!hasLoadedUser) {
     setShowPantryModal(true);
   }}
   className={`w-full min-h-[72px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
-    showPantryModal || onboardingTourStep === 4
-      ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
-  : "border-[#d9a88f] bg-white text-[#a63a0a]"
-  }`}
+  onboardingTourStep === 4 && !showPantryModal
+    ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+    : "border-[#d9a88f] bg-white text-[#a63a0a]"
+}`}
 >
   <span className="block text-lg">🥫</span>
   <span className="mt-1 block">Pantry Item</span>
