@@ -5022,60 +5022,7 @@ if (showProfile) {
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+     
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -5567,60 +5514,7 @@ if (showProfile) {
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+      
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -6619,60 +6513,7 @@ const { error } = await supabase
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+      
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -7268,60 +7109,7 @@ if (showPantry) {
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+    
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -8066,60 +7854,7 @@ if (showPantry) {
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+      
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -8771,60 +8506,7 @@ Bake for 25 minutes`}
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+      
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -9090,12 +8772,43 @@ Bake for 25 minutes`}
   </div>
 
   <button
-    type="button"
-    onClick={() => setShowExitTourConfirm(true)}
-    className="shrink-0 text-sm font-bold text-[#6d5549] hover:text-[#2b1b14]"
-  >
-    Exit Tour
-  </button>
+  type="button"
+  onClick={() => {
+    setShowExitTourConfirm(false);
+    setShowOnboarding(false);
+
+    setOnboardingTourStep(0);
+    setRecipeTourStep(0);
+
+    setShowImport(false);
+    setShowFoodImport(false);
+    setShowRecipeImport(false);
+    setShowShoppingImport(false);
+    setShowPantryModal(false);
+
+    setSelectedRecipe(null);
+    setIsEditingRecipe(false);
+    setEditRecipeDraft(null);
+
+    setRecipeUrl("");
+    setImportError("");
+
+    window.history.replaceState(
+      { page: "home" },
+      "",
+      "/"
+    );
+
+    showPage("home");
+
+    showToast(
+      "Quick tour closed. You can replay it from Profile."
+    );
+  }}
+  className="ml-auto shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
+>
+  Exit Tour
+</button>
 </div>
   </div>
 )}
@@ -9693,60 +9406,7 @@ if (!hasLoadedUser) {
       ref={mobileMenuRef}
       className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
     >
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("home");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🏠 Home
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("recipes");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 Recipes
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("planner");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📅 Meal Planner
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("shopping");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🛒 Shopping List ({neededShoppingListCount})
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("pantry");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🥫 Pantry
-      </button>
+      
 
       <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
         Settings
@@ -9968,28 +9628,43 @@ if (!hasLoadedUser) {
   )}
 
   <button
-    type="button"
-    onClick={() => {
-      setOnboardingTourStep(0);
-      setRecipeTourStep(0);
+  type="button"
+  onClick={() => {
+    setShowExitTourConfirm(false);
+    setShowOnboarding(false);
 
-      setShowImport(false);
-      setShowFoodImport(false);
-      setShowShoppingImport(false);
-      setShowPantryModal(false);
+    setOnboardingTourStep(0);
+    setRecipeTourStep(0);
 
-      setRecipeUrl("");
-      setImportError("");
+    setShowImport(false);
+    setShowFoodImport(false);
+    setShowRecipeImport(false);
+    setShowShoppingImport(false);
+    setShowPantryModal(false);
 
-      window.history.replaceState({ page: "home" }, "", "/");
-      showPage("home");
+    setSelectedRecipe(null);
+    setIsEditingRecipe(false);
+    setEditRecipeDraft(null);
 
-      showToast("Quick tour closed. You can replay it from Profile.");
-    }}
-    className="ml-auto rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
-  >
-    Exit Tour
-  </button>
+    setRecipeUrl("");
+    setImportError("");
+
+    window.history.replaceState(
+      { page: "home" },
+      "",
+      "/"
+    );
+
+    showPage("home");
+
+    showToast(
+      "Quick tour closed. You can replay it from Profile."
+    );
+  }}
+  className="ml-auto shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
+>
+  Exit Tour
+</button>
 </div>
   </div>
 )}
@@ -10001,16 +9676,13 @@ if (!hasLoadedUser) {
       setShowShoppingImport(false);
       setShowPantryModal(false);
     }}
-    className={`w-full min-h-[60px] rounded-2xl sm:min-h-[64px] border px-3 py-3 text-center text-sm font-bold transition ${
-      (
-  !showFoodImport &&
-  !showShoppingImport &&
-  !showPantryModal &&
-  onboardingTourStep === 0
-) || onboardingTourStep === 1
-  ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
-  : "border-[#d9a88f] bg-white text-[#a63a0a]"
-    }`}
+    className={`w-full min-h-[60px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition sm:min-h-[64px] ${
+  onboardingTourStep === 1
+    ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+    : !showFoodImport && !showShoppingImport && !showPantryModal
+      ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+      : "border-[#d9a88f] bg-white text-[#a63a0a]"
+}`}
   >
     <span className="block text-xl">📖</span>
     <span className="mt-1 block">Recipe</span>
@@ -10023,11 +9695,13 @@ if (!hasLoadedUser) {
       setShowShoppingImport(false);
       setShowPantryModal(false);
     }}
-    className={`min-h-[64px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
-      showFoodImport
-        ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
-  : "border-[#d9a88f] bg-white text-[#a63a0a]"
-    }`}
+    className={`w-full min-h-[60px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition sm:min-h-[64px] ${
+  onboardingTourStep === 2
+    ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+    : showFoodImport
+      ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+      : "border-[#d9a88f] bg-white text-[#a63a0a]"
+}`}
   >
     <span className="block text-lg">🥫</span>
     <span className="mt-1 block">Grocery Product</span>
@@ -10042,11 +9716,13 @@ if (!hasLoadedUser) {
       setLastAddedShoppingItem(null);
       setNewShoppingItem("");
     }}
-    className={`min-h-[64px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
-      showShoppingImport
-        ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
-  : "border-[#d9a88f] bg-white text-[#a63a0a]"
-    }`}
+    className={`w-full min-h-[60px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition sm:min-h-[64px] ${
+  onboardingTourStep === 3
+    ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+    : showShoppingImport
+      ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+      : "border-[#d9a88f] bg-white text-[#a63a0a]"
+}`}
   >
     <span className="block text-lg">🛒</span>
     <span className="mt-1 block">Shopping Item</span>
@@ -10066,10 +9742,12 @@ if (!hasLoadedUser) {
     setShowShoppingImport(false);
     setShowPantryModal(true);
   }}
-  className={`w-full min-h-[72px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
+  className={`w-full min-h-[60px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition sm:min-h-[64px] ${
   onboardingTourStep === 4 && !showPantryModal
     ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
-    : "border-[#d9a88f] bg-white text-[#a63a0a]"
+    : showPantryModal
+      ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+      : "border-[#d9a88f] bg-white text-[#a63a0a]"
 }`}
 >
   <span className="block text-lg">🥫</span>
@@ -10237,8 +9915,8 @@ if (!hasLoadedUser) {
   onClick={importRecipe}
   disabled={isImporting}
   className={`rounded-full px-8 py-3 font-bold text-white transition-all duration-300 disabled:opacity-60 ${
-    onboardingTourStep === 5
-      ? "bg-[#a63a0a] ring-4 ring-[#f7d5c2] shadow-lg"
+    onboardingTourStep === 5 && !isImporting
+      ? "relative z-[5010] bg-[#a63a0a] ring-4 ring-[#f7d5c2] shadow-lg"
       : "bg-[#a63a0a]"
   }`}
 >
