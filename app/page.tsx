@@ -4858,231 +4858,34 @@ if (showProfile) {
   return (
     <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
       <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
- <nav className="sticky top-0 z-50 -mx-5 mb-8 flex items-start justify-between gap-3 bg-[#f8efe6] px-5 py-4 md:-mx-6 md:px-6">
-  <div className="flex flex-col">
+
+
+<div className="mx-auto max-w-3xl">
+  <div className="mb-6 flex items-center gap-3">
     <button
       type="button"
       onClick={() => navigateTo("home")}
-      className="text-left text-3xl font-bold text-[#a63a0a]"
+      className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-xl shadow-sm transition hover:bg-[#f8efe6]"
+      aria-label="Go back"
     >
-      Hey Chef™
-    </button>
-  </div>
-
-  <button
-    type="button"
-    onClick={() => setIsMenuOpen((open) => !open)}
-    className="rounded-full bg-white px-4 py-3 text-3xl text-[#a63a0a] shadow md:hidden"
-  >
-    ☰
-  </button>
-
-  <div className="hidden items-center gap-8 text-lg md:flex">
-    
-
-    <button
-      type="button"
-      onClick={() => navigateTo("recipes")}
-      className={
-        currentPage === "recipes"
-          ? "font-bold text-[#a63a0a] underline underline-offset-8"
-          : "text-[#a63a0a]"
-      }
-    >
-      Recipes
+      ←
     </button>
 
-    <button
-      type="button"
-      onClick={() => navigateTo("planner")}
-      className={
-        currentPage === "planner"
-          ? "font-bold text-[#a63a0a] underline underline-offset-8"
-          : "text-[#a63a0a]"
-      }
-    >
-      Meal Planner
-    </button>
-
-    <button
-      type="button"
-      onClick={() => navigateTo("shopping")}
-      className={
-        currentPage === "shopping"
-          ? "font-bold text-[#a63a0a] underline underline-offset-8"
-          : "text-[#a63a0a]"
-      }
-    >
-      Shopping List ({neededShoppingListCount})
-    </button>
-
-    <button
-      type="button"
-      onClick={() => navigateTo("pantry")}
-      className={
-        currentPage === "pantry"
-          ? "font-bold text-[#a63a0a] underline underline-offset-8"
-          : "text-[#a63a0a]"
-      }
-    >
-      Pantry
-    </button>
-
-    <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
-
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-     
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+    <div>
+      <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+        Hey Chef
       </p>
 
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          logoutUser();
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
+      <h1 className="text-3xl font-bold text-[#2b1b14]">
+        Profile
+      </h1>
     </div>
-  )}
-</nav>
+  </div>
 
-
-
-  <section className="relative rounded-[2rem] bg-white p-6 shadow-xl">
-
-  <button
-    type="button"
-    onClick={() => navigateTo("home")}
-    className="absolute right-6 top-6 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-xl font-bold text-[#6d5549] shadow-sm transition hover:bg-[#f8efe6]"
-    aria-label="Close profile"
-  >
-    ✕
-  </button>
-
- 
-
-  <h1 className="mb-2 text-4xl font-bold">Profile</h1>
-  <p className="mb-6 text-[#6d5549]">
-    Update your name and account settings.
-  </p>
+  <section className="rounded-[2rem] bg-white p-6 shadow-xl">
+    <p className="mb-6 text-[#6d5549]">
+      Update your name and account settings.
+    </p>
 
 <div className="mb-6 rounded-[1.5rem] border border-[#ead7c8] bg-[#fbf7f2] p-5">
   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -5341,7 +5144,8 @@ if (showProfile) {
   </div>
 </div>
 </section>
-      </section>
+     </div> 
+     </section>
 
       <BottomNav />
        <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
@@ -5357,6 +5161,7 @@ if (showProfile) {
     </main>
   );
 }
+
 
   if (showShoppingList) {
     return (
