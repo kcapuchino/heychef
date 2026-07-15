@@ -319,6 +319,12 @@ export default function Home() {
   const [onboardingTourStep, setOnboardingTourStep] = useState(0);
   const [showExitTourConfirm, setShowExitTourConfirm] = useState(false);
   const [recipeTourStep, setRecipeTourStep] = useState(0);
+
+  const isOnboardingActive =
+  showOnboarding ||
+  onboardingTourStep > 0 ||
+  recipeTourStep > 0;
+
   const [currentUserId, setCurrentUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupName, setSignupName] = useState("");
@@ -8600,6 +8606,7 @@ Bake for 25 minutes`}
     return (
       <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
        <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
+  {!isOnboardingActive && (
   <nav className="sticky top-0 z-50 -mx-5 mb-8 flex items-start justify-between gap-3 bg-[#f8efe6] px-5 py-4 md:-mx-6 md:px-6">
   <div className="flex flex-col">
     <button
@@ -8858,7 +8865,7 @@ Bake for 25 minutes`}
     </div>
   )}
 </nav>
-
+)}
           <div className="rounded-[2rem] bg-white p-5 md:p-6 shadow-xl">
             <div className="sticky top-25 z-40 mb-4 flex justify-end">
   <button
@@ -9021,62 +9028,75 @@ Bake for 25 minutes`}
         "Choose a week, day, and meal, then add this recipe to your meal plan."}
     </p>
 
-    <div className="mt-3 flex flex-wrap gap-3">
-      {recipeTourStep > 1 && (
-        <button
-          type="button"
-          onClick={() =>
-            setRecipeTourStep((current) => Math.max(1, current - 1))
+    <div className="mt-3 flex items-center justify-between gap-3">
+  <div className="flex flex-wrap gap-3">
+    {recipeTourStep > 1 && (
+      <button
+        type="button"
+        onClick={() =>
+          setRecipeTourStep((current) => Math.max(1, current - 1))
+        }
+        className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
+      >
+        Back
+      </button>
+    )}
+
+    {recipeTourStep < 3 ? (
+      <button
+        type="button"
+        onClick={() =>
+          setRecipeTourStep((current) => current + 1)
+        }
+        className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
+      >
+        Next
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={async () => {
+          if (!currentUserId) return;
+
+          const { error } = await supabase
+            .from("profiles")
+            .update({
+              onboarding_completed: true,
+            })
+            .eq("id", currentUserId);
+
+          if (error) {
+            console.error("Could not complete onboarding:", error);
+            showToast("Could not finish the tour. Please try again.");
+            return;
           }
-          className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
-        >
-          Back
-        </button>
-      )}
 
-      {recipeTourStep < 3 ? (
-        <button
-          type="button"
-          onClick={() => setRecipeTourStep((current) => current + 1)}
-          className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
-        >
-          Next
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={async () => {
-  if (!currentUserId) return;
+          localStorage.setItem(
+            `hey-chef-onboarding-${currentUserId}`,
+            "complete"
+          );
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      onboarding_completed: true,
-    })
-    .eq("id", currentUserId);
+          setRecipeTourStep(0);
+          setOnboardingTourStep(0);
+          setShowOnboarding(false);
 
-  if (error) {
-    console.error("Could not complete onboarding:", error);
-    showToast("Could not finish the tour. Please try again.");
-    return;
-  }
+          showToast("We did it! Your Hey Chef kitchen is ready.");
+        }}
+        className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
+      >
+        Start Cooking
+      </button>
+    )}
+  </div>
 
-  localStorage.setItem(
-    `hey-chef-onboarding-${currentUserId}`,
-    "complete"
-  );
-
-  setRecipeTourStep(0);
-  setShowOnboarding(false);
-
-  showToast("We did it! Your Hey Chef kitchen is ready.");
-}}
-          className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
-        >
-          Start Cooking
-        </button>
-      )}
-    </div>
+  <button
+    type="button"
+    onClick={() => setShowExitTourConfirm(true)}
+    className="shrink-0 text-sm font-bold text-[#6d5549] hover:text-[#2b1b14]"
+  >
+    Exit Tour
+  </button>
+</div>
   </div>
 )}
             {isEditingRecipe && selectedRecipe && (
@@ -9508,7 +9528,8 @@ if (!hasLoadedUser) {
   return (
   <main className="min-h-screen bg-[#f8efe6] px-5 py-6 pb-32 text-[#2b1a12] md:p-8">
     <section className="mx-auto max-w-6xl py-6 md:px-6 md:py-10">
-       <nav className="sticky top-0 z-50 -mx-5 mb-8 flex items-start justify-between gap-3 bg-[#f8efe6] px-5 py-4 md:-mx-6 md:px-6">
+       {!isOnboardingActive && (
+        <nav className="sticky top-0 z-50 -mx-5 mb-8 flex items-start justify-between gap-3 bg-[#f8efe6] px-5 py-4 md:-mx-6 md:px-6">
   <div className="flex flex-col">
     <button
       type="button"
@@ -9766,7 +9787,7 @@ if (!hasLoadedUser) {
     </div>
   )}
 </nav>
-
+)}
 
         <div className="grid gap-8">
   {/* INTRO */}
@@ -10747,17 +10768,24 @@ Bake for 25 minutes`}
         </footer>
         {showOnboarding && currentUserId && (
   <OnboardingModal
-    onStartTour={() => {
-      setShowOnboarding(false);
+  onStartTour={() => {
+    setShowOnboarding(false);
 
+    // Go home first. showPage() closes any open import panels.
+    window.history.replaceState({ page: "home" }, "", "/");
+    showPage("home");
+
+    setRecipeUrl(
+      "https://sallysbakingaddiction.com/chewy-chocolate-chip-cookies/"
+    );
+
+    // Reopen the import panel after showPage() finishes closing panels.
+    setTimeout(() => {
       setShowImport(true);
       setShowFoodImport(false);
+      setShowRecipeImport(false);
       setShowShoppingImport(false);
       setShowPantryModal(false);
-
-      setRecipeUrl(
-        "https://sallysbakingaddiction.com/chewy-chocolate-chip-cookies/"
-      );
 
       setOnboardingTourStep(1);
 
@@ -10767,16 +10795,17 @@ Bake for 25 minutes`}
           block: "center",
         });
       }, 100);
-    }}
-    onSkip={() => {
-      localStorage.setItem(
-        `hey-chef-onboarding-${currentUserId}`,
-        "complete"
-      );
+    }, 50);
+  }}
+  onSkip={() => {
+    localStorage.setItem(
+      `hey-chef-onboarding-${currentUserId}`,
+      "complete"
+    );
 
-      setShowOnboarding(false);
-    }}
-  />
+    setShowOnboarding(false);
+  }}
+/>
 )}
     </main>
   );
