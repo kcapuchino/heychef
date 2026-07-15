@@ -443,7 +443,7 @@ export default function RemindersPage() {
   const controlsDisabled = !settings.notificationsEnabled;
 
   return (
-    <main className="min-h-screen bg-[#fffaf5] px-4 py-8">
+    <main className="min-h-screen bg-[#f8efe6] px-4 py-8">
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center gap-3">
           <button
