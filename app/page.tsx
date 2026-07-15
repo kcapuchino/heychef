@@ -4954,7 +4954,7 @@ if (showProfile) {
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -5029,26 +5029,26 @@ if (showProfile) {
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"
@@ -5066,7 +5066,19 @@ if (showProfile) {
 
 
 
-        <section className="rounded-[2rem] bg-white p-6 shadow-xl">
+  <section className="relative rounded-[2rem] bg-white p-6 shadow-xl">
+
+  <button
+    type="button"
+    onClick={() => navigateTo("home")}
+    className="absolute right-6 top-6 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-xl font-bold text-[#6d5549] shadow-sm transition hover:bg-[#f8efe6]"
+    aria-label="Close profile"
+  >
+    ✕
+  </button>
+
+ 
+
   <h1 className="mb-2 text-4xl font-bold">Profile</h1>
   <p className="mb-6 text-[#6d5549]">
     Update your name and account settings.
@@ -5446,7 +5458,7 @@ if (showProfile) {
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -5521,26 +5533,26 @@ if (showProfile) {
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"
@@ -6445,7 +6457,7 @@ const { error } = await supabase
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -6520,26 +6532,26 @@ const { error } = await supabase
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"
@@ -7041,7 +7053,7 @@ if (showPantry) {
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -7116,26 +7128,26 @@ if (showPantry) {
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"
@@ -7786,7 +7798,7 @@ if (showPantry) {
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -7861,26 +7873,26 @@ if (showPantry) {
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"
@@ -8438,7 +8450,7 @@ Bake for 25 minutes`}
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -8513,26 +8525,26 @@ Bake for 25 minutes`}
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"
@@ -9338,7 +9350,7 @@ if (!hasLoadedUser) {
             👤 Profile
           </button>
 
-          <button
+                    <button
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
@@ -9413,26 +9425,26 @@ if (!hasLoadedUser) {
       </p>
 
       <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("profile");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </button>
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("profile");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            👤 Profile
+          </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setIsMenuOpen(false);
-          navigateTo("reminders");
-        }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        🔔 Reminders
-      </button>
+                    <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              navigateTo("reminders");
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🔔 Reminders
+          </button>
 
       <button
         type="button"

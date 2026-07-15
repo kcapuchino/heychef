@@ -1,8 +1,11 @@
 import { getApps, initializeApp } from "firebase/app";
 import {
   getMessaging,
+  getToken,
   isSupported,
+  onMessage,
   type Messaging,
+  type MessagePayload,
 } from "firebase/messaging";
 
 const firebaseConfig = {
@@ -33,6 +36,37 @@ export async function getFirebaseMessaging(): Promise<Messaging | null> {
   }
 
   return getMessaging(firebaseApp);
+}
+
+export async function requestFirebaseNotificationToken() {
+  const messaging = await getFirebaseMessaging();
+
+  if (!messaging) {
+    return null;
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+
+  const token = await getToken(messaging, {
+    vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+    serviceWorkerRegistration: registration,
+  });
+
+  console.log("FCM Token:", token);
+
+  return token;
+}
+
+export async function listenForForegroundMessages(
+  callback: (payload: MessagePayload) => void
+) {
+  const messaging = await getFirebaseMessaging();
+
+  if (!messaging) {
+    return;
+  }
+
+  onMessage(messaging, callback);
 }
 
 export { firebaseApp };

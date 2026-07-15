@@ -79,6 +79,8 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  console.log("[sw.js] Push event received");
+
   let payload = {};
 
   try {
@@ -89,19 +91,31 @@ self.addEventListener("push", (event) => {
     };
   }
 
-  const notification = payload.notification || payload;
+  console.log("[sw.js] Push payload:", payload);
 
-  const title = notification.title || "Hey Chef";
+  const notification = payload.notification || payload.data || payload;
+
+  const title =
+    notification.title ||
+    payload.data?.title ||
+    "Hey Chef";
 
   const options = {
     body:
       notification.body ||
+      payload.data?.body ||
       "You have a new reminder from Hey Chef.",
-    icon: notification.icon || "/icon-192.png",
-    badge: notification.badge || "/icon-192.png",
+    icon:
+      notification.icon ||
+      payload.data?.icon ||
+      "/icon-192.png",
+    badge: "/icon-192.png",
     data: {
-      url: notification.url || "/?page=reminders",
-      ...(notification.data || {}),
+      url:
+        notification.url ||
+        notification.click_action ||
+        payload.data?.url ||
+        "/?page=reminders",
     },
   };
 
@@ -113,8 +127,13 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const targetUrl =
+  const targetPath =
     event.notification.data?.url || "/?page=reminders";
+
+  const targetUrl = new URL(
+    targetPath,
+    self.location.origin
+  ).href;
 
   event.waitUntil(
     self.clients
@@ -122,10 +141,16 @@ self.addEventListener("notificationclick", (event) => {
         type: "window",
         includeUncontrolled: true,
       })
-      .then((clients) => {
-        for (const client of clients) {
-          if ("focus" in client) {
-            client.navigate(targetUrl);
+      .then(async (windowClients) => {
+        for (const client of windowClients) {
+          if (
+            client.url.startsWith(self.location.origin) &&
+            "focus" in client
+          ) {
+            if ("navigate" in client) {
+              await client.navigate(targetUrl);
+            }
+
             return client.focus();
           }
         }

@@ -16,6 +16,8 @@ export async function requestFirebaseNotificationToken() {
 
   const permission = await Notification.requestPermission();
 
+  console.log("Notification permission:", permission);
+
   if (permission !== "granted") {
     throw new Error("Notification permission was not granted.");
   }
@@ -31,8 +33,19 @@ export async function requestFirebaseNotificationToken() {
   const serviceWorkerRegistration =
     await navigator.serviceWorker.ready;
 
+  console.log("Service worker used for FCM:", {
+    scope: serviceWorkerRegistration.scope,
+    active:
+      serviceWorkerRegistration.active?.scriptURL,
+    state:
+      serviceWorkerRegistration.active?.state,
+  });
+
   const vapidKey =
     process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+
+  console.log("VAPID key present:", Boolean(vapidKey));
+  console.log("VAPID key length:", vapidKey?.length);
 
   if (!vapidKey) {
     throw new Error(
@@ -50,6 +63,9 @@ export async function requestFirebaseNotificationToken() {
       "Firebase did not return a notification token."
     );
   }
+
+  console.log("FCM token:", token);
+  console.log("FCM token length:", token.length);
 
   return token;
 }
