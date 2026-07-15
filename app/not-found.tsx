@@ -24,14 +24,12 @@ export default function NotFound() {
         </p>
 
         <button
-          type="button"
-          onClick={() => {
-  window.location.href = "/";
-}}
-          className="rounded-full bg-[#a63a0a] px-8 py-4 font-bold text-white transition hover:opacity-90"
-        >
-          🏠 Back to Hey Chef
-        </button>
+  type="button"
+  onClick={() => window.location.replace("/")}
+  className="rounded-full bg-[#a63a0a] px-8 py-4 font-bold text-white transition hover:opacity-90"
+>
+  🏠 Back to Hey Chef
+</button>
       </div>
     </main>
   );

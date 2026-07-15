@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/Archive/lib/supabase";
 import Image from "next/image";
 import RemindersPage from "./reminders/page";
+import OnboardingModal from "@/components/OnboardingModal";
 
 type Recipe = {
   id: string;
@@ -288,9 +289,36 @@ function getUpcomingWeekLabel() {
   })}`;
 }
 
+const onboardingTourSteps = [
+  {
+    title: "Recipes",
+    body: "Import a recipe from a website and Hey Chef will save the image, ingredients, instructions, cook time, and servings.",
+  },
+  {
+    title: "Grocery Products",
+    body: "Import a packaged food from a grocery product page to save its brand, image, package size, and price.",
+  },
+  {
+    title: "Shopping Items",
+    body: "Add something directly to your shopping list by typing its name or pasting a grocery product link.",
+  },
+  {
+    title: "Pantry Items",
+    body: "Opens a modal so you can add food you already have at home. Hey Chef can leave those items off future shopping lists.",
+  },
+  {
+    title: "Try a real import",
+    body: "We filled in a sample recipe link for you. Tap the real Import Recipe button below to finish.",
+  },
+];
+
 export default function Home() {
   
   const [userEmail, setUserEmail] = useState("");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingTourStep, setOnboardingTourStep] = useState(0);
+  const [showExitTourConfirm, setShowExitTourConfirm] = useState(false);
+  const [recipeTourStep, setRecipeTourStep] = useState(0);
   const [currentUserId, setCurrentUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupName, setSignupName] = useState("");
@@ -522,6 +550,7 @@ const ingredientCounts = useMemo(
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
+
 
 const mostUsedIngredients = Object.entries(ingredientCounts)
   .sort((a, b) => b[1] - a[1])
@@ -1031,53 +1060,18 @@ setSupportedAt(data?.supported_at || null);
   return () => subscription.unsubscribe();
 }, []);
 
- useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const sharedText = params.get("text");
-  const sharedUrl = params.get("url");
+useEffect(() => {
+  if (!currentUserId) return;
 
-  if (!sharedText && !sharedUrl) return;
+  const onboardingComplete = localStorage.getItem(
+    `hey-chef-onboarding-${currentUserId}`
+  );
 
-  setCurrentPage("recipes");
-  setShowImport(true);
-  setShowManualImport(true);
-
-  setShowAllRecipes(false);
-  setShowMealPlanner(false);
-  setShowShoppingList(false);
-  setShowPantry(false);
-  setSelectedRecipe(null);
-
-  if (sharedText) {
-    setManualRecipe(sharedText);
+  if (!onboardingComplete) {
+    setShowOnboarding(true);
   }
+}, [currentUserId]);
 
-  if (sharedUrl) {
-    setRecipeUrl(sharedUrl);
-  }
-
-  const action = params.get("action");
-const page = params.get("page");
-
-if (action === "add-recipe") {
-  setCurrentPage("recipes");
-  setShowImport(true);
-}
-
-if (page === "planner") {
-  setCurrentPage("planner");
-}
-
-if (page === "shopping") {
-  setCurrentPage("shopping");
-}
-
-if (page === "pantry") {
-  setCurrentPage("pantry");
-}
-
-  window.history.replaceState({}, "", "/");
-}, []);
 
   useEffect(() => {
   async function loadRecipes() {
@@ -1937,18 +1931,29 @@ setSampleRecipe(guestRecipe);
       createdAt: savedRecipe.created_at,
     };
 
-    setRecipes([newRecipe, ...recipes]);
-    setSelectedRecipe(newRecipe);
-    setPlannerRecipeId(newRecipe.id);
+   setRecipes((current) => [newRecipe, ...current]);
+setSelectedRecipe(newRecipe);
+setPlannerRecipeId(newRecipe.id);
 
-    setRecipeUrl("");
-    setManualRecipe("");
-    setShowImport(false);
-    setImportError("");
-    setShowManualImport(false);
-  } catch (error) {
+setRecipeUrl("");
+setManualRecipe("");
+setImportError("");
+setShowManualImport(false);
+
+if (onboardingTourStep === 5) {
+  setOnboardingTourStep(0);
+  setShowImport(false);
+  setRecipeTourStep(1);
+
+  showToast("Recipe imported! Let’s look at what you can do with it.");
+} else {
+  setShowImport(false);
+}
+    } catch (error) {
     console.error(error);
-    setImportError("Something went wrong importing this recipe. Try pasting it manually.");
+    setImportError(
+      "Something went wrong importing this recipe. Try pasting it manually."
+    );
     setShowManualImport(true);
   } finally {
     setIsImporting(false);
@@ -3717,7 +3722,7 @@ if (existingFoodCard) {
     ...recipes,
   ]);
 
-  showToast("Added to Go-To Foods.");
+  showToast("Added to Grocery Products.");
 }
 
 async function addShoppingItemToPantry(shoppingItem: string, count = 1) {
@@ -4593,7 +4598,11 @@ if (!userEmail) {
     <button
       onClick={importRecipe}
       disabled={isImporting}
-      className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
+      className={`rounded-full px-8 py-3 font-bold text-white transition-all duration-500 disabled:opacity-60 ${
+  onboardingTourStep === 5
+    ? "bg-[#a63a0a] ring-4 ring-[#f7d5c2] shadow-[0_0_30px_rgba(166,58,10,0.45)] scale-105"
+    : "bg-[#a63a0a]"
+}`}
     >
       {isImporting ? "Importing..." : "Import"}
     </button>
@@ -5209,6 +5218,68 @@ if (showProfile) {
   >
     Change Password
   </button>
+  <div className="mt-8 border-t border-[#ead7c8] pt-6">
+  <div className="rounded-[1.5rem] border border-[#ead7c8] bg-[#fffaf5] p-5">
+    <p className="mb-1 text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Help & Learning
+    </p>
+
+    <h2 className="text-xl font-bold text-[#2b1b14]">
+      Replay the Quick Tour
+    </h2>
+
+    <p className="mt-2 text-sm leading-6 text-[#6d5549]">
+      Walk through recipe imports, grocery products, shopping items, pantry
+      items, and the main recipe tools again.
+    </p>
+
+    <button
+      type="button"
+      onClick={async () => {
+  if (!currentUserId) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_completed: false,
+    })
+    .eq("id", currentUserId);
+
+  if (error) {
+    console.error("Could not restart onboarding:", error);
+    showToast("Could not restart the tour.");
+    return;
+  }
+
+  localStorage.removeItem(
+    `hey-chef-onboarding-${currentUserId}`
+  );
+
+  setOnboardingTourStep(0);
+  setRecipeTourStep(0);
+  setShowImport(false);
+  setShowFoodImport(false);
+  setShowShoppingImport(false);
+  setShowPantryModal(false);
+
+  window.history.replaceState(
+    { page: "home" },
+    "",
+    "/"
+  );
+
+  showPage("home");
+
+  setTimeout(() => {
+    setShowOnboarding(true);
+  }, 50);
+}}
+      className="mt-5 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-semibold text-[#a63a0a] transition hover:bg-[#a63a0a] hover:text-white"
+    >
+      Replay Quick Tour
+    </button>
+  </div>
+</div>
 
   <div className="mt-8 border-t border-[#ead7c8] pt-6">
   <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-5">
@@ -7698,7 +7769,7 @@ if (showPantry) {
     onClick={() => savePantryItemAsFoodCard(item)}
     className="text-sm font-bold text-[#a63a0a]"
   >
-    Go-To Foods
+    Grocery Products
   </button>
   <button
   onClick={async () => {
@@ -8348,7 +8419,7 @@ Bake for 25 minutes`}
           : "bg-[#fff4ef] text-[#a63a0a]"
       }`}
     >
-      Go-To Foods
+      Grocery Products
     </button>
 
     <button
@@ -8847,6 +8918,8 @@ Bake for 25 minutes`}
       {selectedRecipe.title}
     </h1>
 
+    
+
     {selectedRecipe.type === "grocery" ? (
   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#6d5549]">
     {selectedRecipe.cookTime && <span>⏱ {selectedRecipe.cookTime}</span>}
@@ -8883,7 +8956,11 @@ Bake for 25 minutes`}
     setEditRecipeDraft(selectedRecipe);
     setIsEditingRecipe(true);
   }}
-  className="w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a]"
+  className={`relative w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a] transition ${
+  recipeTourStep === 1
+    ? "z-[5010] ring-4 ring-[#f7d5c2] shadow-xl"
+    : ""
+}`}
 >
   {selectedRecipe.type === "grocery"
     ? "Edit Go-To Food Item"
@@ -8947,7 +9024,87 @@ Bake for 25 minutes`}
 </div>
 </div>
 
+{recipeTourStep > 0 && (
+  <div className="relative z-[5010] my-4 max-w-xl rounded-2xl border border-[#f0c7b2] bg-[#fff7f1] p-4 shadow-xl">
+    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Recipe Tour · {recipeTourStep} of 3
+    </p>
 
+    <h3 className="mt-1 text-lg font-bold text-[#2b1b14]">
+      {recipeTourStep === 1 && "Make this recipe your own"}
+      {recipeTourStep === 2 && "Build your shopping list"}
+      {recipeTourStep === 3 && "Plan when you’ll make it"}
+    </h3>
+
+    <p className="mt-2 text-sm leading-6 text-[#6d5549]">
+      {recipeTourStep === 1 &&
+        "Use Edit Recipe to change this recipe and make it your own."}
+
+      {recipeTourStep === 2 &&
+        "Send all of the ingredients directly to your shopping list if you already have them on hand you can easily move them to your pantry. Hey Chef leaves out items already in your pantry."}
+
+      {recipeTourStep === 3 &&
+        "Choose a week, day, and meal, then add this recipe to your meal plan."}
+    </p>
+
+    <div className="mt-3 flex flex-wrap gap-3">
+      {recipeTourStep > 1 && (
+        <button
+          type="button"
+          onClick={() =>
+            setRecipeTourStep((current) => Math.max(1, current - 1))
+          }
+          className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
+        >
+          Back
+        </button>
+      )}
+
+      {recipeTourStep < 3 ? (
+        <button
+          type="button"
+          onClick={() => setRecipeTourStep((current) => current + 1)}
+          className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
+        >
+          Next
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={async () => {
+  if (!currentUserId) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_completed: true,
+    })
+    .eq("id", currentUserId);
+
+  if (error) {
+    console.error("Could not complete onboarding:", error);
+    showToast("Could not finish the tour. Please try again.");
+    return;
+  }
+
+  localStorage.setItem(
+    `hey-chef-onboarding-${currentUserId}`,
+    "complete"
+  );
+
+  setRecipeTourStep(0);
+  setShowOnboarding(false);
+
+  showToast("We did it! Your Hey Chef kitchen is ready.");
+}}
+          className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
+        >
+          Start Cooking
+        </button>
+      )}
+    </div>
+  </div>
+)}
             {isEditingRecipe && selectedRecipe && (
   <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
     <h2 className="mb-4 text-2xl font-bold">
@@ -9072,6 +9229,10 @@ Bake for 25 minutes`}
   </div>
 )}
 
+{recipeTourStep > 0 && (
+  <div className="fixed inset-0 z-50 bg-black/45" />
+)}
+
 {!isEditingRecipe && selectedRecipe && (
   selectedRecipe.type === "grocery" ? (
     <>
@@ -9184,7 +9345,11 @@ Bake for 25 minutes`}
 
     console.log("Shopping add success:", success);
   }}
-  className="mb-6 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+  className={`relative mb-6 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white transition ${
+    recipeTourStep === 2
+      ? "z-[5010] ring-4 ring-[#f7d5c2] shadow-xl"
+      : ""
+  }`}
 >
   Add Ingredients to Shopping List
 </button>
@@ -9224,7 +9389,13 @@ Bake for 25 minutes`}
   </ul>
 </div>
 
-        <div className="rounded-3xl bg-[#f8efe6] p-6">
+        <div
+  className={`relative rounded-3xl bg-[#f8efe6] p-6 transition ${
+    recipeTourStep === 3
+      ? "z-[5010] ring-4 ring-[#f7d5c2] shadow-xl"
+      : ""
+  }`}
+>
           <h2 className="mb-4 text-2xl font-bold">Plan This Recipe</h2>
 
           <button
@@ -9622,6 +9793,7 @@ if (!hasLoadedUser) {
   )}
 </nav>
 
+
         <div className="grid gap-8">
   {/* INTRO */}
   <section className="mb-1">
@@ -9653,80 +9825,240 @@ if (!hasLoadedUser) {
         View Recipes
       </button>
     </div>
+    {onboardingTourStep > 0 && (
+  <div className="fixed inset-0 z-[5000] bg-black/45" />
+)}
     {showImport && (
   <section
     ref={importSectionRef}
-    className="rounded-3xl bg-white p-6 shadow-lg"
+    className={`relative rounded-3xl bg-white p-6 shadow-lg ${
+      onboardingTourStep > 0
+        ? "z-[5040]"
+        : ""
+    }`}
   >
   <div className="mb-4 flex items-center justify-between">
     <h2 className="text-2xl font-bold">Import a Recipe</h2>
 
     <button
-      onClick={() => {
-      setShowImport(false);
-      setLastAddedShoppingItem(null);
-      setNewShoppingItem("");
-    }}
-      className="text-2xl text-[#6d5549]"
-    >
-      ✕
-    </button>
+  onClick={() => {
+  if (onboardingTourStep > 0) {
+    setOnboardingTourStep(0);
+    setRecipeTourStep(0);
+    setShowImport(false);
+    setShowFoodImport(false);
+    setShowShoppingImport(false);
+    setShowPantryModal(false);
+    setRecipeUrl("");
+    setImportError("");
+
+    window.history.replaceState({ page: "home" }, "", "/");
+    showPage("home");
+    return;
+  }
+
+  setShowImport(false);
+  setLastAddedShoppingItem(null);
+  setNewShoppingItem("");
+}}
+  className="text-2xl text-[#6d5549]"
+>
+  ✕
+</button>
   </div>
 
-  <p className="mb-4 text-[#6d5549]">
-  Add a recipe, packaged food, or pantry item to Hey Chef.
+ <p className="mb-4 text-[#6d5549]">
+  Add a recipe, grocery product, shopping item, or pantry item to Hey Chef.
 </p>
+{onboardingTourStep !== 5 && onboardingTourStep > 0 && (
+  <div className="fixed inset-0 z-[5000] bg-black/45" />
+)}
+{onboardingTourStep > 0 && (
+  <div className="relative z-[5010] mb-5 rounded-3xl border border-[#f0c7b2] bg-[#fff7f1] p-5 shadow-xl">
+    <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Quick Tour · {onboardingTourStep} of 5
+    </p>
 
-<div className="mb-4 flex flex-wrap gap-2">
+    <h3 className="mt-2 text-xl font-bold text-[#2b1b14]">
+      {onboardingTourSteps[onboardingTourStep - 1].title}
+    </h3>
+
+    <p className="mt-2 text-sm leading-6 text-[#6d5549]">
+      {onboardingTourSteps[onboardingTourStep - 1].body}
+    </p>
+
+    <div className="mt-4 flex flex-wrap items-center gap-3">
+  {onboardingTourStep > 1 && (
+    <button
+      type="button"
+      onClick={() => {
+        const previousStep = onboardingTourStep - 1;
+
+        setOnboardingTourStep(previousStep);
+
+        if (previousStep === 1) {
+          setShowFoodImport(false);
+          setShowShoppingImport(false);
+          setShowPantryModal(false);
+        }
+
+        if (previousStep === 2) {
+          setShowFoodImport(true);
+          setShowShoppingImport(false);
+          setShowPantryModal(false);
+        }
+
+        if (previousStep === 3) {
+          setShowFoodImport(false);
+          setShowShoppingImport(true);
+          setShowPantryModal(false);
+        }
+
+        if (previousStep === 4) {
+          setShowFoodImport(false);
+          setShowShoppingImport(false);
+          setShowPantryModal(false);
+        }
+      }}
+      className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
+    >
+      Back
+    </button>
+  )}
+
+  {onboardingTourStep < 5 ? (
+    <button
+      type="button"
+      onClick={() => {
+        const nextStep = onboardingTourStep + 1;
+
+        setOnboardingTourStep(nextStep);
+
+        if (nextStep === 2) {
+          setShowFoodImport(true);
+          setShowShoppingImport(false);
+          setShowPantryModal(false);
+        }
+
+        if (nextStep === 3) {
+          setShowFoodImport(false);
+          setShowShoppingImport(true);
+          setShowPantryModal(false);
+        }
+
+        if (nextStep === 4) {
+          setShowFoodImport(false);
+          setShowShoppingImport(false);
+          setShowPantryModal(false);
+        }
+
+        if (nextStep === 5) {
+          setShowFoodImport(false);
+          setShowShoppingImport(false);
+          setShowPantryModal(false);
+
+          setRecipeUrl(
+            "https://sallysbakingaddiction.com/chewy-chocolate-chip-cookies/"
+          );
+        }
+      }}
+      className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
+    >
+      Next
+    </button>
+  ) : (
+    <div className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-[#a63a0a]">
+      ↓ Tap the real Import Recipe button below
+    </div>
+  )}
+
   <button
+    type="button"
+    onClick={() => {
+      setOnboardingTourStep(0);
+      setRecipeTourStep(0);
+
+      setShowImport(false);
+      setShowFoodImport(false);
+      setShowShoppingImport(false);
+      setShowPantryModal(false);
+
+      setRecipeUrl("");
+      setImportError("");
+
+      window.history.replaceState({ page: "home" }, "", "/");
+      showPage("home");
+
+      showToast("Quick tour closed. You can replay it from Profile.");
+    }}
+    className="ml-auto rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
+  >
+    Exit Tour
+  </button>
+</div>
+  </div>
+)}
+<div className="mb-4 grid grid-cols-2 gap-3">
+  <button
+    type="button"
     onClick={() => {
       setShowFoodImport(false);
       setShowShoppingImport(false);
       setShowPantryModal(false);
     }}
-    className={`rounded-full px-4 py-2 text-sm font-bold ${
-      !showFoodImport && !showShoppingImport
-        ? "bg-[#a63a0a] text-white"
-        : "border border-[#a63a0a] text-[#a63a0a]"
+    className={`w-full min-h-[60px] rounded-2xl sm:min-h-[64px] border px-3 py-3 text-center text-sm font-bold transition ${
+      (
+  !showFoodImport &&
+  !showShoppingImport &&
+  !showPantryModal &&
+  onboardingTourStep === 0
+) || onboardingTourStep === 1
+  ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+  : "border-[#d9a88f] bg-white text-[#a63a0a]"
     }`}
   >
-    Recipe
+    <span className="block text-xl">📖</span>
+    <span className="mt-1 block">Recipe</span>
   </button>
 
   <button
-  onClick={() => {
-    setShowFoodImport(true);
-    setShowShoppingImport(false);
-    setShowPantryModal(false);
-  }}
-    
-    className={`rounded-full px-4 py-2 text-sm font-bold ${
+    type="button"
+    onClick={() => {
+      setShowFoodImport(true);
+      setShowShoppingImport(false);
+      setShowPantryModal(false);
+    }}
+    className={`min-h-[64px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
       showFoodImport
-        ? "bg-[#a63a0a] text-white"
-        : "border border-[#a63a0a] text-[#a63a0a]"
+        ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+  : "border-[#d9a88f] bg-white text-[#a63a0a]"
     }`}
   >
-   Go-To Foods
+    <span className="block text-lg">🥫</span>
+    <span className="mt-1 block">Grocery Product</span>
   </button>
 
   <button
-  onClick={() => {
-    setShowFoodImport(false);
-    setShowPantryModal(false);
-    setShowShoppingImport(true);
-    setLastAddedShoppingItem(null);
-    setNewShoppingItem("");
-   }}
-  className={`rounded-full px-4 py-2 text-sm font-bold ${
-    showShoppingImport
-      ? "bg-[#a63a0a] text-white"
-      : "border border-[#a63a0a] text-[#a63a0a]"
-  }`}
->
-  Shopping Item
-</button>
+    type="button"
+    onClick={() => {
+      setShowFoodImport(false);
+      setShowPantryModal(false);
+      setShowShoppingImport(true);
+      setLastAddedShoppingItem(null);
+      setNewShoppingItem("");
+    }}
+    className={`min-h-[64px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
+      showShoppingImport
+        ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+  : "border-[#d9a88f] bg-white text-[#a63a0a]"
+    }`}
+  >
+    <span className="block text-lg">🛒</span>
+    <span className="mt-1 block">Shopping Item</span>
+  </button>
 
   <button
+  type="button"
   onClick={() => {
     setEditingPantryModalId(null);
     setPantryModalShoppingItem("");
@@ -9735,21 +10067,28 @@ if (!hasLoadedUser) {
     setPantryModalUnit("package");
     setPantryModalCategory("Other");
     setAddAnotherPantryItem(false);
-    setShowPantryModal(true);
+    setShowFoodImport(false);
     setShowShoppingImport(false);
+    setShowPantryModal(true);
   }}
-  className="rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+  className={`w-full min-h-[72px] rounded-2xl border px-3 py-3 text-center text-sm font-bold transition ${
+    showPantryModal || onboardingTourStep === 4
+      ? "relative z-[5010] border-[#a63a0a] bg-[#a63a0a] text-white shadow-xl ring-4 ring-[#f7d5c2]"
+  : "border-[#d9a88f] bg-white text-[#a63a0a]"
+  }`}
 >
-  Pantry Item
+  <span className="block text-lg">🥫</span>
+  <span className="mt-1 block">Pantry Item</span>
 </button>
 </div>
+
 {showShoppingImport && (
-  <div className="flex flex-wrap gap-2">
+  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
     <input
       value={newShoppingItem}
       onChange={(e) => setNewShoppingItem(e.target.value)}
       placeholder="🛒 Add grocery item or paste url"
-      className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+      className="min-w-0 rounded-full border border-[#ead7c8] px-5 py-3"
     />
 
     <button
@@ -9834,7 +10173,7 @@ if (!hasLoadedUser) {
     }
   }}
   disabled={isAddingShoppingItem}
-  className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white disabled:opacity-60"
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white disabled:opacity-60 sm:w-auto"
 >
   {isAddingShoppingItem ? "Adding..." : "Add Item to Shopping List"}
 </button>
@@ -9887,7 +10226,7 @@ if (!hasLoadedUser) {
   </div>
 )}
 
-{!showShoppingImport && (
+{!showShoppingImport && onboardingTourStep !== 4 && (
   <>
 {!showFoodImport ? (
   <>
@@ -9900,12 +10239,16 @@ if (!hasLoadedUser) {
       />
 
       <button
-        onClick={importRecipe}
-        disabled={isImporting}
-        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
-      >
-        {isImporting ? "Importing..." : "Import Recipe"}
-      </button>
+  onClick={importRecipe}
+  disabled={isImporting}
+  className={`rounded-full px-8 py-3 font-bold text-white transition-all duration-300 disabled:opacity-60 ${
+    onboardingTourStep === 5
+      ? "bg-[#a63a0a] ring-4 ring-[#f7d5c2] shadow-lg"
+      : "bg-[#a63a0a]"
+  }`}
+>
+  {isImporting ? "Importing..." : "Import Recipe"}
+</button>
     </div>
 
     {importError && (
@@ -10043,7 +10386,7 @@ Bake for 25 minutes`}
       onClick={saveFoodItem}
       className="rounded-full bg-[#a63a0a] px-6 py-3 text-white md:col-span-2"
     >
-      Save Go-To Food
+      Save Grocery Product
     </button>
   </div>
 )}
@@ -10053,7 +10396,7 @@ Bake for 25 minutes`}
     onClick={() => setShowFoodImport(true)}
     className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
   >
-    + Enter Go-To Foods Manually
+    + Enter Grocery Product Manually
   </button>
 )}
   </>
@@ -10428,6 +10771,39 @@ Bake for 25 minutes`}
             <a href="/contact">Contact</a>
           </div>
         </footer>
+        {showOnboarding && currentUserId && (
+  <OnboardingModal
+    onStartTour={() => {
+      setShowOnboarding(false);
+
+      setShowImport(true);
+      setShowFoodImport(false);
+      setShowShoppingImport(false);
+      setShowPantryModal(false);
+
+      setRecipeUrl(
+        "https://sallysbakingaddiction.com/chewy-chocolate-chip-cookies/"
+      );
+
+      setOnboardingTourStep(1);
+
+      setTimeout(() => {
+        importSectionRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }, 100);
+    }}
+    onSkip={() => {
+      localStorage.setItem(
+        `hey-chef-onboarding-${currentUserId}`,
+        "complete"
+      );
+
+      setShowOnboarding(false);
+    }}
+  />
+)}
     </main>
   );
 }
