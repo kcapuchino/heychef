@@ -228,7 +228,9 @@ async function sendTestNotification() {
       );
     }
 
-    setMessage("Test notification sent.");
+    setMessage(
+  `Test sent to ${result.sent} of ${result.devicesFound} connected devices.`
+);
   } catch (error) {
     console.error("Test notification error:", error);
 

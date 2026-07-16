@@ -4,7 +4,8 @@ import { getFirebaseAdminMessaging } from "@/app/lib/firebaseAdmin";
 
 export async function POST(request: Request) {
   try {
-    const authorization = request.headers.get("authorization");
+    const authorization =
+      request.headers.get("authorization");
 
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -13,7 +14,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const accessToken = authorization.replace("Bearer ", "");
+    const accessToken = authorization.replace(
+      "Bearer ",
+      ""
+    );
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,61 +38,132 @@ export async function POST(request: Request) {
 
     if (userError || !user) {
       return NextResponse.json(
-        { error: "Your session could not be verified." },
+        {
+          error:
+            "Your session could not be verified.",
+        },
         { status: 401 }
       );
     }
 
-    const { data: pushToken, error: tokenError } =
+    const { data: pushTokens, error: tokenError } =
       await supabase
         .from("push_tokens")
-        .select("token")
+        .select("id, token")
         .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq("is_active", true);
 
     if (tokenError) {
       throw tokenError;
     }
 
-    if (!pushToken?.token) {
+    if (!pushTokens || pushTokens.length === 0) {
       return NextResponse.json(
         {
           error:
-            "No connected device was found. Connect this device first.",
+            "No connected devices were found. Connect a device first.",
         },
         { status: 404 }
       );
     }
 
-    const messageId = await getFirebaseAdminMessaging().send({
-      token: pushToken.token,
-      notification: {
-        title: "Hey Chef Test",
-        body: "Your push notifications are working! 🎉",
-      },
-      webpush: {
-        notification: {
-          icon: "/icon-192.png",
-          badge: "/icon-192.png",
+    const messagingResponse =
+      await getFirebaseAdminMessaging()
+        .sendEachForMulticast({
+          tokens: pushTokens.map((item) => item.token),
+          notification: {
+            title: "Hey Chef Test",
+            body: "Your push notifications are working! 🎉",
+          },
+          webpush: {
+            notification: {
+              icon: "/icon-192.png",
+              badge: "/icon-192.png",
+            },
+            fcmOptions: {
+              link: "/reminders",
+            },
+          },
+          data: {
+            url: "/reminders",
+          },
+        });
+
+    const invalidTokenIds: string[] = [];
+
+    messagingResponse.responses.forEach(
+      (response, index) => {
+        if (response.success) return;
+
+        const errorCode = response.error?.code;
+
+        if (
+          errorCode ===
+            "messaging/registration-token-not-registered" ||
+          errorCode ===
+            "messaging/invalid-registration-token"
+        ) {
+          const tokenId = pushTokens[index]?.id;
+
+          if (tokenId) {
+            invalidTokenIds.push(tokenId);
+          }
+        }
+      }
+    );
+
+    if (invalidTokenIds.length > 0) {
+      const serviceSupabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        }
+      );
+
+      const { error: deactivateError } =
+        await serviceSupabase
+          .from("push_tokens")
+          .update({
+            is_active: false,
+            updated_at: new Date().toISOString(),
+          })
+          .in("id", invalidTokenIds);
+
+      if (deactivateError) {
+        console.error(
+          "Could not deactivate invalid tokens:",
+          deactivateError
+        );
+      }
+    }
+
+    if (messagingResponse.successCount === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Firebase could not deliver the test notification to any connected device.",
+          failed:
+            messagingResponse.failureCount,
         },
-        fcmOptions: {
-          link: "/reminders",
-        },
-      },
-      data: {
-        url: "/reminders",
-      },
-    });
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      messageId,
+      devicesFound: pushTokens.length,
+      sent: messagingResponse.successCount,
+      failed: messagingResponse.failureCount,
     });
   } catch (error) {
-    console.error("Test notification failed:", error);
+    console.error(
+      "Test notification failed:",
+      error
+    );
 
     return NextResponse.json(
       {
