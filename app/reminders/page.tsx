@@ -88,6 +88,8 @@ export default function RemindersPage() {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [message, setMessage] = useState("");
   const [firebaseToken, setFirebaseToken] = useState("");
+  const [deviceConnected, setDeviceConnected] =
+  useState(false);
   const [showDeviceInstructions, setShowDeviceInstructions] =
     useState(false);
   const [notificationPermission, setNotificationPermission] =
@@ -102,6 +104,29 @@ export default function RemindersPage() {
       setNotificationPermission("unsupported");
     }
   }, []);
+
+  useEffect(() => {
+  async function checkDeviceConnection() {
+    if (notificationPermission !== "granted") return;
+
+    try {
+      const token =
+        await requestFirebaseNotificationToken();
+
+      if (!token) return;
+
+      setFirebaseToken(token);
+      setDeviceConnected(true);
+    } catch (error) {
+      console.error(
+        "Could not restore notification connection:",
+        error
+      );
+    }
+  }
+
+  void checkDeviceConnection();
+}, [notificationPermission]);
 
   async function createFirebaseToken() {
   setMessage("");
@@ -142,6 +167,7 @@ if (!user) {
     }
 
     setFirebaseToken(token);
+    setDeviceConnected(true);
     setNotificationPermission("granted");
 
     setMessage(
@@ -698,135 +724,130 @@ await syncNotificationJobs(settings);
         </section>
 
         <section className="mb-5 rounded-[2rem] border border-[#ead7c8] bg-white p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-[#2b1b14]">
-                Device notifications
-              </h2>
+  <div>
+    <h2 className="text-xl font-bold text-[#2b1b14]">
+      Device notifications
+    </h2>
 
-              <p className="mt-1 text-[#6d5549]">
-                Allow this browser or installed app to show
-                notifications.
-              </p>
-              
-            </div>
-
-            {notificationPermission === "granted" ? (
-  <button
-    type="button"
-    onClick={() => void createFirebaseToken()}
-    className="rounded-full bg-[#edf7ed] px-4 py-2 text-sm font-bold text-[#27632a]"
-  >
-    Connect This Device
-  </button>
-) : (
-  <button
-    type="button"
-    onClick={() => void createFirebaseToken()}
-    disabled={notificationPermission === "unsupported"}
-    className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    Enable Notifications
-  </button>
-)}
-          </div>
-          {firebaseToken && (
-  <button
-    type="button"
-    onClick={() => void sendTestNotification()}
-    disabled={isSendingTest}
-    className="mt-3 rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a] disabled:cursor-wait disabled:opacity-60"
-  >
-    {isSendingTest
-      ? "Sending Test..."
-      : "Send Test Notification"}
-  </button>
-)}
-          {message && (
-  <div className="mt-4 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4 text-sm text-[#6d5549]">
-    {message}
+    <p className="mt-1 text-[#6d5549]">
+      Allow this browser or installed app to show notifications.
+    </p>
   </div>
-)}
 
+  <div className="mt-5">
+    {deviceConnected ? (
+      <div className="rounded-2xl bg-[#edf7ed] px-4 py-3 text-sm font-bold text-[#27632a]">
+        ✓ This device is connected
+      </div>
+    ) : (
+      <button
+        type="button"
+        onClick={() => void createFirebaseToken()}
+        disabled={notificationPermission === "unsupported"}
+        className="w-full rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {notificationPermission === "granted"
+          ? "Connect This Device"
+          : "Enable Notifications"}
+      </button>
+    )}
+  </div>
 
+  {firebaseToken && (
+    <button
+      type="button"
+      onClick={() => void sendTestNotification()}
+      disabled={isSendingTest}
+      className="mt-4 w-full rounded-full border border-[#a63a0a] px-4 py-3 text-sm font-bold text-[#a63a0a] disabled:cursor-wait disabled:opacity-60"
+    >
+      {isSendingTest
+        ? "Sending Test..."
+        : "Send Test Notification"}
+    </button>
+  )}
 
-          {notificationPermission === "denied" && (
-            <div className="mt-4 rounded-2xl bg-[#fff4ef] p-4 text-sm text-[#6d5549]">
-              <p>
-                Notifications are blocked in your device or browser
-                settings.
-              </p>
+  {notificationPermission === "granted" && (
+    <button
+      type="button"
+      onClick={() =>
+        setShowDeviceInstructions((current) => !current)
+      }
+      className="mt-4 block w-full text-center text-sm font-bold text-[#a63a0a] underline"
+    >
+      {showDeviceInstructions
+        ? "Hide device instructions"
+        : "Turn off device permission completely"}
+    </button>
+  )}
 
-              <button
-                type="button"
-                onClick={() =>
-                  setShowDeviceInstructions((current) => !current)
-                }
-                className="mt-3 font-bold text-[#a63a0a] underline"
-              >
-                {showDeviceInstructions
-                  ? "Hide instructions"
-                  : "How to change notification permission"}
-              </button>
-            </div>
-          )}
+  {message && (
+    <div className="mt-4 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4 text-sm text-[#6d5549]">
+      {message}
+    </div>
+  )}
 
-          {notificationPermission === "granted" && (
-            <button
-              type="button"
-              onClick={() =>
-                setShowDeviceInstructions((current) => !current)
-              }
-              className="mt-4 text-sm font-bold text-[#a63a0a] underline"
-            >
-              {showDeviceInstructions
-                ? "Hide device instructions"
-                : "Turn off device permission completely"}
-            </button>
-          )}
+  {notificationPermission === "denied" && (
+    <div className="mt-4 rounded-2xl bg-[#fff4ef] p-4 text-sm text-[#6d5549]">
+      <p>
+        Notifications are blocked in your device or browser settings.
+      </p>
 
-          {showDeviceInstructions && (
-            <div className="mt-4 space-y-3 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4 text-sm leading-6 text-[#6d5549]">
-              <p>
-                <strong className="text-[#2b1b14]">
-                  Hey Chef switch:
-                </strong>{" "}
-                Turn off “Hey Chef reminders” above to pause all
-                reminders while keeping your saved schedule.
-              </p>
+      <button
+        type="button"
+        onClick={() =>
+          setShowDeviceInstructions((current) => !current)
+        }
+        className="mt-3 font-bold text-[#a63a0a] underline"
+      >
+        {showDeviceInstructions
+          ? "Hide instructions"
+          : "How to change notification permission"}
+      </button>
+    </div>
+  )}
 
-              <p>
-                <strong className="text-[#2b1b14]">
-                  iPhone or iPad:
-                </strong>{" "}
-                Open Settings → Notifications → Hey Chef, then turn
-                off Allow Notifications.
-              </p>
+  {showDeviceInstructions && (
+    <div className="mt-4 space-y-3 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4 text-sm leading-6 text-[#6d5549]">
+      <p>
+        <strong className="text-[#2b1b14]">
+          Hey Chef switch:
+        </strong>{" "}
+        Turn off “Hey Chef reminders” above to pause all reminders
+        while keeping your saved schedule.
+      </p>
 
-              <p>
-                <strong className="text-[#2b1b14]">
-                  Android:
-                </strong>{" "}
-                Open Settings → Apps → Hey Chef → Notifications, then
-                turn notifications off.
-              </p>
+      <p>
+        <strong className="text-[#2b1b14]">
+          iPhone or iPad:
+        </strong>{" "}
+        Open Settings → Notifications → Hey Chef, then turn off
+        Allow Notifications.
+      </p>
 
-              <p>
-                <strong className="text-[#2b1b14]">
-                  Desktop Chrome:
-                </strong>{" "}
-                Open the site controls beside the web address, choose
-                Site settings, then change Notifications to Block.
-              </p>
-            </div>
-          )}
+      <p>
+        <strong className="text-[#2b1b14]">
+          Android:
+        </strong>{" "}
+        Open Settings → Apps → Hey Chef → Notifications, then turn
+        notifications off.
+      </p>
 
-          {notificationPermission === "unsupported" && (
-            <p className="mt-4 rounded-2xl bg-[#fff4ef] p-4 text-sm text-[#6d5549]">
-              This browser does not support notifications.
-            </p>
-          )}
-        </section>
+      <p>
+        <strong className="text-[#2b1b14]">
+          Desktop Chrome:
+        </strong>{" "}
+        Open the site controls beside the web address, choose Site
+        settings, then change Notifications to Block.
+      </p>
+    </div>
+  )}
+
+  {notificationPermission === "unsupported" && (
+    <p className="mt-4 rounded-2xl bg-[#fff4ef] p-4 text-sm text-[#6d5549]">
+      This browser does not support notifications.
+    </p>
+  )}
+</section>
 
         <div
           className={

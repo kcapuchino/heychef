@@ -107,7 +107,10 @@ event.waitUntil(
       icon: "/icon-192.png",
       badge: "/icon-192.png",
       data: {
-        url: "/reminders",
+        url:
+          notification.data?.url ||
+          payload.data?.url ||
+          "/reminders",
       },
     })
     .then(() => {
@@ -126,7 +129,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const targetPath =
-    event.notification.data?.url || "/?page=reminders";
+  event.notification.data?.url || "/reminders";
 
   const targetUrl = new URL(
     targetPath,
