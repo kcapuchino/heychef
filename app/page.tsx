@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/Archive/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 import Image from "next/image";
 import RemindersPage from "./reminders/page";
 import OnboardingModal from "@/components/OnboardingModal";

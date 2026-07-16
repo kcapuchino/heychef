@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/Archive/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 
 
 export default function Page() {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "hey-chef-v2";
+const CACHE_NAME = "hey-chef-v4";
 
 const APP_SHELL = [
   "/",
@@ -91,37 +91,35 @@ self.addEventListener("push", (event) => {
     };
   }
 
-  console.log("[sw.js] Push payload:", payload);
+  const notification = payload.notification || payload;
 
-  const notification = payload.notification || payload.data || payload;
+ console.log("[sw.js] About to show notification", {
+  title: notification.title || "Hey Chef",
+  body: notification.body || "You have a reminder.",
+});
 
-  const title =
-    notification.title ||
-    payload.data?.title ||
-    "Hey Chef";
-
-  const options = {
-    body:
-      notification.body ||
-      payload.data?.body ||
-      "You have a new reminder from Hey Chef.",
-    icon:
-      notification.icon ||
-      payload.data?.icon ||
-      "/icon-192.png",
-    badge: "/icon-192.png",
-    data: {
-      url:
-        notification.url ||
-        notification.click_action ||
-        payload.data?.url ||
-        "/?page=reminders",
-    },
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+event.waitUntil(
+  self.registration
+    .showNotification(notification.title || "Hey Chef", {
+      body:
+        notification.body ||
+        "You have a reminder.",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: {
+        url: "/reminders",
+      },
+    })
+    .then(() => {
+      console.log("[sw.js] Notification shown");
+    })
+    .catch((error) => {
+      console.error(
+        "[sw.js] showNotification failed:",
+        error
+      );
+    })
+);
 });
 
 self.addEventListener("notificationclick", (event) => {

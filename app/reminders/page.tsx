@@ -2,8 +2,13 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/Archive/lib/supabase";
+import { supabase } from "@/app/lib/supabase";
 import { requestFirebaseNotificationToken } from "../lib/firebaseNotifications";
+import {
+  getNextDailyRun,
+  getNextHydrationRun,
+  getNextWeeklyRun,
+} from "../lib/notificationSchedule";
 
 type HydrationInterval = 1 | 2 | 3;
 
@@ -80,6 +85,7 @@ export default function RemindersPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
   const [message, setMessage] = useState("");
   const [firebaseToken, setFirebaseToken] = useState("");
   const [showDeviceInstructions, setShowDeviceInstructions] =
@@ -101,11 +107,15 @@ export default function RemindersPage() {
   setMessage("");
 
   try {
-    if (!userId) {
-      throw new Error(
-        "Please sign in before enabling notifications."
-      );
-    }
+    const {
+  data: { user },
+} = await supabase.auth.getUser();
+
+if (!user) {
+  throw new Error(
+    "Please sign in before enabling notifications."
+  );
+}
 
     const token =
       await requestFirebaseNotificationToken();
@@ -114,7 +124,7 @@ export default function RemindersPage() {
       .from("push_tokens")
       .upsert(
         {
-          user_id: userId,
+          user_id: user.id,
           token,
           device_name:
             navigator.platform || "Unknown device",
@@ -153,6 +163,56 @@ export default function RemindersPage() {
         ? error.message
         : "Could not connect this device to notifications."
     );
+  }
+}
+
+async function sendTestNotification() {
+  setMessage(
+    "Test will send in 5 seconds. Switch to another tab now."
+  );
+  setIsSendingTest(true);
+
+  try {
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 5000);
+    });
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error(
+        "Please sign in before sending a test notification."
+      );
+    }
+
+    const response = await fetch("/api/notifications/test", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error || "Could not send the test notification."
+      );
+    }
+
+    setMessage("Test notification sent.");
+  } catch (error) {
+    console.error("Test notification error:", error);
+
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : "Could not send the test notification."
+    );
+  } finally {
+    setIsSendingTest(false);
   }
 }
 
@@ -321,7 +381,143 @@ export default function RemindersPage() {
     });
   }
 
-  async function saveReminderSettings() {
+  async function syncNotificationJobs(
+  currentSettings: ReminderSettings
+) {
+  if (!userId) {
+    throw new Error(
+      "Please sign in before scheduling reminders."
+    );
+  }
+
+  const timezone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const jobs = [
+    {
+      user_id: userId,
+      reminder_type: "weekly_meal_plan",
+      enabled:
+        currentSettings.notificationsEnabled &&
+        currentSettings.weeklyMealPlanEnabled,
+      next_run_at: getNextWeeklyRun({
+        weekday: currentSettings.weeklyMealPlanDay,
+        time: currentSettings.weeklyMealPlanTime,
+        timezone,
+      }),
+      title: "Plan your week",
+      body: "Take a few minutes to plan your meals for the week.",
+      destination_url: "/planner",
+      updated_at: new Date().toISOString(),
+    },
+    {
+      user_id: userId,
+      reminder_type: "weekly_shopping",
+      enabled:
+        currentSettings.notificationsEnabled &&
+        currentSettings.weeklyShoppingEnabled,
+      next_run_at: getNextWeeklyRun({
+        weekday: currentSettings.weeklyShoppingDay,
+        time: currentSettings.weeklyShoppingTime,
+        timezone,
+      }),
+      title: "Shopping list check",
+      body: "Review your shopping list before your next trip.",
+      destination_url: "/shopping",
+      updated_at: new Date().toISOString(),
+    },
+    {
+      user_id: userId,
+      reminder_type: "breakfast",
+      enabled:
+        currentSettings.notificationsEnabled &&
+        currentSettings.breakfastEnabled,
+      next_run_at: getNextDailyRun({
+        time: currentSettings.breakfastTime,
+        timezone,
+      }),
+      title: "Time for breakfast!",
+      body: "Don’t forget to eat 💛",
+      destination_url: "/planner",
+      updated_at: new Date().toISOString(),
+    },
+    {
+      user_id: userId,
+      reminder_type: "lunch",
+      enabled:
+        currentSettings.notificationsEnabled &&
+        currentSettings.lunchEnabled,
+      next_run_at: getNextDailyRun({
+        time: currentSettings.lunchTime,
+        timezone,
+      }),
+      title: "Time for lunch!",
+      body: "Don’t forget to eat 💛",
+      destination_url: "/planner",
+      updated_at: new Date().toISOString(),
+    },
+    {
+      user_id: userId,
+      reminder_type: "dinner",
+      enabled:
+        currentSettings.notificationsEnabled &&
+        currentSettings.dinnerEnabled,
+      next_run_at: getNextDailyRun({
+        time: currentSettings.dinnerTime,
+        timezone,
+      }),
+      title: "Time for dinner!",
+      body: "Don’t forget to eat 💛",
+      destination_url: "/planner",
+      updated_at: new Date().toISOString(),
+    },
+    {
+      user_id: userId,
+      reminder_type: "hydration",
+      enabled:
+        currentSettings.notificationsEnabled &&
+        currentSettings.hydrationEnabled,
+      next_run_at: getNextHydrationRun({
+        intervalHours:
+          currentSettings.hydrationIntervalHours,
+        startTime: currentSettings.hydrationStartTime,
+        endTime: currentSettings.hydrationEndTime,
+        days: currentSettings.hydrationDays,
+        timezone,
+      }),
+      title: "Hydration check",
+      body: "Take a moment to drink some water 💧",
+      destination_url: "/reminders",
+      updated_at: new Date().toISOString(),
+    },
+  ];
+
+  console.log("Jobs being sent to Supabase:", jobs);
+
+const { data, error } = await supabase
+  .from("notification_jobs")
+  .upsert(jobs, {
+    onConflict: "user_id,reminder_type",
+  })
+  .select();
+
+console.log("Notification jobs result:", {
+  data,
+  error,
+});
+
+if (error) {
+  throw error;
+}
+
+if (!data || data.length === 0) {
+  throw new Error(
+    "No notification jobs were created."
+  );
+}
+}
+
+async function saveReminderSettings() {
     if (!userId) {
       setMessage("Please sign in before saving reminders.");
       return;
@@ -412,8 +608,10 @@ export default function RemindersPage() {
         );
 
       if (error) {
-        throw error;
-      }
+  throw error;
+}
+
+await syncNotificationJobs(settings);
 
       setMessage(
         settings.notificationsEnabled
@@ -514,20 +712,43 @@ export default function RemindersPage() {
             </div>
 
             {notificationPermission === "granted" ? (
-              <span className="rounded-full bg-[#edf7ed] px-4 py-2 text-sm font-bold text-[#27632a]">
-                ✓ Device permission enabled
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={requestNotificationPermission}
-                disabled={notificationPermission === "unsupported"}
-                className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Enable Notifications
-              </button>
-            )}
+  <button
+    type="button"
+    onClick={() => void createFirebaseToken()}
+    className="rounded-full bg-[#edf7ed] px-4 py-2 text-sm font-bold text-[#27632a]"
+  >
+    Connect This Device
+  </button>
+) : (
+  <button
+    type="button"
+    onClick={() => void createFirebaseToken()}
+    disabled={notificationPermission === "unsupported"}
+    className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    Enable Notifications
+  </button>
+)}
           </div>
+          {firebaseToken && (
+  <button
+    type="button"
+    onClick={() => void sendTestNotification()}
+    disabled={isSendingTest}
+    className="mt-3 rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a] disabled:cursor-wait disabled:opacity-60"
+  >
+    {isSendingTest
+      ? "Sending Test..."
+      : "Send Test Notification"}
+  </button>
+)}
+          {message && (
+  <div className="mt-4 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4 text-sm text-[#6d5549]">
+    {message}
+  </div>
+)}
+
+
 
           {notificationPermission === "denied" && (
             <div className="mt-4 rounded-2xl bg-[#fff4ef] p-4 text-sm text-[#6d5549]">
@@ -851,12 +1072,6 @@ export default function RemindersPage() {
             </ReminderRow>
           </section>
         </div>
-
-        {message && (
-          <p className="mb-4 rounded-2xl border border-[#ead7c8] bg-white p-4 text-center font-medium text-[#6d5549]">
-            {message}
-          </p>
-        )}
 
         <button
           type="button"
