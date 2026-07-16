@@ -938,7 +938,7 @@ await syncNotificationJobs(settings);
                 updateSetting("weeklyMealPlanEnabled", enabled)
               }
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <SelectField
                   label="Day"
                   value={String(settings.weeklyMealPlanDay)}
@@ -974,7 +974,7 @@ await syncNotificationJobs(settings);
                 updateSetting("weeklyShoppingEnabled", enabled)
               }
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                 <SelectField
                   label="Day"
                   value={String(settings.weeklyShoppingDay)}
@@ -1103,7 +1103,7 @@ await syncNotificationJobs(settings);
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
                   <TimeField
                     label="Start time"
                     value={settings.hydrationStartTime}
@@ -1302,7 +1302,7 @@ function TimeField({
   onChange,
 }: TimeFieldProps) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-2 block text-sm font-bold text-[#2b1b14]">
         {label}
       </span>
@@ -1312,7 +1312,7 @@ function TimeField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         step={900}
-        className="min-h-12 w-full rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-base text-[#2b1b14]"
+        className="min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-base text-[#2b1b14]"
       />
     </label>
   );
