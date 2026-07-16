@@ -1071,13 +1071,30 @@ setSupportedAt(data?.supported_at || null);
 useEffect(() => {
   if (!currentUserId) return;
 
-  const onboardingComplete = localStorage.getItem(
-    `hey-chef-onboarding-${currentUserId}`
-  );
+  async function checkOnboarding() {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", currentUserId)
+      .single();
 
-  if (!onboardingComplete) {
-    setShowOnboarding(true);
+    if (error) {
+      console.error("Error loading onboarding:", error);
+      return;
+    }
+
+    if (data?.onboarding_completed) {
+      localStorage.setItem(
+        `hey-chef-onboarding-${currentUserId}`,
+        "completed"
+      );
+      setShowOnboarding(false);
+    } else {
+      setShowOnboarding(true);
+    }
   }
+
+  checkOnboarding();
 }, [currentUserId]);
 
 
@@ -8569,6 +8586,13 @@ Bake for 25 minutes`}
             showToast("Could not finish the tour. Please try again.");
             return;
           }
+
+        await supabase
+  .from("profiles")
+  .update({
+    onboarding_completed: true,
+  })
+  .eq("id", currentUserId);
 
           localStorage.setItem(
             `hey-chef-onboarding-${currentUserId}`,
