@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import {
+  createClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { getFirebaseAdminMessaging } from "@/app/lib/firebaseAdmin";
 import {
   getNextDailyRun,
@@ -21,7 +24,19 @@ type NotificationJob = {
   body: string;
   destination_url: string | null;
 };
+type MealType = "breakfast" | "lunch" | "dinner";
 
+type PlannedMealRow = {
+  title: string | null;
+  recipes:
+    | {
+        title: string | null;
+      }
+    | {
+        title: string | null;
+      }[]
+    | null;
+};
 type ReminderSettingsRow = {
   timezone: string | null;
 
@@ -113,6 +128,252 @@ function calculateNextRun(
         `Unsupported reminder type: ${job.reminder_type}`
       );
   }
+}
+function getDateInTimezone(
+  date: Date,
+  timezone: string
+): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find(
+    (part) => part.type === "year"
+  )?.value;
+
+  const month = parts.find(
+    (part) => part.type === "month"
+  )?.value;
+
+  const day = parts.find(
+    (part) => part.type === "day"
+  )?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+function getRecipeTitle(
+  plannedMeal: PlannedMealRow
+): string | null {
+  if (plannedMeal.title?.trim()) {
+    return plannedMeal.title.trim();
+  }
+
+  if (Array.isArray(plannedMeal.recipes)) {
+    return plannedMeal.recipes[0]?.title?.trim() || null;
+  }
+
+  return plannedMeal.recipes?.title?.trim() || null;
+}
+
+async function getMealNotification({
+  supabase,
+  userId,
+  meal,
+  timezone,
+  fallbackTitle,
+  fallbackBody,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+  meal: MealType;
+  timezone: string;
+  fallbackTitle: string;
+  fallbackBody: string;
+}) {
+  const today = getDateInTimezone(new Date(), timezone);
+
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .select(`
+      title,
+      recipes (
+        title
+      )
+    `)
+    .eq("user_id", userId)
+    .eq("date", today)
+    .ilike("meal", meal)
+    .eq("is_made", false);
+
+  if (error) {
+    console.error(
+      `Could not load today's ${meal}:`,
+      error
+    );
+
+    return {
+      title: fallbackTitle,
+      body: fallbackBody,
+    };
+  }
+
+  const mealTitles = (
+    (data || []) as PlannedMealRow[]
+  )
+    .map(getRecipeTitle)
+    .filter(
+      (title): title is string => Boolean(title)
+    );
+
+  const uniqueTitles = [...new Set(mealTitles)];
+
+  if (uniqueTitles.length === 0) {
+    return {
+      title: fallbackTitle,
+      body: fallbackBody,
+    };
+  }
+
+  const mealLabel =
+    meal.charAt(0).toUpperCase() + meal.slice(1);
+
+  if (uniqueTitles.length === 1) {
+    return {
+      title: `${mealLabel} is planned!`,
+      body: `Remember, you're having ${uniqueTitles[0]} today. 💛`,
+    };
+  }
+
+  if (uniqueTitles.length === 2) {
+    return {
+      title: `${mealLabel} is planned!`,
+      body: `You're having ${uniqueTitles[0]} and ${uniqueTitles[1]} today. 💛`,
+    };
+  }
+
+  return {
+    title: `${mealLabel} is planned!`,
+    body: `You have ${uniqueTitles.length} items planned for ${meal}. Open Hey Chef to see them. 💛`,
+  };
+}
+
+async function getShoppingNotification({
+  supabase,
+  userId,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+}) {
+  const { data, error } = await supabase
+    .from("shopping_items")
+    .select("id, checked")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Could not load shopping items:", error);
+
+    return {
+      title: "Shopping list check",
+      body: "Review your shopping list before your next trip.",
+    };
+  }
+
+  const total = data?.length ?? 0;
+  const remaining =
+    data?.filter((item) => !item.checked).length ?? 0;
+
+  if (total === 0) {
+    return {
+      title: "Time to review your shopping list",
+      body: "Your list is empty. Add anything you need for the week.",
+    };
+  }
+
+  if (remaining === 0) {
+    return {
+      title: "Shopping list complete!",
+      body: `You checked off all ${total} items. Nice work! 🎉`,
+    };
+  }
+
+  return {
+    title: "Shopping trip coming up",
+    body: `You have ${remaining} ${
+      remaining === 1 ? "item" : "items"
+    } left to buy.`,
+  };
+}
+
+async function getWeeklyPlanningNotification({
+  supabase,
+  userId,
+  timezone,
+}: {
+  supabase: SupabaseClient;
+  userId: string;
+  timezone: string;
+}) {
+  const today = new Date();
+
+  const localDay = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "short",
+  }).format(today);
+
+  const dayIndex = [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat",
+  ].indexOf(localDay);
+
+  const daysUntilNextMonday =
+    dayIndex === 0 ? 1 : 8 - dayIndex;
+
+  const nextMonday = new Date(today);
+
+  nextMonday.setDate(
+    nextMonday.getDate() + daysUntilNextMonday
+  );
+
+  const nextWeekStart = getDateInTimezone(
+    nextMonday,
+    timezone
+  );
+
+  const { data, error } = await supabase
+    .from("meal_plan")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("week_start", nextWeekStart)
+    .eq("is_made", false);
+
+  if (error) {
+    console.error("Could not count next week's meals:", error);
+
+    return {
+      title: "Plan your week",
+      body: "Take a few minutes to plan your meals for the week.",
+    };
+  }
+
+  const plannedCount = Math.min(data?.length ?? 0, 21);
+
+  if (plannedCount === 0) {
+    return {
+      title: "Time to plan next week",
+      body: "You have 0 of 21 meal slots planned.",
+    };
+  }
+
+  if (plannedCount >= 21) {
+    return {
+      title: "Your week is planned!",
+      body: "All 21 meal slots are ready. 🎉",
+    };
+  }
+
+  return {
+    title: "Keep planning your week",
+    body: `You have ${plannedCount} of 21 meal slots planned.`,
+  };
 }
 
 export async function POST(request: Request) {
@@ -238,14 +499,73 @@ export async function POST(request: Request) {
         }
 
         const destinationUrl =
-          job.destination_url || "/reminders";
+  job.destination_url || "/reminders";
 
-        const messagingResponse =
-          await getFirebaseAdminMessaging().sendEachForMulticast({
-            tokens: tokens.map((item) => item.token),
-            notification: {
-              title: job.title,
-              body: job.body,
+let notificationTitle = job.title;
+let notificationBody = job.body;
+
+if (job.reminder_type === "weekly_meal_plan") {
+  const personalizedNotification =
+    await getWeeklyPlanningNotification({
+      supabase,
+      userId: job.user_id,
+      timezone:
+        settings.timezone ||
+        "America/Indiana/Indianapolis",
+    });
+
+  notificationTitle =
+    personalizedNotification.title;
+
+  notificationBody =
+    personalizedNotification.body;
+}
+
+if (job.reminder_type === "weekly_shopping") {
+  const personalizedNotification =
+    await getShoppingNotification({
+      supabase,
+      userId: job.user_id,
+    });
+
+  notificationTitle =
+    personalizedNotification.title;
+
+  notificationBody =
+    personalizedNotification.body;
+}
+
+if (
+  job.reminder_type === "breakfast" ||
+  job.reminder_type === "lunch" ||
+  job.reminder_type === "dinner"
+) {
+  const personalizedNotification =
+    await getMealNotification({
+      supabase,
+      userId: job.user_id,
+      meal: job.reminder_type,
+      timezone:
+        settings.timezone ||
+        "America/Indiana/Indianapolis",
+      fallbackTitle: job.title,
+      fallbackBody: job.body,
+    });
+
+  notificationTitle =
+    personalizedNotification.title;
+
+  notificationBody =
+    personalizedNotification.body;
+}
+
+const messagingResponse =
+  await getFirebaseAdminMessaging().sendEachForMulticast({
+    tokens: tokens.map((item) => item.token),
+    notification: {
+      title: notificationTitle,
+      body: notificationBody,
+
             },
             webpush: {
               notification: {
