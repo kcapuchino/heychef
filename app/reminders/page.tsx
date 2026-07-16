@@ -106,6 +106,65 @@ export default function RemindersPage() {
   }, []);
 
   useEffect(() => {
+  if (!userId) return;
+
+  const reminderSettingsChannel = supabase
+    .channel(`reminder-settings-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "reminder_settings",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        void loadReminderSettings();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(
+      reminderSettingsChannel
+    );
+  };
+}, [userId]);
+
+useEffect(() => {
+  function refreshWhenVisible() {
+    if (
+      document.visibilityState === "visible" &&
+      userId
+    ) {
+      void loadReminderSettings();
+    }
+  }
+
+  document.addEventListener(
+    "visibilitychange",
+    refreshWhenVisible
+  );
+
+  window.addEventListener(
+    "focus",
+    refreshWhenVisible
+  );
+
+  return () => {
+    document.removeEventListener(
+      "visibilitychange",
+      refreshWhenVisible
+    );
+
+    window.removeEventListener(
+      "focus",
+      refreshWhenVisible
+    );
+  };
+}, [userId]);
+
+  useEffect(() => {
   async function checkDeviceConnection() {
     if (notificationPermission !== "granted") return;
 
