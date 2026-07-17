@@ -119,18 +119,25 @@ useEffect(() => {
     .on(
       "postgres_changes",
       {
-        event: "UPDATE",
+        event: "*",
         schema: "public",
         table: "reminder_settings",
         filter: `user_id=eq.${userId}`,
       },
       () => {
+        console.log("Reminder settings changed in Supabase");
         void loadReminderSettings(false);
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      console.log("Reminder realtime status:", status);
 
-  function refreshWhenVisible() {
+      if (status === "SUBSCRIBED") {
+        void loadReminderSettings(false);
+      }
+    });
+
+  function refreshReminderSettings() {
     if (document.visibilityState === "visible") {
       void loadReminderSettings(false);
     }
@@ -138,13 +145,20 @@ useEffect(() => {
 
   document.addEventListener(
     "visibilitychange",
-    refreshWhenVisible
+    refreshReminderSettings
   );
+
+  window.addEventListener("focus", refreshReminderSettings);
 
   return () => {
     document.removeEventListener(
       "visibilitychange",
-      refreshWhenVisible
+      refreshReminderSettings
+    );
+
+    window.removeEventListener(
+      "focus",
+      refreshReminderSettings
     );
 
     void supabase.removeChannel(channel);
