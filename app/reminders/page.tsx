@@ -170,8 +170,10 @@ useEffect(() => {
     if (notificationPermission !== "granted") return;
 
     try {
-      const token =
-        await requestFirebaseNotificationToken();
+      const {
+  token,
+  deviceId,
+} = await requestFirebaseNotificationToken();
 
       if (!token) return;
 
@@ -202,25 +204,31 @@ if (!user) {
   );
 }
 
-    const token =
-      await requestFirebaseNotificationToken();
+    const {
+  token,
+  deviceId,
+} = await requestFirebaseNotificationToken();
 
-    const { error: tokenError } = await supabase
-      .from("push_tokens")
-      .upsert(
-        {
-          user_id: user.id,
-          token,
-          device_name:
-            navigator.platform || "Unknown device",
-          user_agent: navigator.userAgent,
-          is_active: true,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "token",
-        }
-      );
+const now = new Date().toISOString();
+
+const { error: tokenError } = await supabase
+  .from("push_tokens")
+  .upsert(
+    {
+      user_id: user.id,
+      device_id: deviceId,
+      token,
+      device_name:
+        navigator.platform || "Unknown device",
+      user_agent: navigator.userAgent,
+      is_active: true,
+      last_seen_at: now,
+      updated_at: now,
+    },
+    {
+      onConflict: "user_id,device_id",
+    }
+  );
 
     if (tokenError) {
       throw tokenError;

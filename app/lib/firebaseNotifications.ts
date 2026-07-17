@@ -1,6 +1,19 @@
 import { getToken } from "firebase/messaging";
 import { getFirebaseMessaging } from "./firebase";
 
+function getOrCreateDeviceId(): string {
+  const storageKey = "hey-chef-device-id";
+
+  let deviceId = window.localStorage.getItem(storageKey);
+
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    window.localStorage.setItem(storageKey, deviceId);
+  }
+
+  return deviceId;
+}
+
 export async function requestFirebaseNotificationToken() {
   if (!("Notification" in window)) {
     throw new Error(
@@ -19,7 +32,9 @@ export async function requestFirebaseNotificationToken() {
   console.log("Notification permission:", permission);
 
   if (permission !== "granted") {
-    throw new Error("Notification permission was not granted.");
+    throw new Error(
+      "Notification permission was not granted."
+    );
   }
 
   const messaging = await getFirebaseMessaging();
@@ -64,8 +79,14 @@ export async function requestFirebaseNotificationToken() {
     );
   }
 
+  const deviceId = getOrCreateDeviceId();
+
   console.log("FCM token:", token);
   console.log("FCM token length:", token.length);
+  console.log("Hey Chef device ID:", deviceId);
 
-  return token;
+  return {
+    token,
+    deviceId,
+  };
 }
