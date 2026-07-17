@@ -809,13 +809,19 @@ await syncNotificationJobs(confirmedSettings);
       <div className="mx-auto max-w-3xl">
         <div className="mb-6 flex items-center gap-3">
           <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-xl shadow-sm"
-            aria-label="Go back"
-          >
-            ←
-          </button>
+  type="button"
+  onClick={() => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  }}
+  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl font-bold text-[#2b1b14] shadow-sm"
+  aria-label="Go back"
+>
+  ←
+</button>
 
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
@@ -1379,7 +1385,7 @@ function TimeField({
   onChange,
 }: TimeFieldProps) {
   return (
-    <label className="block min-w-0">
+    <label className="block w-full min-w-0 overflow-hidden">
       <span className="mb-2 block text-sm font-bold text-[#2b1b14]">
         {label}
       </span>
@@ -1389,7 +1395,23 @@ function TimeField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         step={60}
-        className="min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-base text-[#2b1b14]"
+        className="
+          block
+          min-h-12
+          w-full
+          min-w-0
+          max-w-full
+          appearance-none
+          rounded-2xl
+          border
+          border-[#ead7c8]
+          bg-white
+          px-4
+          py-3
+          text-base
+          text-[#2b1b14]
+          [box-sizing:border-box]
+        "
       />
     </label>
   );
@@ -1412,7 +1434,7 @@ function SelectField({
   options,
 }: SelectFieldProps) {
   return (
-    <label className="block">
+    <label className="block w-full min-w-0 overflow-hidden">
       <span className="mb-2 block text-sm font-bold text-[#2b1b14]">
         {label}
       </span>
@@ -1420,7 +1442,24 @@ function SelectField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-12 w-full rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-base text-[#2b1b14]"
+        className="
+          block
+          min-h-12
+          w-full
+          min-w-0
+          max-w-full
+          appearance-none
+          rounded-2xl
+          border
+          border-[#ead7c8]
+          bg-white
+          px-4
+          py-3
+          pr-12
+          text-base
+          text-[#2b1b14]
+          [box-sizing:border-box]
+        "
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
