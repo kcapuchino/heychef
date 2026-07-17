@@ -1,7 +1,6 @@
-const CACHE_NAME = "hey-chef-v5s";
+const CACHE_NAME = "hey-chef-v6";
 
 const APP_SHELL = [
-  "/",
   "/offline",
   "/manifest.json",
   "/icon-192.png",
@@ -36,45 +35,52 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
+  const url = new URL(request.url);
 
   if (request.method !== "GET") {
     return;
   }
 
+  // Never interfere with API or Supabase requests.
+  if (
+    url.pathname.startsWith("/api/") ||
+    url.hostname.includes("supabase")
+  ) {
+    return;
+  }
+
+  // Pages should always come from the network when online.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() => caches.match("/offline"))
+      fetch(request, {
+        cache: "no-store",
+      }).catch(() => caches.match("/offline"))
     );
 
     return;
   }
 
+  // Check the network first for app files.
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+    fetch(request)
+      .then((networkResponse) => {
+        if (
+          !networkResponse ||
+          networkResponse.status !== 200 ||
+          networkResponse.type !== "basic"
+        ) {
+          return networkResponse;
+        }
 
-      return fetch(request)
-  .then((networkResponse) => {
-    if (!networkResponse || networkResponse.status !== 200) {
-      return networkResponse;
-    }
+        const responseToCache = networkResponse.clone();
 
-    if (request.method === "GET") {
-      const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(request, responseToCache);
+        });
 
-      caches.open(CACHE_NAME).then((cache) => {
-        cache.put(request, responseToCache);
-      });
-    }
-
-    return networkResponse;
-  })
-  .catch(() => {
-    return caches.match(request);
-  });
-    })
+        return networkResponse;
+      })
+      .catch(() => caches.match(request))
   );
 });
 
