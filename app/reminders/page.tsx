@@ -104,7 +104,29 @@ export default function RemindersPage() {
       setNotificationPermission("unsupported");
     }
   }, []);
+useEffect(() => {
+  if (!userId) return;
 
+  const channel = supabase
+    .channel(`reminder-settings-${userId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "reminder_settings",
+        filter: `user_id=eq.${userId}`,
+      },
+      () => {
+        void loadReminderSettings();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}, [userId]);
   useEffect(() => {
   if (!userId) return;
 
