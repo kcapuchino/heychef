@@ -165,17 +165,44 @@ useEffect(() => {
   };
 }, [userId]);
 
-  useEffect(() => {
+ useEffect(() => {
   async function checkDeviceConnection() {
+    if (!userId) return;
     if (notificationPermission !== "granted") return;
 
     try {
-      const {
-  token,
-  deviceId,
-} = await requestFirebaseNotificationToken();
+      const { token, deviceId } =
+        await requestFirebaseNotificationToken();
 
-      if (!token) return;
+      if (!token) {
+        setDeviceConnected(false);
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      const { error } = await supabase
+        .from("push_tokens")
+        .upsert(
+          {
+            user_id: userId,
+            device_id: deviceId,
+            token,
+            device_name:
+              navigator.platform || "Unknown device",
+            user_agent: navigator.userAgent,
+            is_active: true,
+            last_seen_at: now,
+            updated_at: now,
+          },
+          {
+            onConflict: "user_id,device_id",
+          }
+        );
+
+      if (error) {
+        throw error;
+      }
 
       setFirebaseToken(token);
       setDeviceConnected(true);
@@ -184,11 +211,14 @@ useEffect(() => {
         "Could not restore notification connection:",
         error
       );
+
+      setFirebaseToken("");
+      setDeviceConnected(false);
     }
   }
 
   void checkDeviceConnection();
-}, [notificationPermission]);
+}, [userId, notificationPermission]);
 
   async function createFirebaseToken() {
   setMessage("");
