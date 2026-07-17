@@ -447,8 +447,11 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [loginPassword, setLoginPassword] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [authError, setAuthError] = useState("");
+  const [acceptedTerms, setAcceptedTerms] =
+  useState(false);
   const [sampleRecipe, setSampleRecipe] = useState<Recipe | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const LEGAL_VERSION = "2026-07-10";
 
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
@@ -1505,6 +1508,13 @@ useEffect(() => {
 
   const cleanEmail = email.trim().toLowerCase();
 
+  if (authMode === "signup" && !acceptedTerms) {
+  setAuthError(
+    "Please accept the Terms of Use and acknowledge the Privacy Policy."
+  );
+  return;
+}
+
   const { data, error } =
   authMode === "signup"
     ? await supabase.auth.signUp({
@@ -1542,6 +1552,9 @@ if (authMode === "signup" && user) {
     id: user.id,
     email: cleanEmail,
 display_name: name?.trim() || null,
+terms_accepted_at: new Date().toISOString(),
+terms_version: LEGAL_VERSION,
+privacy_version: LEGAL_VERSION,
 plan: isGovEmail ? "gov_free" : "free",
     verified_domain: isGovEmail ? "in.gov" : null,
     domain_verified_at: isGovEmail ? new Date().toISOString() : null,
@@ -4426,19 +4439,19 @@ function renderAuthCard() {
     className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
   />
 
-  <div className="relative mb-4">
-  <input
-  name="password"
-  type={showPassword ? "text" : "password"}
-  placeholder="Password"
-  autoComplete={
-    authMode === "signup"
 
-      ? "new-password"
-      : "current-password"
-  }
-  className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
-/>
+<div className="relative mb-4">
+  <input
+    name="password"
+    type={showPassword ? "text" : "password"}
+    placeholder="Password"
+    autoComplete={
+      authMode === "signup"
+        ? "new-password"
+        : "current-password"
+    }
+    className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
+  />
 
   <button
     type="button"
@@ -4449,14 +4462,54 @@ function renderAuthCard() {
   </button>
 </div>
 
-  {authError && <p className="mb-4 text-red-600">{authError}</p>}
+{authMode === "signup" && (
+  <label className="mb-3 flex items-start gap-2 text-xs leading-5 text-[#6d5549]">
+    <input
+      type="checkbox"
+      checked={acceptedTerms}
+      onChange={(event) =>
+        setAcceptedTerms(event.target.checked)
+      }
+      className="mt-0.5 h-4 w-4 shrink-0 accent-[#a63a0a]"
+    />
 
-  <button
-    type="submit"
-    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-  >
-    {authMode === "signup" ? "Create Account" : "Log In"}
-  </button>
+    <span>
+      I agree to the{" "}
+      <a
+        href="/terms"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-bold text-[#a63a0a] underline"
+      >
+        Terms of Use
+      </a>{" "}
+      and acknowledge the{" "}
+      <a
+        href="/privacy"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-bold text-[#a63a0a] underline"
+      >
+        Privacy Policy
+      </a>
+      .
+    </span>
+  </label>
+)}
+
+{authError && (
+  <p className="mb-3 text-sm text-red-600">
+    {authError}
+  </p>
+)}
+
+<button
+  type="submit"
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
+>
+  {authMode === "signup" ? "Create Account" : "Log In"}
+</button>
+
 </form>
 
       <button
