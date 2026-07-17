@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/app/lib/supabase";
 import { requestFirebaseNotificationToken } from "../lib/firebaseNotifications";
@@ -81,6 +86,7 @@ export default function RemindersPage() {
 
   const [settings, setSettings] =
     useState<ReminderSettings>(defaultSettings);
+    const settingsRequestId = useRef(0);
 
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,58 +101,43 @@ export default function RemindersPage() {
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission | "unsupported">("default");
 
-  useEffect(() => {
-    void loadReminderSettings();
+useEffect(() => {
+  void loadReminderSettings(true);
 
-    if ("Notification" in window) {
-      setNotificationPermission(Notification.permission);
-    } else {
-      setNotificationPermission("unsupported");
-    }
-  }, []);
-  useEffect(() => {
+  if ("Notification" in window) {
+    setNotificationPermission(Notification.permission);
+  } else {
+    setNotificationPermission("unsupported");
+  }
+}, []);
+
+useEffect(() => {
   if (!userId) return;
 
-  const reminderSettingsChannel = supabase
-    .channel(`reminder-settings-${userId}`)
+  const channel = supabase
+    .channel(`reminder-settings-live-${userId}`)
     .on(
       "postgres_changes",
       {
-        event: "*",
+        event: "UPDATE",
         schema: "public",
         table: "reminder_settings",
         filter: `user_id=eq.${userId}`,
       },
       () => {
-        void loadReminderSettings();
+        void loadReminderSettings(false);
       }
     )
     .subscribe();
 
-  return () => {
-    void supabase.removeChannel(
-      reminderSettingsChannel
-    );
-  };
-}, [userId]);
-
-useEffect(() => {
   function refreshWhenVisible() {
-    if (
-      document.visibilityState === "visible" &&
-      userId
-    ) {
-      void loadReminderSettings();
+    if (document.visibilityState === "visible") {
+      void loadReminderSettings(false);
     }
   }
 
   document.addEventListener(
     "visibilitychange",
-    refreshWhenVisible
-  );
-
-  window.addEventListener(
-    "focus",
     refreshWhenVisible
   );
 
@@ -156,10 +147,7 @@ useEffect(() => {
       refreshWhenVisible
     );
 
-    window.removeEventListener(
-      "focus",
-      refreshWhenVisible
-    );
+    void supabase.removeChannel(channel);
   };
 }, [userId]);
 
@@ -302,91 +290,121 @@ async function sendTestNotification() {
   }
 }
 
-  async function loadReminderSettings() {
+  async function loadReminderSettings(
+  showLoadingScreen = false
+) {
+  const requestId = ++settingsRequestId.current;
+
+  if (showLoadingScreen) {
     setIsLoading(true);
-    setMessage("");
+  }
 
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-      if (userError) {
-        throw userError;
-      }
+    if (userError) {
+      throw userError;
+    }
 
-      if (!user) {
-        router.push("/");
-        return;
-      }
+    if (!user) {
+      router.push("/");
+      return;
+    }
 
-      setUserId(user.id);
+    setUserId(user.id);
 
-      const { data, error } = await supabase
-        .from("reminder_settings")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const { data, error } = await supabase
+      .from("reminder_settings")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-      if (error) {
-        throw error;
-      }
+    if (error) {
+      throw error;
+    }
 
-      if (data) {
-        setSettings({
-          notificationsEnabled:
-            data.notifications_enabled ?? true,
+    // Ignore an older request if a newer request already started.
+    if (requestId !== settingsRequestId.current) {
+      return;
+    }
 
-          weeklyMealPlanEnabled:
-            data.weekly_meal_plan_enabled ?? false,
-          weeklyMealPlanDay:
-            data.weekly_meal_plan_day ?? 0,
-          weeklyMealPlanTime:
-            data.weekly_meal_plan_time?.slice(0, 5) ?? "17:00",
+    if (data) {
+      setSettings({
+        notificationsEnabled:
+          data.notifications_enabled ?? true,
 
-          weeklyShoppingEnabled:
-            data.weekly_shopping_enabled ?? false,
-          weeklyShoppingDay:
-            data.weekly_shopping_day ?? 5,
-          weeklyShoppingTime:
-            data.weekly_shopping_time?.slice(0, 5) ?? "16:00",
+        weeklyMealPlanEnabled:
+          data.weekly_meal_plan_enabled ?? false,
+        weeklyMealPlanDay:
+          data.weekly_meal_plan_day ?? 0,
+        weeklyMealPlanTime:
+          data.weekly_meal_plan_time?.slice(0, 5) ??
+          "17:00",
 
-          breakfastEnabled:
-            data.breakfast_enabled ?? false,
-          breakfastTime:
-            data.breakfast_time?.slice(0, 5) ?? "09:00",
+        weeklyShoppingEnabled:
+          data.weekly_shopping_enabled ?? false,
+        weeklyShoppingDay:
+          data.weekly_shopping_day ?? 5,
+        weeklyShoppingTime:
+          data.weekly_shopping_time?.slice(0, 5) ??
+          "16:00",
 
-          lunchEnabled:
-            data.lunch_enabled ?? false,
-          lunchTime:
-            data.lunch_time?.slice(0, 5) ?? "12:00",
+        breakfastEnabled:
+          data.breakfast_enabled ?? false,
+        breakfastTime:
+          data.breakfast_time?.slice(0, 5) ??
+          "09:00",
 
-          dinnerEnabled:
-            data.dinner_enabled ?? false,
-          dinnerTime:
-            data.dinner_time?.slice(0, 5) ?? "19:00",
+        lunchEnabled:
+          data.lunch_enabled ?? false,
+        lunchTime:
+          data.lunch_time?.slice(0, 5) ??
+          "12:00",
 
-          hydrationEnabled:
-            data.hydration_enabled ?? false,
-          hydrationIntervalHours:
-            (data.hydration_interval_hours ??
-              2) as HydrationInterval,
-          hydrationStartTime:
-            data.hydration_start_time?.slice(0, 5) ?? "08:00",
-          hydrationEndTime:
-            data.hydration_end_time?.slice(0, 5) ?? "20:00",
-          hydrationDays:
-            data.hydration_days ?? [1, 2, 3, 4, 5],
-        });
-      }
-    } catch (error) {
-      console.error("Could not load reminder settings:", error);
-      setMessage("Could not load your reminder settings.");
-    } finally {
+        dinnerEnabled:
+          data.dinner_enabled ?? false,
+        dinnerTime:
+          data.dinner_time?.slice(0, 5) ??
+          "19:00",
+
+        hydrationEnabled:
+          data.hydration_enabled ?? false,
+        hydrationIntervalHours:
+          (data.hydration_interval_hours ??
+            2) as HydrationInterval,
+        hydrationStartTime:
+          data.hydration_start_time?.slice(0, 5) ??
+          "08:00",
+        hydrationEndTime:
+          data.hydration_end_time?.slice(0, 5) ??
+          "20:00",
+        hydrationDays:
+          data.hydration_days ?? [1, 2, 3, 4, 5],
+      });
+    }
+  } catch (error) {
+    console.error(
+      "Could not load reminder settings:",
+      error
+    );
+
+    if (requestId === settingsRequestId.current) {
+      setMessage(
+        "Could not load your reminder settings."
+      );
+    }
+  } finally {
+    if (
+      showLoadingScreen &&
+      requestId === settingsRequestId.current
+    ) {
       setIsLoading(false);
     }
   }
+}
 
   async function requestNotificationPermission() {
     setMessage("");
@@ -698,6 +716,7 @@ async function saveReminderSettings() {
 }
 
 await syncNotificationJobs(settings);
+await loadReminderSettings(false);
 
       setMessage(
         settings.notificationsEnabled
