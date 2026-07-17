@@ -653,70 +653,129 @@ async function saveReminderSettings() {
     setMessage("");
 
     try {
-      const { error } = await supabase
-        .from("reminder_settings")
-        .upsert(
-          {
-            user_id: userId,
+      const { data: savedSettings, error } = await supabase
+  .from("reminder_settings")
+  .upsert(
+    {
+      user_id: userId,
 
-            notifications_enabled:
-              settings.notificationsEnabled,
+      notifications_enabled:
+        settings.notificationsEnabled,
 
-            weekly_meal_plan_enabled:
-              settings.weeklyMealPlanEnabled,
-            weekly_meal_plan_day:
-              settings.weeklyMealPlanDay,
-            weekly_meal_plan_time:
-              settings.weeklyMealPlanTime,
+      weekly_meal_plan_enabled:
+        settings.weeklyMealPlanEnabled,
+      weekly_meal_plan_day:
+        settings.weeklyMealPlanDay,
+      weekly_meal_plan_time:
+        settings.weeklyMealPlanTime,
 
-            weekly_shopping_enabled:
-              settings.weeklyShoppingEnabled,
-            weekly_shopping_day:
-              settings.weeklyShoppingDay,
-            weekly_shopping_time:
-              settings.weeklyShoppingTime,
+      weekly_shopping_enabled:
+        settings.weeklyShoppingEnabled,
+      weekly_shopping_day:
+        settings.weeklyShoppingDay,
+      weekly_shopping_time:
+        settings.weeklyShoppingTime,
 
-            breakfast_enabled:
-              settings.breakfastEnabled,
-            breakfast_time:
-              settings.breakfastTime,
+      breakfast_enabled:
+        settings.breakfastEnabled,
+      breakfast_time:
+        settings.breakfastTime,
 
-            lunch_enabled:
-              settings.lunchEnabled,
-            lunch_time:
-              settings.lunchTime,
+      lunch_enabled:
+        settings.lunchEnabled,
+      lunch_time:
+        settings.lunchTime,
 
-            dinner_enabled:
-              settings.dinnerEnabled,
-            dinner_time:
-              settings.dinnerTime,
+      dinner_enabled:
+        settings.dinnerEnabled,
+      dinner_time:
+        settings.dinnerTime,
 
-            hydration_enabled:
-              settings.hydrationEnabled,
-            hydration_interval_hours:
-              settings.hydrationIntervalHours,
-            hydration_start_time:
-              settings.hydrationStartTime,
-            hydration_end_time:
-              settings.hydrationEndTime,
-            hydration_days:
-              settings.hydrationDays,
+      hydration_enabled:
+        settings.hydrationEnabled,
+      hydration_interval_hours:
+        settings.hydrationIntervalHours,
+      hydration_start_time:
+        settings.hydrationStartTime,
+      hydration_end_time:
+        settings.hydrationEndTime,
+      hydration_days:
+        settings.hydrationDays,
 
-            timezone:
-              Intl.DateTimeFormat().resolvedOptions().timeZone,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id",
-          }
-        );
-
-      if (error) {
+      timezone:
+        Intl.DateTimeFormat().resolvedOptions().timeZone,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: "user_id",
+    }
+  )
+  .select("*")
+  .single();if (error) {
   throw error;
 }
 
-await syncNotificationJobs(settings);
-await loadReminderSettings(false);
+if (!savedSettings) {
+  throw new Error(
+    "Reminder settings were not returned after saving."
+  );
+}
+
+const confirmedSettings: ReminderSettings = {
+  notificationsEnabled:
+    savedSettings.notifications_enabled ?? true,
+
+  weeklyMealPlanEnabled:
+    savedSettings.weekly_meal_plan_enabled ?? false,
+  weeklyMealPlanDay:
+    savedSettings.weekly_meal_plan_day ?? 0,
+  weeklyMealPlanTime:
+    savedSettings.weekly_meal_plan_time?.slice(0, 5) ??
+    "17:00",
+
+  weeklyShoppingEnabled:
+    savedSettings.weekly_shopping_enabled ?? false,
+  weeklyShoppingDay:
+    savedSettings.weekly_shopping_day ?? 5,
+  weeklyShoppingTime:
+    savedSettings.weekly_shopping_time?.slice(0, 5) ??
+    "16:00",
+
+  breakfastEnabled:
+    savedSettings.breakfast_enabled ?? false,
+  breakfastTime:
+    savedSettings.breakfast_time?.slice(0, 5) ??
+    "09:00",
+
+  lunchEnabled:
+    savedSettings.lunch_enabled ?? false,
+  lunchTime:
+    savedSettings.lunch_time?.slice(0, 5) ??
+    "12:00",
+
+  dinnerEnabled:
+    savedSettings.dinner_enabled ?? false,
+  dinnerTime:
+    savedSettings.dinner_time?.slice(0, 5) ??
+    "19:00",
+
+  hydrationEnabled:
+    savedSettings.hydration_enabled ?? false,
+  hydrationIntervalHours:
+    (savedSettings.hydration_interval_hours ??
+      2) as HydrationInterval,
+  hydrationStartTime:
+    savedSettings.hydration_start_time?.slice(0, 5) ??
+    "08:00",
+  hydrationEndTime:
+    savedSettings.hydration_end_time?.slice(0, 5) ??
+    "20:00",
+  hydrationDays:
+    savedSettings.hydration_days ?? [1, 2, 3, 4, 5],
+};
+
+setSettings(confirmedSettings);
+await syncNotificationJobs(confirmedSettings);
 
       setMessage(
         settings.notificationsEnabled
@@ -1265,7 +1324,7 @@ function MealReminderRow({
             onChange={(event) =>
               onTimeChange(event.target.value)
             }
-            step={900}
+            step={60}
             className="min-h-12 rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-base text-[#2b1b14]"
             aria-label={`${title} reminder time`}
           />
@@ -1329,7 +1388,7 @@ function TimeField({
         type="time"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        step={900}
+        step={60}
         className="min-h-12 w-full min-w-0 max-w-full rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-base text-[#2b1b14]"
       />
     </label>
