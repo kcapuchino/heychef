@@ -1697,19 +1697,30 @@ async function importFoodItem() {
   setIsImporting(true);
   setImportError("");
 
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, 15000);
+
   try {
     const response = await fetch("/api/import-food", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: foodUrl }),
+      body: JSON.stringify({
+        url: foodUrl.trim(),
+      }),
+      signal: controller.signal,
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      setImportError(data.error || "Could not import this product. Enter it manually below.");
+      setImportError(
+        data.error ||
+          "Could not import this product. Enter it manually below."
+      );
       return;
     }
 
@@ -1725,13 +1736,27 @@ async function importFoodItem() {
       package_size: data.packageSize || "",
       price: data.price || "",
       image_url: data.image || "",
-      source_url: foodUrl,
+      source_url: foodUrl.trim(),
     });
 
     showToast("Product details imported.");
-  } catch {
-    setImportError("Could not import this product. Enter it manually below.");
+  } catch (error) {
+    console.error("Food import failed:", error);
+
+    if (
+      error instanceof DOMException &&
+      error.name === "AbortError"
+    ) {
+      setImportError(
+        "This store took too long to respond. Enter the product manually below."
+      );
+    } else {
+      setImportError(
+        "Could not import this product. Enter it manually below."
+      );
+    }
   } finally {
+    window.clearTimeout(timeoutId);
     setIsImporting(false);
   }
 }
