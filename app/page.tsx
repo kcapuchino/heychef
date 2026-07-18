@@ -1699,6 +1699,12 @@ async function importFoodItem() {
   setIsImporting(true);
   setImportError("");
 
+  const controller = new AbortController();
+
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, 30000);
+
   try {
     const response = await fetch("/api/import-food", {
       method: "POST",
@@ -1708,7 +1714,7 @@ async function importFoodItem() {
       body: JSON.stringify({
         url: trimmedUrl,
       }),
-      
+      signal: controller.signal,
     });
 
     const data = await response.json();
@@ -1830,12 +1836,22 @@ async function importFoodItem() {
 
     showToast("Grocery product added to your Food Library.");
   } catch (error) {
-    console.error("Food import failed:", error);
+  console.error("Food import failed:", error);
 
+  if (
+    error instanceof DOMException &&
+    error.name === "AbortError"
+  ) {
     setImportError(
-  "Could not import this product. Enter it manually below."
-);
-  } finally {
+      "This store took longer than 30 seconds to respond. Try an Instacart link or enter the product manually below."
+    );
+  } else {
+    setImportError(
+      "Could not import this product. Enter it manually below."
+    );
+  }
+}finally {
+  window.clearTimeout(timeoutId);
     setIsImporting(false);
   }
 }
@@ -1974,10 +1990,15 @@ function saveGuestRecipe(recipe: Recipe) {
   if (!recipeUrl && !manualRecipe) return;
 
   setIsImporting(true);
-  setImportError("");
-  setShowManualImport(false);
+setImportError("");
 
-  try {
+const controller = new AbortController();
+
+const timeoutId = window.setTimeout(() => {
+  controller.abort();
+}, 30000);
+
+try {
     const response = await fetch("/api/import-recipe", {
       method: "POST",
       headers: {
@@ -1987,6 +2008,7 @@ function saveGuestRecipe(recipe: Recipe) {
         url: recipeUrl,
         text: manualRecipe,
       }),
+      signal: controller.signal,
     });
 
     const text = await response.text();
@@ -2098,6 +2120,7 @@ if (onboardingTourStep === 5) {
     );
     setShowManualImport(true);
   } finally {
+     window.clearTimeout(timeoutId);
     setIsImporting(false);
   }
 }
@@ -4792,7 +4815,7 @@ if (!userEmail) {
     : "bg-[#a63a0a]"
 }`}
     >
-      {isImporting ? "Adding..." : "Add Grocery Product"}
+      {isImporting ? "Importing..." : "Import"}
     </button>
   </div>
 </div>
@@ -10000,6 +10023,13 @@ Bake for 25 minutes`}
         {isImporting ? "Adding..." : "Add Grocery Product"}
       </button>
     </div>
+    
+    {importError && (
+  <p className="mt-4 text-sm text-red-700">
+    {importError}
+  </p>
+)}
+
      <div className="my-5 flex items-center gap-4">
       <div className="h-px flex-1 bg-[#ead7c8]" />
       <span className="text-sm text-[#6d5549]">OR</span>
