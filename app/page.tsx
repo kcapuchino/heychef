@@ -1689,13 +1689,21 @@ async function deleteAccount() {
 }
 
 async function importFoodItem() {
-  if (!foodUrl.trim()) {
+  const trimmedUrl = foodUrl.trim();
+
+  if (!trimmedUrl) {
     showToast("Paste a product URL first.");
     return;
   }
 
   setIsImporting(true);
   setImportError("");
+
+  const controller = new AbortController();
+
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, 15000);
 
   try {
     const response = await fetch("/api/import-food", {
@@ -1704,8 +1712,9 @@ async function importFoodItem() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        url: foodUrl.trim(),
+        url: trimmedUrl,
       }),
+      signal: controller.signal,
     });
 
     const data = await response.json();
@@ -1718,29 +1727,131 @@ async function importFoodItem() {
       return;
     }
 
-    setFoodTitle(data.title || "");
-    setFoodBrand(data.brand || "");
-    setFoodPackageSize(data.packageSize || "");
-    setFoodCategory(data.category || "Prepared Food");
-    setFoodImage(data.image || "");
+    const importedTitle = String(data.title || "").trim();
 
-    setFoodPreview({
-      name: data.title || "",
-      brand: data.brand || "",
-      package_size: data.packageSize || "",
-      price: data.price || "",
-      image_url: data.image || "",
-      source_url: foodUrl.trim(),
+    if (!importedTitle) {
+      setImportError(
+        "We could not find a product name. Enter the details manually below."
+      );
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      showToast("Please log in again.");
+      return;
+    }
+
+    const existingFoodCard = recipes.find((recipe) => {
+      if (recipe.type !== "grocery") return false;
+
+      const existingName = normalizeItemName(recipe.title);
+      const newName = normalizeItemName(importedTitle);
+
+      return (
+        existingName === newName ||
+        existingName.includes(newName) ||
+        newName.includes(existingName) ||
+        (!!recipe.sourceUrl && recipe.sourceUrl === trimmedUrl)
+      );
     });
 
-    showToast("Product details imported.");
+    if (existingFoodCard) {
+      showToast("Grocery product already exists.");
+      setSelectedRecipe(existingFoodCard);
+      setFoodTypeFilter("grocery");
+      return;
+    }
+
+    const importedCategory =
+      data.category && data.category !== "Prepared Food"
+        ? data.category
+        : guessShoppingCategory(importedTitle);
+
+    const { data: savedFoodItem, error } = await supabase
+      .from("recipes")
+      .insert({
+        user_id: user.id,
+        title: importedTitle,
+        image_url: data.image || "",
+        ingredients: [],
+        steps: [],
+        cook_time: "",
+        servings: "",
+        category: importedCategory || "Other",
+        source_url: trimmedUrl,
+        is_favorite: false,
+        is_planning_queue: false,
+        type: "grocery",
+        brand: data.brand || "",
+        package_size: data.packageSize || "",
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Save grocery product failed:", error);
+      setImportError(error.message);
+      return;
+    }
+
+    const newFoodItem: Recipe = {
+      id: savedFoodItem.id,
+      title: savedFoodItem.title,
+      image: savedFoodItem.image_url || "",
+      ingredients: [],
+      steps: [],
+      cookTime: "",
+      servings: "",
+      category: savedFoodItem.category || "Other",
+      sourceUrl: savedFoodItem.source_url || "",
+      isFavorite: false,
+      isPlanningQueue: false,
+      createdAt: savedFoodItem.created_at,
+      type: "grocery",
+      brand: savedFoodItem.brand || "",
+      packageSize: savedFoodItem.package_size || "",
+      price: data.price || "",
+    };
+
+    setRecipes((currentRecipes) => [
+      newFoodItem,
+      ...currentRecipes,
+    ]);
+
+    setFoodUrl("");
+    setFoodBrand("");
+    setFoodTitle("");
+    setFoodPackageSize("");
+    setFoodCategory("Frozen Food");
+    setFoodImage("");
+    setFoodPreview(null);
+
+    setFoodTypeFilter("grocery");
+    setCategoryFilter("all");
+    setRecipeSort("newest");
+
+    showToast("Grocery product added to your Food Library.");
   } catch (error) {
     console.error("Food import failed:", error);
 
-    setImportError(
-      "Could not import this product. Enter it manually below."
-    );
+    if (
+      error instanceof DOMException &&
+      error.name === "AbortError"
+    ) {
+      setImportError(
+        "This store took too long to respond. Enter the product manually below."
+      );
+    } else {
+      setImportError(
+        "Could not import this product. Enter it manually below."
+      );
+    }
   } finally {
+    window.clearTimeout(timeoutId);
     setIsImporting(false);
   }
 }
@@ -4697,7 +4808,7 @@ if (!userEmail) {
     : "bg-[#a63a0a]"
 }`}
     >
-      {isImporting ? "Importing..." : "Import"}
+      {isImporting ? "Adding..." : "Add Grocery Product"}
     </button>
   </div>
 </div>
@@ -9902,7 +10013,7 @@ Bake for 25 minutes`}
         disabled={isImporting}
         className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
       >
-        {isImporting ? "Importing..." : "Import Go-To Food"}
+        {isImporting ? "Adding..." : "Add Grocery Product"}
       </button>
     </div>
      <div className="my-5 flex items-center gap-4">

@@ -79,36 +79,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing product URL" }, { status: 400 });
     }
 
-  console.log("Import food started:", url);
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        Accept: "text/html",
+      },
+    });
 
-const fetchStartedAt = Date.now();
-
-const response = await fetch(url, {
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-  },
-});
-
-console.log("Store responded:", {
-  status: response.status,
-  duration: Date.now() - fetchStartedAt,
-  finalUrl: response.url,
-});
-
-if (!response.ok) {
+    if (!response.ok) {
       return NextResponse.json(
+        { error: `Could not reach product page. Status: ${response.status}` },
         { status: 400 }
       );
     }
 
     const html = await response.text();
-    console.log("Product HTML received:", {
-  characters: html.length,
-  contentType: response.headers.get("content-type"),
-});
+    
 
     const matches = html.match(
       /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
