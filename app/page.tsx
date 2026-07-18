@@ -5,6 +5,7 @@ import { supabase } from "@/app/lib/supabase";
 import Image from "next/image";
 import RemindersPage from "./reminders/page";
 import OnboardingModal from "@/components/OnboardingModal";
+import { useSearchParams } from "next/navigation";
 
 type Recipe = {
   id: string;
@@ -354,6 +355,7 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [showFoodImport, setShowFoodImport] = useState(false);
   const [showRecipeImport, setShowRecipeImport] = useState(false);
   const [foodPreview, setFoodPreview] = useState<any>(null);
+  const searchParams = useSearchParams();
   const [showShoppingImport, setShowShoppingImport] = useState(false);
   const [isAddingShoppingItem, setIsAddingShoppingItem] = useState(false);
   const [foodUrl, setFoodUrl] = useState("");
@@ -835,6 +837,23 @@ useEffect(() => {
 
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
+
+  const importType = params.get("import");
+  const importedUrl = params.get("url") ?? "";
+
+  if (importType === "recipe") {
+    setShowImport(true);
+    setShowFoodImport(false);
+    setRecipeUrl(importedUrl);
+  } else if (importType === "grocery") {
+    setShowFoodImport(true);
+    setShowImport(false);
+    setFoodUrl(importedUrl);
+  }
+}, []);
+
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
   const page = params.get("page");
 
   const validPages: AppPage[] = [
@@ -848,8 +867,19 @@ useEffect(() => {
   ];
 
   if (page && validPages.includes(page as AppPage)) {
-    window.history.replaceState({}, "", page === "home" ? "/" : `/${page}`);
-  }
+  const nextParams = new URLSearchParams(params);
+
+  nextParams.delete("page");
+
+  const nextPath = page === "home" ? "/" : `/${page}`;
+  const nextQuery = nextParams.toString();
+
+  window.history.replaceState(
+    {},
+    "",
+    nextQuery ? `${nextPath}?${nextQuery}` : nextPath
+  );
+}
 
   const path = window.location.pathname;
 
@@ -8043,11 +8073,15 @@ Bake for 25 minutes`}
       <h2 className="text-2xl font-bold">Add a Go-To Food</h2>
 
       <button
-        onClick={() => setShowFoodImport(false)}
-        className="text-2xl text-[#6d5549]"
-      >
-        ✕
-      </button>
+  onClick={() => {
+    setShowFoodImport(false);
+    window.history.replaceState({}, "", "/recipes");
+  }}
+  className="text-2xl text-[#6d5549]"
+  aria-label="Close grocery product import"
+>
+  ✕
+</button>
     </div>
 
     <p className="mb-4 text-[#6d5549]">
