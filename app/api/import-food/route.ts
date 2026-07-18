@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
 function cleanText(text: string) {
   return text
     .replace(/<[^>]*>/g, " ")
@@ -79,12 +83,53 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing product URL" }, { status: 400 });
     }
 
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0",
-        Accept: "text/html",
+    const controller = new AbortController();
+
+const timeoutId = setTimeout(() => {
+  controller.abort();
+}, 45000);
+
+let response: Response;
+
+try {
+  response = await fetch(url, {
+    method: "GET",
+    cache: "no-store",
+    redirect: "follow",
+    signal: controller.signal,
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+        "Chrome/131.0.0.0 Safari/537.36",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+} catch (error) {
+  console.error("Product page request failed:", error);
+
+  if (error instanceof Error && error.name === "AbortError") {
+    return NextResponse.json(
+      {
+        error:
+          "This store took too long to respond. Enter the product manually below.",
       },
-    });
+      { status: 504 }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      error:
+        "Could not reach this product page. Enter the product manually below.",
+    },
+    { status: 502 }
+  );
+} finally {
+  clearTimeout(timeoutId);
+}
 
     if (!response.ok) {
       return NextResponse.json(
