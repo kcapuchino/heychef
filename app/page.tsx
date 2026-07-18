@@ -1697,11 +1697,6 @@ async function importFoodItem() {
   setIsImporting(true);
   setImportError("");
 
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => {
-    controller.abort();
-  }, 15000);
-
   try {
     const response = await fetch("/api/import-food", {
       method: "POST",
@@ -1711,7 +1706,6 @@ async function importFoodItem() {
       body: JSON.stringify({
         url: foodUrl.trim(),
       }),
-      signal: controller.signal,
     });
 
     const data = await response.json();
@@ -1743,20 +1737,10 @@ async function importFoodItem() {
   } catch (error) {
     console.error("Food import failed:", error);
 
-    if (
-      error instanceof DOMException &&
-      error.name === "AbortError"
-    ) {
-      setImportError(
-        "This store took too long to respond. Enter the product manually below."
-      );
-    } else {
-      setImportError(
-        "Could not import this product. Enter it manually below."
-      );
-    }
+    setImportError(
+      "Could not import this product. Enter it manually below."
+    );
   } finally {
-    window.clearTimeout(timeoutId);
     setIsImporting(false);
   }
 }
