@@ -79,7 +79,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing product URL" }, { status: 400 });
     }
 
-  const response = await fetch(url, {
+  console.log("Import food started:", url);
+
+const fetchStartedAt = Date.now();
+
+const response = await fetch(url, {
   headers: {
     "User-Agent":
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36",
@@ -88,7 +92,13 @@ export async function POST(request: Request) {
   },
 });
 
-    if (!response.ok) {
+console.log("Store responded:", {
+  status: response.status,
+  duration: Date.now() - fetchStartedAt,
+  finalUrl: response.url,
+});
+
+if (!response.ok) {
       return NextResponse.json(
         { status: 400 }
       );
