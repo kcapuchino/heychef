@@ -1703,7 +1703,7 @@ async function importFoodItem() {
 
   const timeoutId = window.setTimeout(() => {
     controller.abort();
-  }, 30000);
+  }, 15000);
 
   try {
     const response = await fetch("/api/import-food", {
@@ -1843,7 +1843,7 @@ async function importFoodItem() {
     error.name === "AbortError"
   ) {
     setImportError(
-      "This store took longer than 30 seconds to respond. Try an Instacart link or enter the product manually below."
+      "This store took longer than 15 seconds to respond. Try an Instacart link or enter the product manually below."
     );
   } else {
     setImportError(
@@ -1996,7 +1996,7 @@ const controller = new AbortController();
 
 const timeoutId = window.setTimeout(() => {
   controller.abort();
-}, 30000);
+}, 15000);
 
 try {
     const response = await fetch("/api/import-recipe", {
