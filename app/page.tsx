@@ -1699,12 +1699,6 @@ async function importFoodItem() {
   setIsImporting(true);
   setImportError("");
 
-  const controller = new AbortController();
-
-  const timeoutId = window.setTimeout(() => {
-    controller.abort();
-  }, 15000);
-
   try {
     const response = await fetch("/api/import-food", {
       method: "POST",
@@ -1714,7 +1708,7 @@ async function importFoodItem() {
       body: JSON.stringify({
         url: trimmedUrl,
       }),
-      signal: controller.signal,
+      
     });
 
     const data = await response.json();
@@ -1838,20 +1832,10 @@ async function importFoodItem() {
   } catch (error) {
     console.error("Food import failed:", error);
 
-    if (
-      error instanceof DOMException &&
-      error.name === "AbortError"
-    ) {
-      setImportError(
-        "This store took too long to respond. Enter the product manually below."
-      );
-    } else {
-      setImportError(
-        "Could not import this product. Enter it manually below."
-      );
-    }
+    setImportError(
+  "Could not import this product. Enter it manually below."
+);
   } finally {
-    window.clearTimeout(timeoutId);
     setIsImporting(false);
   }
 }
@@ -8060,7 +8044,7 @@ Bake for 25 minutes`}
   disabled={isImporting}
   className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
 >
-  {isImporting ? "Importing..." : "Import"}
+  {isImporting ? "Adding..." : "Add Grocery Product"}
 </button>
     </div>
 
@@ -8121,7 +8105,7 @@ Bake for 25 minutes`}
   onClick={saveFoodItem}
   className="mt-5 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
 >
-  Save Go-To Food
+  Save Grocery Item
 </button>
   </section>
 )}
