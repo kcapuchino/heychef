@@ -105,7 +105,10 @@ if (!response.ok) {
     }
 
     const html = await response.text();
-    
+    console.log("Product HTML received:", {
+  characters: html.length,
+  contentType: response.headers.get("content-type"),
+});
 
     const matches = html.match(
       /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
