@@ -5,7 +5,6 @@ import { supabase } from "@/app/lib/supabase";
 import Image from "next/image";
 import RemindersPage from "./reminders/page";
 import OnboardingModal from "@/components/OnboardingModal";
-import { useSearchParams } from "next/navigation";
 
 type Recipe = {
   id: string;
@@ -354,8 +353,7 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [showImport, setShowImport] = useState(false);
   const [showFoodImport, setShowFoodImport] = useState(false);
   const [showRecipeImport, setShowRecipeImport] = useState(false);
-  const [foodPreview, setFoodPreview] = useState<any>(null);
-  const searchParams = useSearchParams();
+  const [foodPreview, setFoodPreview] = useState<any>(null)
   const [showShoppingImport, setShowShoppingImport] = useState(false);
   const [isAddingShoppingItem, setIsAddingShoppingItem] = useState(false);
   const [foodUrl, setFoodUrl] = useState("");
