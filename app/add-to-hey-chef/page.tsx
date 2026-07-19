@@ -19,8 +19,8 @@ export default function AddToHeyChefPage() {
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-xl shadow-sm transition hover:bg-[#fffaf5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a63a0a] focus-visible:ring-offset-2"
-            aria-label="Go back"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl font-bold text-[#2b1b14] shadow-sm"
+  aria-label="Go back"
           >
             ←
           </button>
