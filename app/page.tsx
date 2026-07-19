@@ -15,6 +15,7 @@ type Recipe = {
   cookTime?: string;
   servings?: string;
   category?: string;
+  tags?: string[];
   sourceUrl?: string;
   isFavorite?: boolean;
   isPlanningQueue?: boolean;
@@ -25,6 +26,7 @@ packageSize?: string;
 pantryQuantity?: number;
 source?: "recipe" | "shopping_list" | "leftovers";
 price?: string;
+visibility?: "private" | "public";
 };
 
 
@@ -352,6 +354,32 @@ export default function Home() {
   | "profile"
   | "reminders";
 
+  const RECIPE_TAG_OPTIONS = [
+  "Vegan",
+  "Vegetarian",
+  "Pescatarian",
+  "Gluten-Free",
+  "Dairy-Free",
+  "Nut-Free",
+  "Soy-Free",
+  "Egg-Free",
+  "High Protein",
+  "Low Carb",
+  "Low Fat",
+  "Low Sodium",
+  "High Fiber",
+  "Keto",
+  "Paleo",
+  "Mediterranean",
+  "Whole30",
+  "Kid Friendly",
+  "Budget Friendly",
+  "Meal Prep",
+  "Freezer Friendly",
+  "One Pot",
+  "30 Minutes or Less",
+];
+
 const [currentPage, setCurrentPage] = useState<AppPage>("home");
 
   const [showTomorrow, setShowTomorrow] = useState(false);
@@ -370,6 +398,7 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const importSectionRef = useRef<HTMLElement>(null);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipeTags, setRecipeTags] = useState<string[]>([]);
   const recipeImportInProgressRef = useRef(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showAllRecipes, setShowAllRecipes] = useState(false);
@@ -403,12 +432,30 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
 } | null>(null);
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
   const [editRecipeDraft, setEditRecipeDraft] = useState<Recipe | null>(null);
+  const [recipeVisibility, setRecipeVisibility] = useState<
+  "private" | "public"
+  >("private");
+  const [showPublishModal, setShowPublishModal] =
+    useState(false);
+
+  const [showUnpublishConfirm, setShowUnpublishConfirm] =
+  useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [foodTypeFilter, setFoodTypeFilter] = useState<
   "all" | "recipe" | "grocery"
 >("all");
+const [visibilityFilter, setVisibilityFilter] = useState<
+  "all" | "public" | "private"
+>("all");
+  const [publishPermissionConfirmed, setPublishPermissionConfirmed] =
+  useState(false);
   const [recipeSort, setRecipeSort] = useState("newest");
+  const hasActiveLibraryFilters =
+  foodTypeFilter !== "all" ||
+  categoryFilter !== "all" ||
+  visibilityFilter !== "all" ||
+  recipeSort !== "newest";
 
   const [shoppingItemUrls, setShoppingItemUrls] = useState<Record<string, string>>({});
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
@@ -641,71 +688,38 @@ const smartRestockItems = [
 
       return recipe.type === "grocery";
     })
+
+    .filter((recipe) => {
+      if (visibilityFilter === "all") return true;
+
+      if (recipe.type === "grocery") return false;
+
+      return (recipe.visibility ?? "private") === visibilityFilter;
+    })
+
     .filter((recipe) =>
       categoryFilter === "all"
         ? true
         : recipe.category === categoryFilter
     )
+
     .filter((recipe) => {
       if (recipeSort !== "ready") return true;
 
       return canMakeRecipeFromPantry(recipe);
     })
+
     .filter((recipe) => {
       if (recipe.type !== "grocery") return true;
 
-      const normalizedRecipeTitle = normalizeItemName(recipe.title);
-
-      const isAlreadyInShoppingList = shoppingList.some((item) => {
-        const normalizedShoppingItem = normalizeItemName(item);
-
-        return (
-          normalizedShoppingItem === normalizedRecipeTitle ||
-          normalizedShoppingItem.includes(normalizedRecipeTitle) ||
-          normalizedRecipeTitle.includes(normalizedShoppingItem)
-        );
-      });
-
-      return !isAlreadyInShoppingList;
-    })
-    .sort((a, b) => {
-      if (recipeSort === "az") {
-        return a.title.localeCompare(b.title);
-      }
-
-      if (recipeSort === "za") {
-        return b.title.localeCompare(a.title);
-      }
-
-      if (recipeSort === "newest") {
-        return (
-          new Date(b.createdAt).getTime() -
-          new Date(a.createdAt).getTime()
-        );
-      }
-
-      if (recipeSort === "oldest") {
-        return (
-          new Date(a.createdAt).getTime() -
-          new Date(b.createdAt).getTime()
-        );
-      }
-
-      if (a.isFavorite !== b.isFavorite) {
-        return a.isFavorite ? -1 : 1;
-      }
-
-      return (
-        new Date(b.createdAt).getTime() -
-        new Date(a.createdAt).getTime()
-      );
+      // keep the rest of your existing grocery filter code here
     });
 }, [
   recipes,
   foodTypeFilter,
+  visibilityFilter,
   categoryFilter,
   recipeSort,
-  shoppingList,
   pantryItems,
 ]);
 
@@ -1204,6 +1218,10 @@ useEffect(() => {
         isFavorite: recipe.is_favorite || false,
         isPlanningQueue: recipe.is_planning_queue || false,
         createdAt: recipe.created_at,
+        visibility:
+  recipe.visibility === "public"
+    ? "public"
+    : "private",
         type: recipe.type || "recipe",
         brand: recipe.brand || "",
         packageSize: recipe.package_size || "",
@@ -2041,6 +2059,8 @@ package_size: foodPackageSize.trim(),
   setSelectedRecipe(newRecipe);
   setEditRecipeDraft(newRecipe);
   setIsEditingRecipe(true);
+  setRecipeVisibility("private");
+  setRecipeTags([]);
 
   setShowAllRecipes(false);
   setShowImport(false);
@@ -3231,6 +3251,10 @@ setMealPlan((current) => ({
       type: updatedRecipe.type || "recipe",
 brand: updatedRecipe.brand || "",
 package_size: updatedRecipe.packageSize || "",
+visibility:
+  updatedRecipe.type === "grocery"
+    ? "private"
+    : recipeVisibility,
     })
     .select()
     .single();
@@ -3241,11 +3265,15 @@ package_size: updatedRecipe.packageSize || "",
   }
 
   const savedRecipe: Recipe = {
-    ...updatedRecipe,
-    id: data.id,
-    title: data.title,
-    createdAt: data.created_at,
-  };
+  ...updatedRecipe,
+  id: data.id,
+  title: data.title,
+  createdAt: data.created_at,
+  visibility:
+    updatedRecipe.type === "grocery"
+      ? "private"
+      : recipeVisibility,
+};
 
   setRecipes([savedRecipe, ...recipes]);
   setSelectedRecipe(savedRecipe);
@@ -3269,6 +3297,10 @@ package_size: updatedRecipe.packageSize || "",
       type: updatedRecipe.type || "recipe",
 brand: updatedRecipe.brand || "",
 package_size: updatedRecipe.packageSize || "",
+visibility:
+  updatedRecipe.type === "grocery"
+    ? "private"
+    : recipeVisibility,
     })
     .eq("id", updatedRecipe.id);
 
@@ -3277,12 +3309,22 @@ package_size: updatedRecipe.packageSize || "",
     return;
   }
 
-  const updatedRecipes = recipes.map((recipe) =>
-    recipe.id === updatedRecipe.id ? updatedRecipe : recipe
-  );
+  const savedUpdatedRecipe: Recipe = {
+  ...updatedRecipe,
+  visibility:
+    updatedRecipe.type === "grocery"
+      ? "private"
+      : recipeVisibility,
+};
 
-  setRecipes(updatedRecipes);
-  setSelectedRecipe(updatedRecipe);
+  const updatedRecipes = recipes.map((recipe) =>
+  recipe.id === updatedRecipe.id
+    ? savedUpdatedRecipe
+    : recipe
+);
+
+setRecipes(updatedRecipes);
+setSelectedRecipe(savedUpdatedRecipe);
   setIsEditingRecipe(false);
 setEditRecipeDraft(null);
 }
@@ -5681,160 +5723,249 @@ if (showProfile) {
     </button>
 
     <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
+  <button
+    type="button"
+    onClick={() => setShowSettingsMenu((open) => !open)}
+    className={
+      (["profile", "reminders"] as AppPage[]).includes(currentPage)
+        ? "font-bold text-[#a63a0a] underline underline-offset-8"
+        : "text-[#a63a0a]"
+    }
+  >
+    ⚙️ Settings
+  </button>
 
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
 
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-      
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Account
       </p>
-
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
 
       <button
         type="button"
         onClick={() => {
-          setIsMenuOpen(false);
+          setShowSettingsMenu(false);
+          navigateTo("profile");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          navigateTo("reminders");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔔 Reminders
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Community
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/community";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🌎 Explore Recipes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/cookbook";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📖 My Public Cookbook
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Tools
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/add-to-hey-chef";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🧩 Import Tools
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+
+          // keep your existing install logic here
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📱 Install App
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
           logoutUser();
         }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
+
     </div>
   )}
+</div>
+  </div>
+
+  {isMenuOpen && (
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("profile");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👤 Profile
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("reminders");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🔔 Reminders
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Community
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/community";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🌎 Explore Recipes
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/cookbook";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👨‍🍳 My Cookbook
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Tools
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/add-to-hey-chef";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🧩 Import Tools
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+
+        const ua = navigator.userAgent.toLowerCase();
+
+        const isIOS =
+          /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        const isAndroid = /android/.test(ua);
+
+        if (isIOS) {
+          showToast(
+            "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
+          );
+          return;
+        }
+
+        if (isAndroid) {
+          showToast(
+            "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+          );
+          return;
+        }
+
+        showToast(
+          "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+        );
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      📱 Install App
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        logoutUser();
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
           
 
@@ -6548,30 +6679,41 @@ const { error } = await supabase
     <button
       type="button"
       onClick={() => {
-        if (!isRecipe) return;
-        setSelectedRecipe({
-          id: recipe.id,
-          title: recipe.title,
-          image: recipe.image_url || recipe.image || "",
-          ingredients: recipe.ingredients || [],
-          steps: recipe.steps || [],
-          cookTime: recipe.cook_time || "",
-          servings: recipe.servings || "",
-          category: recipe.category || "",
-          sourceUrl: recipe.source_url || "",
-          isFavorite: recipe.is_favorite || false,
-          createdAt: recipe.created_at || "",
-        });
+  if (!isRecipe) return;
 
-        setCurrentPage("recipes");
-        setShowAllRecipes(false);
-        setShowMealPlanner(false);
-        setShowShoppingList(false);
-        setShowPantry(false);
-        setShowImport(false);
+  setSelectedRecipe({
+    id: recipe.id,
+    title: recipe.title,
+    image: recipe.image_url || recipe.image || "",
+    ingredients: recipe.ingredients || [],
+    steps: recipe.steps || [],
+    cookTime: recipe.cook_time || "",
+    servings: recipe.servings || "",
+    category: recipe.category || "",
+    sourceUrl: recipe.source_url || "",
+    isFavorite: recipe.is_favorite || false,
+    createdAt: recipe.created_at || "",
+    visibility:
+      recipe.visibility === "public"
+        ? "public"
+        : "private",
+  });
 
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }}
+  setRecipeVisibility(
+    recipe.visibility === "public"
+      ? "public"
+      : "private"
+  );
+
+  setCurrentPage("recipes");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
+  setShowImport(false);
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}}
       className="w-full text-left"
     >
       <img
@@ -6701,161 +6843,249 @@ const { error } = await supabase
     </button>
 
     <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
+  <button
+    type="button"
+    onClick={() => setShowSettingsMenu((open) => !open)}
+    className={
+      (["profile", "reminders"] as AppPage[]).includes(currentPage)
+        ? "font-bold text-[#a63a0a] underline underline-offset-8"
+        : "text-[#a63a0a]"
+    }
+  >
+    ⚙️ Settings
+  </button>
 
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
 
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-      
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Account
       </p>
-
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
 
       <button
         type="button"
         onClick={() => {
-          setIsMenuOpen(false);
+          setShowSettingsMenu(false);
+          navigateTo("profile");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          navigateTo("reminders");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔔 Reminders
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Community
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/community";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🌎 Explore Recipes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/cookbook";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📖 My Public Cookbook
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Tools
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/add-to-hey-chef";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🧩 Import Tools
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+
+          // keep your existing install logic here
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📱 Install App
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
           logoutUser();
         }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
+
     </div>
   )}
+</div>
+  </div>
+
+  {isMenuOpen && (
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("profile");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👤 Profile
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("reminders");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🔔 Reminders
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Community
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/community";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🌎 Explore Recipes
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/cookbook";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👨‍🍳 My Cookbook
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Tools
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/add-to-hey-chef";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🧩 Import Tools
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+
+        const ua = navigator.userAgent.toLowerCase();
+
+        const isIOS =
+          /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        const isAndroid = /android/.test(ua);
+
+        if (isIOS) {
+          showToast(
+            "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
+          );
+          return;
+        }
+
+        if (isAndroid) {
+          showToast(
+            "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+          );
+          return;
+        }
+
+        showToast(
+          "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+        );
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      📱 Install App
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        logoutUser();
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
   
 
@@ -7319,161 +7549,249 @@ if (showPantry) {
     </button>
 
     <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
+  <button
+    type="button"
+    onClick={() => setShowSettingsMenu((open) => !open)}
+    className={
+      (["profile", "reminders"] as AppPage[]).includes(currentPage)
+        ? "font-bold text-[#a63a0a] underline underline-offset-8"
+        : "text-[#a63a0a]"
+    }
+  >
+    ⚙️ Settings
+  </button>
 
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
 
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-    
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Account
       </p>
-
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
 
       <button
         type="button"
         onClick={() => {
-          setIsMenuOpen(false);
+          setShowSettingsMenu(false);
+          navigateTo("profile");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          navigateTo("reminders");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔔 Reminders
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Community
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/community";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🌎 Explore Recipes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/cookbook";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📖 My Public Cookbook
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Tools
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/add-to-hey-chef";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🧩 Import Tools
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+
+          // keep your existing install logic here
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📱 Install App
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
           logoutUser();
         }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
+
     </div>
   )}
+</div>
+  </div>
+
+  {isMenuOpen && (
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("profile");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👤 Profile
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("reminders");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🔔 Reminders
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Community
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/community";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🌎 Explore Recipes
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/cookbook";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👨‍🍳 My Cookbook
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Tools
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/add-to-hey-chef";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🧩 Import Tools
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+
+        const ua = navigator.userAgent.toLowerCase();
+
+        const isIOS =
+          /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        const isAndroid = /android/.test(ua);
+
+        if (isIOS) {
+          showToast(
+            "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
+          );
+          return;
+        }
+
+        if (isAndroid) {
+          showToast(
+            "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+          );
+          return;
+        }
+
+        showToast(
+          "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+        );
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      📱 Install App
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        logoutUser();
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 
         <div className="mb-8">
@@ -8086,161 +8404,249 @@ if (showPantry) {
     </button>
 
     <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
+  <button
+    type="button"
+    onClick={() => setShowSettingsMenu((open) => !open)}
+    className={
+      (["profile", "reminders"] as AppPage[]).includes(currentPage)
+        ? "font-bold text-[#a63a0a] underline underline-offset-8"
+        : "text-[#a63a0a]"
+    }
+  >
+    ⚙️ Settings
+  </button>
 
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
 
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-      
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Account
       </p>
-
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
 
       <button
         type="button"
         onClick={() => {
-          setIsMenuOpen(false);
+          setShowSettingsMenu(false);
+          navigateTo("profile");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          navigateTo("reminders");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔔 Reminders
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Community
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/community";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🌎 Explore Recipes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/cookbook";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📖 My Public Cookbook
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Tools
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/add-to-hey-chef";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🧩 Import Tools
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+
+          // keep your existing install logic here
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📱 Install App
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
           logoutUser();
         }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
+
     </div>
   )}
+</div>
+  </div>
+
+  {isMenuOpen && (
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("profile");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👤 Profile
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("reminders");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🔔 Reminders
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Community
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/community";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🌎 Explore Recipes
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/cookbook";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👨‍🍳 My Cookbook
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Tools
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/add-to-hey-chef";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🧩 Import Tools
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+
+        const ua = navigator.userAgent.toLowerCase();
+
+        const isIOS =
+          /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        const isAndroid = /android/.test(ua);
+
+        if (isIOS) {
+          showToast(
+            "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
+          );
+          return;
+        }
+
+        if (isAndroid) {
+          showToast(
+            "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+          );
+          return;
+        }
+
+        showToast(
+          "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+        );
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      📱 Install App
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        logoutUser();
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 
 
@@ -8255,6 +8661,7 @@ if (showPantry) {
       Build your personal food library with recipes, grocery items, and pantry favorites.
     </p>
   </div>
+  
 
   <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
   <button
@@ -8370,6 +8777,8 @@ Bake for 25 minutes`}
     )}
   </section>
 )}
+
+
 {showFoodImport && (
   <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
     <div className="mb-4 flex items-center justify-between">
@@ -8475,11 +8884,12 @@ Bake for 25 minutes`}
     <button
       onClick={() => {
         setFoodTypeFilter("all");
+        setVisibilityFilter("all");
         setCategoryFilter("all");
         setRecipeSort("newest");
       }}
       className={`rounded-full px-4 py-2 font-bold ${
-        foodTypeFilter === "all" && recipeSort === "newest"
+        foodTypeFilter === "all" && visibilityFilter === "all"
           ? "bg-[#a63a0a] text-white"
           : "bg-[#fff4ef] text-[#a63a0a]"
       }`}
@@ -8488,9 +8898,17 @@ Bake for 25 minutes`}
     </button>
 
     <button
-      onClick={() => setFoodTypeFilter("recipe")}
+      onClick={() => {
+  setFoodTypeFilter("recipe");
+
+  setVisibilityFilter(
+    visibilityFilter === "public"
+      ? "private"
+      : "public"
+  );
+}}
       className={`rounded-full px-4 py-2 font-bold ${
-        foodTypeFilter === "recipe"
+        foodTypeFilter === "recipe" && visibilityFilter === "all"
           ? "bg-[#a63a0a] text-white"
           : "bg-[#fff4ef] text-[#a63a0a]"
       }`}
@@ -8499,7 +8917,10 @@ Bake for 25 minutes`}
     </button>
 
     <button
-      onClick={() => setFoodTypeFilter("grocery")}
+      onClick={() => {
+        setFoodTypeFilter("grocery");
+        setVisibilityFilter("all");
+      }}
       className={`rounded-full px-4 py-2 font-bold ${
         foodTypeFilter === "grocery"
           ? "bg-[#a63a0a] text-white"
@@ -8510,16 +8931,25 @@ Bake for 25 minutes`}
     </button>
 
     <button
-      onClick={() => setRecipeSort("ready")}
+      onClick={() =>
+        setVisibilityFilter(
+          visibilityFilter === "public"
+            ? "private"
+            : "public"
+        )
+      }
       className={`rounded-full px-4 py-2 font-bold ${
-        recipeSort === "ready"
-          ? "bg-[#315f25] text-white"
-          : "bg-[#e8f6df] text-[#315f25]"
+        visibilityFilter === "public"
+          ? "bg-[#2d8a4b] text-white"
+          : "bg-[#6d5549] text-white"
       }`}
     >
-      ✓ Ready
+      {visibilityFilter === "public"
+        ? "🌎 Public"
+        : "🔒 Private"}
     </button>
   </div>
+  
 
   <div className="grid gap-3 md:grid-cols-2">
     <select
@@ -8555,6 +8985,36 @@ Bake for 25 minutes`}
     </select>
   </div>
 </section>
+{!hasActiveLibraryFilters && (
+  <section className="mb-10 overflow-hidden rounded-[2rem] border border-[#ead7c8] bg-gradient-to-r from-[#fffaf5] to-[#fff4ef] p-8 shadow-sm">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="max-w-2xl">
+        <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+          🌎 Community Cookbook
+        </p>
+
+        <h2 className="text-3xl font-bold text-[#2b1b14]">
+          Looking for dinner inspiration?
+        </h2>
+
+        <p className="mt-3 text-lg text-[#6d5549]">
+          Discover recipes shared by the Hey Chef community, save your favorites,
+          and add them to your own meal plan.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          window.location.href = "/community";
+        }}
+        className="rounded-full bg-[#a63a0a] px-8 py-4 text-lg font-bold text-white transition hover:bg-[#8f3108]"
+      >
+        Explore Community Recipes →
+      </button>
+    </div>
+  </section>
+)}
 
         {recipes.length === 0 ? (
           <div className="rounded-3xl bg-white p-8 shadow">
@@ -8764,161 +9224,249 @@ Bake for 25 minutes`}
     </button>
 
     <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
+  <button
+    type="button"
+    onClick={() => setShowSettingsMenu((open) => !open)}
+    className={
+      (["profile", "reminders"] as AppPage[]).includes(currentPage)
+        ? "font-bold text-[#a63a0a] underline underline-offset-8"
+        : "text-[#a63a0a]"
+    }
+  >
+    ⚙️ Settings
+  </button>
 
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
 
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-      
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Account
       </p>
-
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
 
       <button
         type="button"
         onClick={() => {
-          setIsMenuOpen(false);
+          setShowSettingsMenu(false);
+          navigateTo("profile");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          navigateTo("reminders");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔔 Reminders
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Community
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/community";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🌎 Explore Recipes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/cookbook";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📖 My Public Cookbook
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Tools
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/add-to-hey-chef";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🧩 Import Tools
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+
+          // keep your existing install logic here
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📱 Install App
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
           logoutUser();
         }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
+
     </div>
   )}
+</div>
+  </div>
+
+  {isMenuOpen && (
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("profile");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👤 Profile
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("reminders");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🔔 Reminders
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Community
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/community";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🌎 Explore Recipes
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/cookbook";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👨‍🍳 My Cookbook
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Tools
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/add-to-hey-chef";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🧩 Import Tools
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+
+        const ua = navigator.userAgent.toLowerCase();
+
+        const isIOS =
+          /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        const isAndroid = /android/.test(ua);
+
+        if (isIOS) {
+          showToast(
+            "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
+          );
+          return;
+        }
+
+        if (isAndroid) {
+          showToast(
+            "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+          );
+          return;
+        }
+
+        showToast(
+          "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+        );
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      📱 Install App
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        logoutUser();
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 )}
           <div className="rounded-[2rem] bg-white p-5 md:p-6 shadow-xl">
@@ -8990,8 +9538,16 @@ Bake for 25 minutes`}
   onClick={(e) => {
     e.stopPropagation();
     setEditRecipeDraft(selectedRecipe);
+    setRecipeVisibility(
+  selectedRecipe.visibility === "public"
+    ? "public"
+    : "private"
+);
+
     setIsEditingRecipe(true);
+    setRecipeTags(selectedRecipe.tags ?? []);
   }}
+  
   className={`relative w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a] transition ${
   recipeTourStep === 1
     ? "z-[5010] ring-4 ring-[#f7d5c2] shadow-xl"
@@ -9194,6 +9750,7 @@ Bake for 25 minutes`}
   </div>
 )}
             {isEditingRecipe && selectedRecipe && (
+              
   <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
     <h2 className="mb-4 text-2xl font-bold">
       {selectedRecipe.type === "grocery" ? "Edit Go-To Food Item" : "Edit Recipe"}
@@ -9284,6 +9841,90 @@ Bake for 25 minutes`}
       <option value="Prepared Food">Prepared Food</option>
       <option value="Canned Food">Canned Food</option>
     </select>
+
+    {selectedRecipe.type !== "grocery" && (
+  <div className="mb-4">
+    <p className="mb-2 block font-bold text-[#2b1b14]">
+      Recipe Tags
+    </p>
+
+    <p className="mb-3 text-sm text-[#6d5549]">
+      Choose every tag that accurately describes this recipe.
+    </p>
+
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {RECIPE_TAG_OPTIONS.map((tag) => {
+        const isSelected = recipeTags.includes(tag);
+
+        return (
+          <label
+            key={tag}
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${
+              isSelected
+                ? "border-[#a63a0a] bg-[#fff3eb]"
+                : "border-[#ead7c8] bg-white"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                setRecipeTags((currentTags) =>
+                  currentTags.includes(tag)
+                    ? currentTags.filter(
+                        (currentTag) => currentTag !== tag
+                      )
+                    : [...currentTags, tag]
+                );
+              }}
+              className="h-5 w-5 accent-[#a63a0a]"
+            />
+
+            <span className="text-sm font-semibold text-[#2b1b14]">
+              {tag}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  </div>
+)}
+
+    {selectedRecipe.type !== "grocery" && (
+  <div className="mb-4 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="font-bold text-[#2b1b14]">
+          Recipe Visibility
+        </p>
+
+        <p className="mt-1 text-sm text-[#6d5549]">
+          {recipeVisibility === "public"
+            ? "This recipe will appear in your public Hey Chef cookbook."
+            : "This recipe is private and only visible to you."}
+        </p>
+      </div>
+
+      {recipeVisibility === "public" ? (
+  <button
+    type="button"
+    onClick={() => setShowUnpublishConfirm(true)}
+    className="rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+  >
+    🌎 Public Recipe
+  </button>
+) : (
+  <button
+    type="button"
+    onClick={() => setShowPublishModal(true)}
+    className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+  >
+    🌎 Publish Recipe
+  </button>
+      )}
+    </div>
+  </div>
+)}
 
     {selectedRecipe.type !== "grocery" && (
       <>
@@ -9652,6 +10293,139 @@ Bake for 25 minutes`}
             <a href="/contact">Contact</a>
           </div>
         </footer>
+        {showPublishModal && selectedRecipe && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="publish-recipe-title"
+      className="w-full max-w-lg rounded-[2rem] bg-white p-6 shadow-2xl"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef
+          </p>
+
+          <h2
+            id="publish-recipe-title"
+            className="mt-1 text-2xl font-bold text-[#2b1b14]"
+          >
+            Publish this recipe?
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowPublishModal(false);
+            setPublishPermissionConfirmed(false);
+          }}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#ead7c8] bg-white font-bold text-[#a63a0a]"
+          aria-label="Close publish recipe dialog"
+        >
+          ✕
+        </button>
+      </div>
+
+      <p className="mt-4 text-[#6d5549]">
+        Public recipes can be discovered by other Hey Chef members and will
+        appear in your public cookbook.
+      </p>
+
+      <div className="mt-5 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
+        <p className="font-bold text-[#2b1b14]">
+          Before publishing, make sure this recipe:
+        </p>
+
+        <div className="mt-3 space-y-2 text-sm text-[#6d5549]">
+          <p>✓ Has a clear title</p>
+          <p>✓ Includes ingredients</p>
+          <p>✓ Includes preparation steps</p>
+          <p>✓ Is your own recipe or content you have permission to share</p>
+        </div>
+      </div>
+
+      <label className="mt-5 flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={publishPermissionConfirmed}
+          onChange={(e) =>
+            setPublishPermissionConfirmed(e.target.checked)
+          }
+          className="mt-1 h-5 w-5 rounded border-[#ead7c8] accent-[#a63a0a]"
+        />
+
+        <span className="text-sm text-[#2b1b14]">
+          I confirm that I created this recipe or have permission to publish
+          it publicly.
+        </span>
+      </label>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setShowPublishModal(false);
+            setPublishPermissionConfirmed(false);
+          }}
+          className="rounded-full border border-[#ead7c8] bg-white px-5 py-3 font-bold text-[#6d5549]"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          disabled={!publishPermissionConfirmed}
+          onClick={() => {
+            setRecipeVisibility("public");
+            setShowPublishModal(false);
+            setPublishPermissionConfirmed(false);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white transition hover:bg-[#8f3108] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Publish Recipe
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showUnpublishConfirm && selectedRecipe && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-[#2b1b14]">
+        Make this recipe private?
+      </h2>
+
+      <p className="mt-3 text-[#6d5549]">
+        This recipe will be removed from your public cookbook, but it will
+        remain in your personal recipe library.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => setShowUnpublishConfirm(false)}
+          className="rounded-full border border-[#ead7c8] bg-white px-5 py-3 font-bold text-[#6d5549]"
+        >
+          Keep Public
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setRecipeVisibility("private");
+            setShowUnpublishConfirm(false);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Make Private
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </main>
     );
   }
@@ -9758,161 +10532,249 @@ if (!hasLoadedUser) {
     </button>
 
     <div ref={settingsRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setShowSettingsMenu((open) => !open)}
-        className={
-  (["profile", "reminders"] as AppPage[]).includes(currentPage)
-    ? "font-bold text-[#a63a0a] underline underline-offset-8"
-    : "text-[#a63a0a]"
-}
-      >
-        ⚙️ Settings
-      </button>
+  <button
+    type="button"
+    onClick={() => setShowSettingsMenu((open) => !open)}
+    className={
+      (["profile", "reminders"] as AppPage[]).includes(currentPage)
+        ? "font-bold text-[#a63a0a] underline underline-offset-8"
+        : "text-[#a63a0a]"
+    }
+  >
+    ⚙️ Settings
+  </button>
 
-      {showSettingsMenu && (
-        <div className="absolute right-0 top-10 z-50 w-56 rounded-2xl bg-white p-2 shadow-xl">
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
+  {showSettingsMenu && (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
 
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-
-              const ua = navigator.userAgent.toLowerCase();
-
-              const isIOS =
-                /iphone|ipad|ipod/.test(ua) ||
-                (navigator.platform === "MacIntel" &&
-                  navigator.maxTouchPoints > 1);
-
-              const isAndroid = /android/.test(ua);
-
-              if (isIOS) {
-                showToast(
-                  "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
-                );
-                return;
-              }
-
-              if (isAndroid) {
-                showToast(
-                  "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
-                );
-                return;
-              }
-
-              showToast(
-                "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
-              );
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            📱 Install App
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              logoutUser();
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            ↪ Log Out
-          </button>
-        </div>
-      )}
-    </div>
-  </div>
-
-  {isMenuOpen && (
-    <div
-      ref={mobileMenuRef}
-      className="absolute right-0 top-16 z-50 w-64 rounded-3xl bg-white p-4 shadow-xl md:hidden"
-    >
-      
-
-      <p className="mb-2 mt-3 px-4 text-xs uppercase tracking-[0.2em] text-[#a63a0a]">
-        Settings
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Account
       </p>
-
-      <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("profile");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </button>
-
-                    <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              navigateTo("reminders");
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🔔 Reminders
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setShowSettingsMenu(false);
-              window.location.href = "/add-to-hey-chef";
-            }}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            🧩 Import Tools
-          </button>
 
       <button
         type="button"
         onClick={() => {
-          setIsMenuOpen(false);
+          setShowSettingsMenu(false);
+          navigateTo("profile");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        👤 Profile
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          navigateTo("reminders");
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🔔 Reminders
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Community
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/community";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🌎 Explore Recipes
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/cookbook";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📖 My Public Cookbook
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
+        Tools
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          window.location.href = "/add-to-hey-chef";
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        🧩 Import Tools
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+
+          // keep your existing install logic here
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+      >
+        📱 Install App
+      </button>
+
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
           logoutUser();
         }}
-        className="block w-full rounded-2xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
       >
         ↪ Log Out
       </button>
+
     </div>
   )}
+</div>
+  </div>
+
+  {isMenuOpen && (
+  <div
+    ref={mobileMenuRef}
+    className="absolute right-0 top-16 z-50 max-h-[calc(100vh-5rem)] w-72 overflow-y-auto rounded-3xl bg-white p-4 shadow-xl md:hidden"
+  >
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Account
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("profile");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👤 Profile
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        navigateTo("reminders");
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🔔 Reminders
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Community
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/community";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🌎 Explore Recipes
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/cookbook";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      👨‍🍳 My Cookbook
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+      Tools
+    </p>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        window.location.href = "/add-to-hey-chef";
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      🧩 Import Tools
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+
+        const ua = navigator.userAgent.toLowerCase();
+
+        const isIOS =
+          /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1);
+
+        const isAndroid = /android/.test(ua);
+
+        if (isIOS) {
+          showToast(
+            "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
+          );
+          return;
+        }
+
+        if (isAndroid) {
+          showToast(
+            "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+          );
+          return;
+        }
+
+        showToast(
+          "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+        );
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+    >
+      📱 Install App
+    </button>
+
+    <hr className="my-3 border-[#ead7c8]" />
+
+    <button
+      type="button"
+      onClick={() => {
+        setIsMenuOpen(false);
+        logoutUser();
+      }}
+      className="block w-full rounded-xl px-4 py-3 text-left font-semibold text-red-600 hover:bg-red-50"
+    >
+      ↪ Log Out
+    </button>
+  </div>
+)}
 </nav>
 )}
 
