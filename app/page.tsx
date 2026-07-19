@@ -802,9 +802,36 @@ const homeMenuWeek =
 useEffect(() => {
   const params = new URLSearchParams(window.location.search);
 
+  const page = params.get("page");
+
+  if (
+    page === "shopping" ||
+    page === "pantry" ||
+    page === "recipes" ||
+    page === "planner"
+  ) {
+    params.delete("page");
+
+    const nextQuery = params.toString();
+    const nextPath = `/${page}`;
+
+    window.history.replaceState(
+      {},
+      "",
+      nextQuery ? `${nextPath}?${nextQuery}` : nextPath
+    );
+  }
+
   const importType = params.get("import");
   const importedUrl = params.get("url") ?? "";
-  const path = window.location.pathname;
+
+  const path =
+    page === "shopping" ||
+    page === "pantry" ||
+    page === "recipes" ||
+    page === "planner"
+      ? `/${page}`
+      : window.location.pathname;
 
   if (!importedUrl) return;
 
@@ -852,22 +879,24 @@ useEffect(() => {
     "reminders",
   ];
 
+  let path = window.location.pathname;
+
   if (page && validPages.includes(page as AppPage)) {
-  const nextParams = new URLSearchParams(params);
+    const nextParams = new URLSearchParams(params);
 
-  nextParams.delete("page");
+    nextParams.delete("page");
 
-  const nextPath = page === "home" ? "/" : `/${page}`;
-  const nextQuery = nextParams.toString();
+    const nextPath = page === "home" ? "/" : `/${page}`;
+    const nextQuery = nextParams.toString();
 
-  window.history.replaceState(
-    {},
-    "",
-    nextQuery ? `${nextPath}?${nextQuery}` : nextPath
-  );
-}
+    window.history.replaceState(
+      {},
+      "",
+      nextQuery ? `${nextPath}?${nextQuery}` : nextPath
+    );
 
-  const path = window.location.pathname;
+    path = nextPath;
+  }
 
   if (path === "/recipes") {
     setCurrentPage("recipes");
@@ -877,6 +906,7 @@ useEffect(() => {
     setShowPantry(false);
     return;
   }
+
 
   function handlePopState(event: PopStateEvent) {
     const page = event.state?.page as AppPage | undefined;
