@@ -836,23 +836,35 @@ useEffect(() => {
   if (!importedUrl) return;
 
   if (path === "/shopping") {
-    setNewShoppingItem(importedUrl);
-    return;
-  }
+  setCurrentPage("shopping");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(true);
+  setShowPantry(false);
+
+  setNewShoppingItem(importedUrl);
+  return;
+}
 
   if (path === "/pantry") {
-    setEditingPantryModalId(null);
-    setPantryModalItem("");
-    setPantryModalImage("");
-    setPantryModalSourceUrl(importedUrl);
-    setPantryModalShoppingItem("");
-    setPantryModalQuantity("1");
-    setPantryModalUnit("package");
-    setPantryModalCategory("Other");
-    setAddAnotherPantryItem(false);
-    setShowPantryModal(true);
-    return;
-  }
+  setCurrentPage("pantry");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(true);
+
+  setEditingPantryModalId(null);
+  setPantryModalItem("");
+  setPantryModalImage("");
+  setPantryModalSourceUrl(importedUrl);
+  setPantryModalShoppingItem("");
+  setPantryModalQuantity("1");
+  setPantryModalUnit("package");
+  setPantryModalCategory("Other");
+  setAddAnotherPantryItem(false);
+  setShowPantryModal(true);
+  return;
+}
 
   if (importType === "recipe") {
     setShowImport(true);
