@@ -836,22 +836,38 @@ useEffect(() => {
   if (!importedUrl) return;
 
   if (path === "/shopping") {
+  window.history.replaceState(
+    {},
+    "",
+    `/shopping?import=grocery&url=${encodeURIComponent(importedUrl)}`
+  );
+
   setCurrentPage("shopping");
   setShowAllRecipes(false);
   setShowMealPlanner(false);
   setShowShoppingList(true);
   setShowPantry(false);
+  setShowImport(false);
+  setShowFoodImport(false);
 
   setNewShoppingItem(importedUrl);
   return;
 }
 
-  if (path === "/pantry") {
+if (path === "/pantry") {
+  window.history.replaceState(
+    {},
+    "",
+    `/pantry?import=grocery&url=${encodeURIComponent(importedUrl)}`
+  );
+
   setCurrentPage("pantry");
   setShowAllRecipes(false);
   setShowMealPlanner(false);
   setShowShoppingList(false);
   setShowPantry(true);
+  setShowImport(false);
+  setShowFoodImport(false);
 
   setEditingPantryModalId(null);
   setPantryModalItem("");
@@ -866,15 +882,15 @@ useEffect(() => {
   return;
 }
 
-  if (importType === "recipe") {
-    setShowImport(true);
-    setShowFoodImport(false);
-    setRecipeUrl(importedUrl);
-  } else if (importType === "grocery") {
-    setShowFoodImport(true);
-    setShowImport(false);
-    setFoodUrl(importedUrl);
-  }
+if (importType === "recipe") {
+  setShowImport(true);
+  setShowFoodImport(false);
+  setRecipeUrl(importedUrl);
+} else if (importType === "grocery") {
+  setShowFoodImport(true);
+  setShowImport(false);
+  setFoodUrl(importedUrl);
+}
 }, []);
 
 useEffect(() => {
@@ -2339,6 +2355,7 @@ if (onboardingTourStep === 5) {
   showToast("Recipe imported! Let’s look at what you can do with it.");
 } else {
   setShowImport(false);
+  showToast("Recipe imported successfully.");
 }
     } catch (error) {
     console.error(error);
