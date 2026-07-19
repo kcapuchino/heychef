@@ -61,6 +61,33 @@ type ProfileRow = {
 
 const FALLBACK_RECIPE_IMAGE = "/hero-kitchen.jpg";
 
+const COMMUNITY_CATEGORIES = [
+  "Breakfast",
+  "Main Dish",
+  "Side Dish",
+  "Soup",
+  "Salad",
+  "Bread",
+  "Dessert",
+  "Snack",
+  "Drink",
+];
+
+const FEATURED_TAGS = [
+  "Vegetarian",
+  "Vegan",
+  "Gluten Free",
+  "Dairy Free",
+  "High Protein",
+  "Quick & Easy",
+  "Meal Prep",
+  "One Pot",
+  "Budget Friendly",
+  "Kid Friendly",
+  "Family Favorite",
+  "Comfort Food",
+];
+
 
 function createRecipeSlug(title: string) {
   return title
@@ -286,23 +313,9 @@ console.log("Public recipe error:", recipeError);
     void loadPublicRecipes();
   }, []);
 
-  const categoryOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        recipes
-          .map((recipe) => recipe.category)
-          .filter(Boolean)
-      )
-    ).sort((a, b) => a.localeCompare(b));
-  }, [recipes]);
+  const categoryOptions = COMMUNITY_CATEGORIES;
 
-  const tagOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        recipes.flatMap((recipe) => recipe.tags)
-      )
-    ).sort((a, b) => a.localeCompare(b));
-  }, [recipes]);
+  const tagOptions = FEATURED_TAGS;
 
   const filteredRecipes = useMemo(() => {
     const normalizedSearch = searchQuery
@@ -912,7 +925,7 @@ console.log("Public recipe error:", recipeError);
                 htmlFor="community-tag-filter"
                 className="mb-2 block text-sm font-bold"
               >
-                Dietary and recipe tags
+                Dietary & Style
               </label>
 
               <select
@@ -1028,23 +1041,35 @@ console.log("Public recipe error:", recipeError);
                 🍲
               </div>
 
-              <h2 className="mt-4 text-2xl font-bold">
-                No public recipes found
-              </h2>
+              
+<h2 className="mt-4 text-2xl font-bold">
+  No recipes match yet
+</h2>
 
-              <p className="mt-2 text-[#6d5549]">
-                Try changing your search or filters.
-              </p>
+<p className="mx-auto mt-2 max-w-xl text-[#6d5549]">
+  Our community cookbook is still growing. Try another filter,
+  or share one of your own recipes to help other cooks discover
+  something new.
+</p>
 
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="mt-5 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
-                >
-                  Show All Recipes
-                </button>
-              )}
+<div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+  <Link
+    href="/recipes"
+    className="inline-flex justify-center rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white transition hover:bg-[#8f3108]"
+  >
+    Add or Share a Recipe
+  </Link>
+
+  {hasActiveFilters && (
+    <button
+      type="button"
+      onClick={clearFilters}
+      className="rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a] transition hover:bg-[#fff3eb]"
+    >
+      Show All Recipes
+    </button>
+  )}
+</div>
             </div>
           )}
 

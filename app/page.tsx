@@ -1368,7 +1368,50 @@ async function loadShoppingItems() {
   );
 }
 
+useEffect(() => {
+  if (recipes.length === 0) return;
 
+  const pathname = window.location.pathname;
+
+  if (pathname !== "/recipes") return;
+
+  const searchParams = new URLSearchParams(
+    window.location.search
+  );
+
+  const recipeId = searchParams.get("recipe");
+
+  if (!recipeId) {
+    setCurrentPage("recipes");
+    return;
+  }
+
+  const matchingRecipe = recipes.find(
+    (recipe) => recipe.id === recipeId
+  );
+
+  if (!matchingRecipe) {
+    setSelectedRecipe(null);
+    setCurrentPage("recipes");
+    setShowAllRecipes(true);
+    return;
+  }
+
+  setSelectedRecipe(matchingRecipe);
+  setCurrentPage("recipes");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
+
+  setRecipeVisibility(
+    matchingRecipe.visibility === "public"
+      ? "public"
+      : "private"
+  );
+
+  setRecipeTags(matchingRecipe.tags ?? []);
+}, [recipes]);
 
 useEffect(() => {
   async function loadPantry() {
@@ -5813,18 +5856,40 @@ if (showProfile) {
         🧩 Import Tools
       </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
+       {!isInstalledApp && (
+        <button
+          onClick={() => {
+            setIsMenuOpen(false);
 
-          // keep your existing install logic here
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📱 Install App
-      </button>
+            const ua = navigator.userAgent.toLowerCase();
 
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
+        )}
       <hr className="my-2 border-[#ead7c8]" />
 
       <button
@@ -5919,7 +5984,8 @@ if (showProfile) {
       🧩 Import Tools
     </button>
 
-    <button
+    {!isInstalledApp && (
+      <button
       type="button"
       onClick={() => {
         setIsMenuOpen(false);
@@ -5955,6 +6021,7 @@ if (showProfile) {
     >
       📱 Install App
     </button>
+    )}
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -6588,12 +6655,21 @@ const { error } = await supabase
   setShowShoppingList(false);
   setShowPantry(false);
 
-  const slug = createRecipeSlug(recipe.title);
+  setRecipeVisibility(
+    recipe.visibility === "public"
+      ? "public"
+      : "private"
+  );
+
+  setRecipeTags(recipe.tags ?? []);
 
   window.history.pushState(
-    {},
+    {
+      page: "recipes",
+      recipeId: recipe.id,
+    },
     "",
-    `/recipe/${recipe.id}/${slug}`
+    `/recipes?recipe=${recipe.id}`
   );
 }}
             className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
@@ -6933,17 +7009,40 @@ const { error } = await supabase
         🧩 Import Tools
       </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
+       {!isInstalledApp && (
+        <button
+          onClick={() => {
+            setIsMenuOpen(false);
 
-          // keep your existing install logic here
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📱 Install App
-      </button>
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
+        )}
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -7039,7 +7138,8 @@ const { error } = await supabase
       🧩 Import Tools
     </button>
 
-    <button
+    {!isInstalledApp && (
+      <button
       type="button"
       onClick={() => {
         setIsMenuOpen(false);
@@ -7075,6 +7175,7 @@ const { error } = await supabase
     >
       📱 Install App
     </button>
+    )}
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -7639,17 +7740,40 @@ if (showPantry) {
         🧩 Import Tools
       </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
+      {!isInstalledApp && (
+        <button
+          onClick={() => {
+            setIsMenuOpen(false);
 
-          // keep your existing install logic here
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📱 Install App
-      </button>
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
+        )}
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -7744,7 +7868,8 @@ if (showPantry) {
       🧩 Import Tools
     </button>
 
-    <button
+    {!isInstalledApp && (
+      <button
       type="button"
       onClick={() => {
         setIsMenuOpen(false);
@@ -7780,6 +7905,7 @@ if (showPantry) {
     >
       📱 Install App
     </button>
+    )}
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -8493,30 +8619,40 @@ if (showPantry) {
         🧩 Import Tools
       </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
+       {!isInstalledApp && (
+        <button
+          onClick={() => {
+            setIsMenuOpen(false);
 
-          // keep your existing install logic here
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📱 Install App
-      </button>
+            const ua = navigator.userAgent.toLowerCase();
 
-      <hr className="my-2 border-[#ead7c8]" />
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          logoutUser();
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
-      >
-        ↪ Log Out
-      </button>
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
+        )}
 
     </div>
   )}
@@ -8599,7 +8735,8 @@ if (showPantry) {
       🧩 Import Tools
     </button>
 
-    <button
+    {!isInstalledApp && (
+      <button
       type="button"
       onClick={() => {
         setIsMenuOpen(false);
@@ -8635,6 +8772,7 @@ if (showPantry) {
     >
       📱 Install App
     </button>
+    )}
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -9313,17 +9451,40 @@ Bake for 25 minutes`}
         🧩 Import Tools
       </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
+       {!isInstalledApp && (
+        <button
+          onClick={() => {
+            setIsMenuOpen(false);
 
-          // keep your existing install logic here
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📱 Install App
-      </button>
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
+        )}
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -9419,7 +9580,8 @@ Bake for 25 minutes`}
       🧩 Import Tools
     </button>
 
-    <button
+    {!isInstalledApp && (
+      <button
       type="button"
       onClick={() => {
         setIsMenuOpen(false);
@@ -9455,6 +9617,7 @@ Bake for 25 minutes`}
     >
       📱 Install App
     </button>
+    )}
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -9752,6 +9915,84 @@ Bake for 25 minutes`}
 </div>
   </div>
 )}
+{selectedRecipe.type !== "grocery" && (
+  <div className="mb-5 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-bold text-[#2b1b14]">
+            Recipe Visibility
+          </p>
+
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-bold ${
+              recipeVisibility === "public"
+                ? "bg-[#e9f7ee] text-[#256c3d]"
+                : "bg-[#eee8e3] text-[#6d5549]"
+            }`}
+          >
+            {recipeVisibility === "public"
+              ? "🌎 Public"
+              : "🔒 Private"}
+          </span>
+        </div>
+
+        <p className="mt-2 text-sm leading-6 text-[#6d5549]">
+          {recipeVisibility === "public"
+            ? "This recipe appears in Community and in your public cookbook."
+            : "Only you can view this recipe. Review it before sharing it with the community."}
+        </p>
+      </div>
+
+    
+        <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
+  <button
+    type="button"
+    onClick={() => {
+  if (recipeVisibility === "public") {
+    setRecipeVisibility("private");
+  }
+    }}
+    className={`rounded-2xl border px-4 py-3 text-left transition ${
+      recipeVisibility === "private"
+        ? "border-[#a63a0a] bg-[#fff4ef] text-[#a63a0a]"
+        : "border-[#ead7c8] bg-white text-[#2b1b14]"
+    }`}
+  >
+    <span className="block font-bold">
+      🔒 Private
+    </span>
+
+    <span className="mt-1 block text-sm">
+      Only you can view this recipe.
+    </span>
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+  if (recipeVisibility === "private") {
+    setShowPublishModal(true);
+  }
+}}
+    className={`rounded-2xl border px-4 py-3 text-left transition ${
+      recipeVisibility === "public"
+        ? "border-[#a63a0a] bg-[#fff4ef] text-[#a63a0a]"
+        : "border-[#ead7c8] bg-white text-[#2b1b14]"
+    }`}
+  >
+    <span className="block font-bold">
+      🌎 Public
+    </span>
+
+    <span className="mt-1 block text-sm">
+      Share it in Community and your cookbook.
+   </span>
+  </button>
+</div>
+</div>
+</div>
+)}
             {isEditingRecipe && selectedRecipe && (
               
   <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
@@ -9768,14 +10009,42 @@ Bake for 25 minutes`}
       className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
     />
 
-    <label className="mb-2 block font-bold">Image URL</label>
-    <input
-      value={selectedRecipe.image || ""}
-      onChange={(e) =>
-        setSelectedRecipe({ ...selectedRecipe, image: e.target.value })
-      }
-      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+    <label className="mb-2 block font-bold">
+  Recipe Source <span className="font-normal text-[#6d5549]">(optional)</span>
+</label>
+
+<input
+  value={selectedRecipe.sourceUrl || ""}
+  onChange={(e) =>
+    setSelectedRecipe({
+      ...selectedRecipe,
+      sourceUrl: e.target.value,
+    })
+  }
+  placeholder="Recipe website, YouTube, Instagram, TikTok, Pinterest, or any link"
+  className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+/>
+
+    <label className="mb-1 block font-bold">
+  Image URL
+</label>
+
+<p className="mb-2 text-sm text-[#6d5549]">
+  Use your own public image URL, or right-click an image and choose
+  <strong> "Open image in new tab"</strong>, then copy that URL.
+</p>
+
+<input
+  value={selectedRecipe.image || ""}
+  onChange={(e) =>
+    setSelectedRecipe({
+      ...selectedRecipe,
+      image: e.target.value,
+    })
+  }
+  placeholder="https://..."
+  className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
+/>
 
     {selectedRecipe.type === "grocery" && (
       <>
@@ -9845,7 +10114,75 @@ Bake for 25 minutes`}
       <option value="Canned Food">Canned Food</option>
     </select>
 
-    
+      {selectedRecipe.type !== "grocery" && (
+  <div className="mb-5">
+    <div className="mb-3">
+      <p className="font-bold text-[#2b1b14]">
+        Recipe Tags
+        <span className="ml-1 font-normal text-[#6d5549]">
+          (optional)
+        </span>
+      </p>
+
+      <p className="mt-1 text-sm text-[#6d5549]">
+        Choose all that apply.
+      </p>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {[
+        "Quick & Easy",
+        "Family Favorite",
+        "Budget Friendly",
+        "Meal Prep",
+        "One Pot",
+        "High Protein",
+        "Vegetarian",
+        "Vegan",
+        "Gluten Free",
+        "Dairy Free",
+        "Kid Friendly",
+        "Comfort Food",
+      ].map((tag) => {
+        const isSelected = recipeTags.includes(tag);
+
+        return (
+          <label
+            key={tag}
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+              isSelected
+                ? "border-[#a63a0a] bg-[#fff4ef]"
+                : "border-[#ead7c8] bg-white"
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(event) => {
+                if (event.target.checked) {
+                  setRecipeTags([...recipeTags, tag]);
+                } else {
+                  setRecipeTags(
+                    recipeTags.filter(
+                      (currentTag) => currentTag !== tag
+                    )
+                  );
+                }
+              }}
+              className="h-5 w-5 accent-[#a63a0a]"
+            />
+
+            <span className="font-medium text-[#2b1b14]">
+              {tag}
+            </span>
+          </label>
+        );
+      })}
+    </div>
+  </div>
+)}
+
+
 
     {selectedRecipe.type !== "grocery" && (
       <>
@@ -10044,55 +10381,7 @@ Bake for 25 minutes`}
     </>
   ) : (
   <>
-      <div className="mb-5 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-bold text-[#2b1b14]">
-                Recipe Visibility
-              </p>
-
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  recipeVisibility === "public"
-                    ? "bg-[#e9f7ee] text-[#256c3d]"
-                    : "bg-[#eee8e3] text-[#6d5549]"
-                }`}
-              >
-                {recipeVisibility === "public"
-                  ? "🌎 Public"
-                  : "🔒 Private"}
-              </span>
-            </div>
-
-            <p className="mt-2 text-sm leading-6 text-[#6d5549]">
-              {recipeVisibility === "public"
-                ? "This recipe appears in Community and in your public cookbook."
-                : "Only you can view this recipe. Review it before sharing it with the community."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (recipeVisibility === "public") {
-                setShowUnpublishConfirm(true);
-              } else {
-                setShowPublishConfirm(true);
-              }
-            }}
-            className={`w-full shrink-0 rounded-full px-5 py-3 font-bold transition sm:w-auto ${
-              recipeVisibility === "public"
-                ? "border border-[#a63a0a] bg-white text-[#a63a0a] hover:bg-[#fff3eb]"
-                : "bg-[#a63a0a] text-white hover:bg-[#8f3108]"
-            }`}
-          >
-            {recipeVisibility === "public"
-              ? "Make Private"
-              : "Review & Publish"}
-          </button>
-        </div>
-      </div>
+    
 
     <button
       type="button"
@@ -10251,21 +10540,7 @@ Bake for 25 minutes`}
   </div>
 )}
 
-          </div>
-        </section>
-        
-<BottomNav />
- <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
-          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
-
-          <div className="mt-3 flex flex-wrap justify-center gap-6">
-            <a href="/privacy">Privacy</a>
-            <a href="/terms">Terms</a>
-            <a href="/delete-account">Delete Account</a>
-            <a href="/contact">Contact</a>
-          </div>
-        </footer>
-        {showPublishModal && selectedRecipe && (
+ {showPublishModal && selectedRecipe && (
   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
     <div
       role="dialog"
@@ -10396,6 +10671,22 @@ Bake for 25 minutes`}
     </div>
   </div>
 )}
+
+          </div>
+        </section>
+        
+<BottomNav />
+ <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
+          <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
+
+          <div className="mt-3 flex flex-wrap justify-center gap-6">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+            <a href="/delete-account">Delete Account</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </footer>
+       
       </main>
     );
   }
@@ -10588,17 +10879,40 @@ if (!hasLoadedUser) {
         🧩 Import Tools
       </button>
 
-      <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
+       {!isInstalledApp && (
+        <button
+          onClick={() => {
+            setIsMenuOpen(false);
 
-          // keep your existing install logic here
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📱 Install App
-      </button>
+            const ua = navigator.userAgent.toLowerCase();
+
+            const isIOS =
+              /iphone|ipad|ipod/.test(ua) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+            const isAndroid = /android/.test(ua);
+
+            if (isIOS) {
+              showToast("Install Hey Chef:\n\nTap Share, then Add to Home Screen.");
+              return;
+            }
+
+            if (isAndroid) {
+              showToast(
+                "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+              );
+              return;
+            }
+
+            showToast(
+              "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+            );
+          }}
+          className="block w-full rounded-2xl px-4 py-3 text-left text-[#2b1a12] hover:bg-[#fff4ef]"
+        >
+          📱 Install App
+        </button>
+        )}
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -10694,7 +11008,8 @@ if (!hasLoadedUser) {
       🧩 Import Tools
     </button>
 
-    <button
+    {!isInstalledApp && (
+      <button
       type="button"
       onClick={() => {
         setIsMenuOpen(false);
@@ -10730,6 +11045,7 @@ if (!hasLoadedUser) {
     >
       📱 Install App
     </button>
+    )}
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -11464,13 +11780,16 @@ Bake for 25 minutes`}
   onClick={() => {
   setSelectedRecipe(recipe);
 
-  const slug = createRecipeSlug(recipe.title);
+const slug = createRecipeSlug(recipe.title);
 
-  window.history.pushState(
-    {},
-    "",
-    `/recipe/${recipe.id}/${slug}`
-  );
+window.history.pushState(
+  {
+    recipeId: recipe.id,
+    view: "owner",
+  },
+  "",
+  `/recipe/${recipe.id}/${slug}?view=owner`
+);
 
   window.scrollTo({
     top: 0,

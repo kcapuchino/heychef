@@ -56,46 +56,59 @@ export default function RecipePage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    async function loadRecipe() {
-      setIsLoading(true);
-      setMessage("");
+  async function loadRecipe() {
+    setIsLoading(true);
+    setMessage("");
 
-      const { data, error } = await supabase
-        .from("recipes")
-        .select("*")
-        .eq("id", params.id)
-        .maybeSingle();
+    const { data, error } = await supabase
+      .from("recipes")
+      .select("*")
+      .eq("id", params.id)
+      .maybeSingle();
 
-      if (error) {
-        console.error("Recipe load error:", error);
-        setMessage(error.message);
-        setIsLoading(false);
-        return;
-      }
-
-      if (!data) {
-        setMessage(
-          "This recipe could not be found or is not available."
-        );
-        setIsLoading(false);
-        return;
-      }
-
-      console.log("PUBLIC RECIPE ROW:", data);
-console.log("PUBLIC RECIPE KEYS:", Object.keys(data));
-
-      setRecipe({
-  ...data,
-  image:
-    data.image?.trim() ||
-    data.image_url?.trim() ||
-    "",
-} as PublicRecipe);
+    if (error) {
+      console.error("Recipe load error:", error);
+      setMessage(error.message);
       setIsLoading(false);
+      return;
     }
 
-    void loadRecipe();
-  }, [params.id]);
+    if (!data) {
+      setMessage(
+        "This recipe could not be found or is not available."
+      );
+      setIsLoading(false);
+      return;
+    }
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const isRecipeOwner =
+      Boolean(user) &&
+      data.user_id === user?.id;
+
+    if (isRecipeOwner) {
+      router.replace(
+        `/recipes?recipe=${data.id}`
+      );
+      return;
+    }
+
+    setRecipe({
+      ...data,
+      image:
+        data.image?.trim() ||
+        data.image_url?.trim() ||
+        "",
+    } as PublicRecipe);
+
+    setIsLoading(false);
+  }
+
+  void loadRecipe();
+}, [params.id, router]);
 
   async function saveToLibrary() {
     if (!recipe || isSaving) return;
