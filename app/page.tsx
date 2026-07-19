@@ -5786,15 +5786,15 @@ if (showProfile) {
       </button>
 
       <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          window.location.href = "/cookbook";
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 My Public Cookbook
-      </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -5892,15 +5892,15 @@ if (showProfile) {
     </button>
 
     <button
-      type="button"
-      onClick={() => {
-        setIsMenuOpen(false);
-        window.location.href = "/cookbook";
-      }}
-      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-    >
-      👨‍🍳 My Cookbook
-    </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -6906,15 +6906,15 @@ const { error } = await supabase
       </button>
 
       <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          window.location.href = "/cookbook";
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 My Public Cookbook
-      </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -7012,15 +7012,15 @@ const { error } = await supabase
     </button>
 
     <button
-      type="button"
-      onClick={() => {
-        setIsMenuOpen(false);
-        window.location.href = "/cookbook";
-      }}
-      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-    >
-      👨‍🍳 My Cookbook
-    </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -7612,15 +7612,15 @@ if (showPantry) {
       </button>
 
       <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          window.location.href = "/cookbook";
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 My Public Cookbook
-      </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -7718,16 +7718,15 @@ if (showPantry) {
     </button>
 
     <button
-      type="button"
-      onClick={() => {
-        setIsMenuOpen(false);
-        window.location.href = "/cookbook";
-      }}
-      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-    >
-      👨‍🍳 My Cookbook
-    </button>
-
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
     <hr className="my-3 border-[#ead7c8]" />
 
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
@@ -8467,15 +8466,15 @@ if (showPantry) {
       </button>
 
       <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          window.location.href = "/cookbook";
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 My Public Cookbook
-      </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -8573,15 +8572,15 @@ if (showPantry) {
     </button>
 
     <button
-      type="button"
-      onClick={() => {
-        setIsMenuOpen(false);
-        window.location.href = "/cookbook";
-      }}
-      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-    >
-      👨‍🍳 My Cookbook
-    </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -9287,15 +9286,15 @@ Bake for 25 minutes`}
       </button>
 
       <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          window.location.href = "/cookbook";
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 My Public Cookbook
-      </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -9393,15 +9392,15 @@ Bake for 25 minutes`}
     </button>
 
     <button
-      type="button"
-      onClick={() => {
-        setIsMenuOpen(false);
-        window.location.href = "/cookbook";
-      }}
-      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-    >
-      👨‍🍳 My Cookbook
-    </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
     <hr className="my-3 border-[#ead7c8]" />
 
@@ -10562,15 +10561,15 @@ if (!hasLoadedUser) {
       </button>
 
       <button
-        type="button"
-        onClick={() => {
-          setShowSettingsMenu(false);
-          window.location.href = "/cookbook";
-        }}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        📖 My Public Cookbook
-      </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
       <hr className="my-2 border-[#ead7c8]" />
 
@@ -10668,15 +10667,15 @@ if (!hasLoadedUser) {
     </button>
 
     <button
-      type="button"
-      onClick={() => {
-        setIsMenuOpen(false);
-        window.location.href = "/cookbook";
-      }}
-      className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-    >
-      👨‍🍳 My Cookbook
-    </button>
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    window.location.href = `/chef/${currentUserId}`;
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</button>
 
     <hr className="my-3 border-[#ead7c8]" />
 

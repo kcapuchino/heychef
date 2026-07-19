@@ -61,6 +61,7 @@ type ProfileRow = {
 
 const FALLBACK_RECIPE_IMAGE = "/hero-kitchen.jpg";
 
+
 function createRecipeSlug(title: string) {
   return title
     .toLowerCase()
@@ -135,6 +136,8 @@ export default function CommunityPage() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
         const [showSettingsMenu, setShowSettingsMenu] =
         useState(false);
+    const [currentUserId, setCurrentUserId] =
+        useState<string | null>(null);    
 
     const mobileMenuRef = useRef<HTMLDivElement>(null);
     const settingsRef = useRef<HTMLDivElement>(null);
@@ -350,6 +353,18 @@ console.log("Public recipe error:", recipeError);
   ]);
 
   useEffect(() => {
+  async function loadCurrentUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setCurrentUserId(user?.id ?? null);
+  }
+
+  void loadCurrentUser();
+}, []);
+
+  useEffect(() => {
   function handleOutsideClick(event: MouseEvent) {
     const target = event.target as Node;
 
@@ -534,12 +549,12 @@ console.log("Public recipe error:", recipeError);
             </Link>
 
             <Link
-              href="/cookbook"
-              onClick={() => setShowSettingsMenu(false)}
-              className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-            >
-              👨‍🍳 My Cookbook
-            </Link>
+  href={`/chef/${currentUserId}`}
+  onClick={() => setShowSettingsMenu(false)}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</Link>
 
             <hr className="my-2 border-[#ead7c8]" />
 
@@ -623,12 +638,12 @@ console.log("Public recipe error:", recipeError);
         </Link>
 
         <Link
-          href="/cookbook"
-          onClick={() => setIsMenuOpen(false)}
-          className="block w-full rounded-xl px-4 py-3 hover:bg-[#fff4ef]"
-        >
-          👨‍🍳 My Cookbook
-        </Link>
+  href={`/chef/${currentUserId}`}
+  onClick={() => setShowSettingsMenu(false)}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👨‍🍳 My Cookbook
+</Link>
 
         <hr className="my-3 border-[#ead7c8]" />
 
