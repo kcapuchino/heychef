@@ -10329,8 +10329,7 @@ Bake for 25 minutes`}
       </div>
 
       <p className="mt-4 text-[#6d5549]">
-        Public recipes can be discovered by other Hey Chef members and will
-        appear in your public cookbook.
+        Public recipes can be discovered, viewed, and saved by other Hey Chef members. You'll always be able to make this recipe private again later.
       </p>
 
       <div className="mt-5 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
@@ -10357,8 +10356,7 @@ Bake for 25 minutes`}
         />
 
         <span className="text-sm text-[#2b1b14]">
-          I confirm that I created this recipe or have permission to publish
-          it publicly.
+          I confirm that I have the right to share this recipe publicly and understand it may be viewed and saved by other Hey Chef members.
         </span>
       </label>
 
