@@ -325,6 +325,11 @@ export default function Home() {
   onboardingTourStep > 0 ||
   recipeTourStep > 0;
 
+  const [
+  showAddToHeyChefPrompt,
+  setShowAddToHeyChefPrompt,
+] = useState(false);
+
   const [currentUserId, setCurrentUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [signupName, setSignupName] = useState("");
@@ -365,6 +370,7 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const importSectionRef = useRef<HTMLElement>(null);
   const [recipeUrl, setRecipeUrl] = useState("");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const recipeImportInProgressRef = useRef(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -794,50 +800,32 @@ const homeMenuWeek =
   
 
 useEffect(() => {
-  const path = window.location.pathname;
-
-  if (path === "/recipes") {
-    setCurrentPage("recipes");
-    setShowAllRecipes(true);
-    setShowMealPlanner(false);
-    setShowShoppingList(false);
-    setShowPantry(false);
-    return;
-  }
-
-  if (path === "/planner") {
-    setCurrentPage("planner");
-    setShowAllRecipes(false);
-    setShowMealPlanner(true);
-    setShowShoppingList(false);
-    setShowPantry(false);
-    return;
-  }
-
-  if (path === "/shopping") {
-    setCurrentPage("shopping");
-    setShowAllRecipes(false);
-    setShowMealPlanner(false);
-    setShowShoppingList(true);
-    setShowPantry(false);
-    return;
-  }
-
-  if (path === "/pantry") {
-    setCurrentPage("pantry");
-    setShowAllRecipes(false);
-    setShowMealPlanner(false);
-    setShowShoppingList(false);
-    setShowPantry(true);
-    return;
-  }
-}, []);
-
-useEffect(() => {
   const params = new URLSearchParams(window.location.search);
 
   const importType = params.get("import");
   const importedUrl = params.get("url") ?? "";
+  const path = window.location.pathname;
+
+  if (!importedUrl) return;
+
+  if (path === "/shopping") {
+    setNewShoppingItem(importedUrl);
+    return;
+  }
+
+  if (path === "/pantry") {
+    setEditingPantryModalId(null);
+    setPantryModalItem("");
+    setPantryModalImage("");
+    setPantryModalSourceUrl(importedUrl);
+    setPantryModalShoppingItem("");
+    setPantryModalQuantity("1");
+    setPantryModalUnit("package");
+    setPantryModalCategory("Other");
+    setAddAnotherPantryItem(false);
+    setShowPantryModal(true);
+    return;
+  }
 
   if (importType === "recipe") {
     setShowImport(true);
@@ -2015,10 +2003,12 @@ function saveGuestRecipe(recipe: Recipe) {
   setRecipes((currentRecipes) => [recipe, ...currentRecipes]);
 }
   async function importRecipe() {
+  if (recipeImportInProgressRef.current) return;
   if (!recipeUrl && !manualRecipe) return;
 
+  recipeImportInProgressRef.current = true;
   setIsImporting(true);
-setImportError("");
+  setImportError("");
 
 const controller = new AbortController();
 
@@ -2089,6 +2079,59 @@ setSampleRecipe(guestRecipe);
       return;
     }
 
+    const normalizedRecipeUrl = (
+  importedData.sourceUrl ||
+  recipeUrl ||
+  ""
+)
+  .trim()
+  .replace(/\/$/, "");
+
+let duplicateQuery = supabase
+  .from("recipes")
+  .select("id")
+  .eq("user_id", user.id);
+
+if (normalizedRecipeUrl) {
+  duplicateQuery = duplicateQuery.eq(
+    "source_url",
+    normalizedRecipeUrl
+  );
+} else {
+  duplicateQuery = duplicateQuery.ilike(
+    "title",
+    importedData.title || "Imported Recipe"
+  );
+}
+
+const {
+  data: existingRecipe,
+  error: duplicateCheckError,
+} = await duplicateQuery
+  .limit(1)
+  .maybeSingle();
+
+if (duplicateCheckError) {
+  console.error(
+    "Could not check for duplicate recipe:",
+    duplicateCheckError
+  );
+
+  setImportError(
+    "Could not check this recipe. Please try again."
+  );
+
+  return;
+}
+
+if (existingRecipe) {
+  setImportError(
+    "This recipe is already in your Food Library."
+  );
+
+  return;
+}
+
     const { data: savedRecipe, error } = await supabase
       .from("recipes")
       .insert({
@@ -2099,8 +2142,9 @@ setSampleRecipe(guestRecipe);
         steps: importedData.steps || [],
         cook_time: importedData.cookTime || "",
         servings: importedData.servings || "",
-        source_url: importedData.sourceUrl || recipeUrl,
+        source_url: normalizedRecipeUrl,
         is_favorite: false,
+        type: "recipe",
       })
       .select()
       .single();
@@ -2148,9 +2192,10 @@ if (onboardingTourStep === 5) {
     );
     setShowManualImport(true);
   } finally {
-     window.clearTimeout(timeoutId);
-    setIsImporting(false);
-  }
+  window.clearTimeout(timeoutId);
+  recipeImportInProgressRef.current = false;
+  setIsImporting(false);
+}
 }
 
 
@@ -2214,6 +2259,7 @@ if (onboardingTourStep === 5) {
       steps: recipe.steps,
       source_url: recipe.sourceUrl,
       is_favorite: false,
+      type: "recipe",
     })
     .select()
     .single();
@@ -5498,6 +5544,17 @@ if (showProfile) {
           >
             🔔 Reminders
           </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
 
           <button
             type="button"
@@ -5583,6 +5640,16 @@ if (showProfile) {
           >
             🔔 Reminders
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
 
       <button
         type="button"
@@ -5641,7 +5708,8 @@ if (showProfile) {
   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
     <input
   id="quick-shopping-item"
-  defaultValue=""
+  value={newShoppingItem}
+  onChange={(e) => setNewShoppingItem(e.target.value)}
   placeholder="🛒 Add grocery item or paste url"
   className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
 />
@@ -5649,7 +5717,7 @@ if (showProfile) {
     <button
       onClick={async () => {
   const input = document.getElementById("quick-shopping-item") as HTMLInputElement | null;
-const rawShoppingItem = input?.value || "";
+const rawShoppingItem = newShoppingItem;
 
 if (!rawShoppingItem.trim()) return;
 
@@ -5727,7 +5795,6 @@ setShoppingItemCategories({
   [data.name]: data.store_section || guessShoppingCategory(data.name),
 });
 setLastAddedShoppingItem(data);
-  if (input) input.value = "";
 setNewShoppingItem("");
 }}
       className="rounded-full bg-[#a63a0a] px-8 py-3 font-bold text-white"
@@ -6502,6 +6569,17 @@ const { error } = await supabase
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
 
               const ua = navigator.userAgent.toLowerCase();
 
@@ -6581,6 +6659,17 @@ const { error } = await supabase
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             🔔 Reminders
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
           </button>
 
       <button
@@ -7098,6 +7187,17 @@ if (showPantry) {
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
 
               const ua = navigator.userAgent.toLowerCase();
 
@@ -7177,6 +7277,17 @@ if (showPantry) {
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             🔔 Reminders
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
           </button>
 
       <button
@@ -7843,6 +7954,17 @@ if (showPantry) {
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
 
               const ua = navigator.userAgent.toLowerCase();
 
@@ -7922,6 +8044,17 @@ if (showPantry) {
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             🔔 Reminders
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
           </button>
 
       <button
@@ -8499,6 +8632,17 @@ Bake for 25 minutes`}
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
 
               const ua = navigator.userAgent.toLowerCase();
 
@@ -8578,6 +8722,17 @@ Bake for 25 minutes`}
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             🔔 Reminders
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
           </button>
 
       <button
@@ -8782,45 +8937,50 @@ Bake for 25 minutes`}
       </button>
     ) : (
       <button
-        type="button"
-        onClick={async () => {
-          if (!currentUserId) return;
+  type="button"
+  onClick={async () => {
+    if (!currentUserId) return;
 
-          const { error } = await supabase
-            .from("profiles")
-            .update({
-              onboarding_completed: true,
-            })
-            .eq("id", currentUserId);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        onboarding_completed: true,
+      })
+      .eq("id", currentUserId);
 
-          if (error) {
-            console.error("Could not complete onboarding:", error);
-            showToast("Could not finish the tour. Please try again.");
-            return;
-          }
+    if (error) {
+      console.error("Could not complete onboarding:", error);
+      showToast("Could not finish onboarding. Please try again.");
+      return;
+    }
 
-        await supabase
-  .from("profiles")
-  .update({
-    onboarding_completed: true,
-  })
-  .eq("id", currentUserId);
+    localStorage.setItem(
+      `hey-chef-onboarding-${currentUserId}`,
+      "complete"
+    );
 
-          localStorage.setItem(
-            `hey-chef-onboarding-${currentUserId}`,
-            "complete"
-          );
+    setRecipeTourStep(0);
+    setOnboardingTourStep(0);
+    setShowOnboarding(false);
 
-          setRecipeTourStep(0);
-          setOnboardingTourStep(0);
-          setShowOnboarding(false);
+    setSelectedRecipe(null);
+    setIsEditingRecipe(false);
+    setEditRecipeDraft(null);
 
-          showToast("We did it! Your Hey Chef kitchen is ready.");
-        }}
-        className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
-      >
-        Start Cooking
-      </button>
+    window.history.replaceState(
+      { page: "home" },
+      "",
+      "/"
+    );
+
+    window.setTimeout(() => {
+      setShowAddToHeyChefPrompt(true);
+    }, 100);
+  }}
+  className="rounded-full bg-[#a63a0a] px-5 py-2 text-sm font-bold text-white"
+>
+  Start Cooking
+</button>
     )}
   </div>
 
@@ -8852,11 +9012,7 @@ Bake for 25 minutes`}
       "/"
     );
 
-    showPage("home");
-
-    showToast(
-      "Quick tour closed. You can replay it from Profile."
-    );
+    setShowAddToHeyChefPrompt(true);
   }}
   className="ml-auto shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
 >
@@ -9406,6 +9562,17 @@ if (!hasLoadedUser) {
             type="button"
             onClick={() => {
               setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
 
               const ua = navigator.userAgent.toLowerCase();
 
@@ -9485,6 +9652,17 @@ if (!hasLoadedUser) {
             className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
           >
             🔔 Reminders
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettingsMenu(false);
+              window.location.href = "/add-to-hey-chef";
+            }}
+            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+          >
+            🧩 Import Tools
           </button>
 
       <button
@@ -9708,11 +9886,7 @@ if (!hasLoadedUser) {
       "/"
     );
 
-    showPage("home");
-
-    showToast(
-      "Quick tour closed. You can replay it from Profile."
-    );
+    setShowAddToHeyChefPrompt(true);
   }}
   className="ml-auto shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
 >
@@ -10506,44 +10680,96 @@ Bake for 25 minutes`}
         </footer>
         {showOnboarding && currentUserId && (
   <OnboardingModal
-  onStartTour={() => {
-    setShowOnboarding(false);
+    onStartTour={() => {
+      setShowOnboarding(false);
 
-    // Go home first. showPage() closes any open import panels.
-    window.history.replaceState({ page: "home" }, "", "/");
-    showPage("home");
+      window.history.replaceState({ page: "home" }, "", "/");
+      showPage("home");
 
-    setRecipeUrl(
-      "https://sallysbakingaddiction.com/chewy-chocolate-chip-cookies/"
-    );
-
-    // Reopen the import panel after showPage() finishes closing panels.
-    setTimeout(() => {
-      setShowImport(true);
-      setShowFoodImport(false);
-      setShowRecipeImport(false);
-      setShowShoppingImport(false);
-      setShowPantryModal(false);
-
-      setOnboardingTourStep(1);
+      setRecipeUrl(
+        "https://sallysbakingaddiction.com/chewy-chocolate-chip-cookies/"
+      );
 
       setTimeout(() => {
-        importSectionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }, 100);
-    }, 50);
-  }}
-  onSkip={() => {
+        setShowImport(true);
+        setShowFoodImport(false);
+        setShowRecipeImport(false);
+        setShowShoppingImport(false);
+        setShowPantryModal(false);
+
+        setOnboardingTourStep(1);
+
+        setTimeout(() => {
+          importSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }, 100);
+      }, 50);
+    }}
+    onSkip={() => {
+      setShowOnboarding(false);
+      setShowAddToHeyChefPrompt(true);
+    }}
+  />
+)}
+{showAddToHeyChefPrompt && (
+  <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/60 px-4">
+    <section className="w-full max-w-lg rounded-[2rem] bg-white p-8 shadow-2xl">
+      <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+        You're Ready!
+      </p>
+
+      <h2 className="mt-3 text-3xl font-bold text-[#2b1b14]">
+        Make importing even easier
+      </h2>
+
+      <p className="mt-4 text-[#6d5549]">
+        Save recipes and grocery products directly from your browser or Apple
+        device without copying and pasting links.
+      </p>
+
+      <div className="mt-8 flex flex-col gap-3">
+        <button
+  type="button"
+  onClick={() => {
     localStorage.setItem(
       `hey-chef-onboarding-${currentUserId}`,
       "complete"
     );
 
-    setShowOnboarding(false);
+    setShowAddToHeyChefPrompt(false);
+
+    window.location.href = "/add-to-hey-chef";
   }}
-/>
+  className="w-full rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+>
+  Set Up Add to Hey Chef
+</button>
+
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.setItem(
+              `hey-chef-onboarding-${currentUserId}`,
+              "complete"
+            );
+
+            setShowAddToHeyChefPrompt(false);
+
+            showToast(
+              "You can always install Add to Hey Chef later from Settings."
+            );
+
+            showPage("home");
+          }}
+          className="w-full rounded-full border border-[#ead7c8] px-5 py-3 font-semibold text-[#6d5549]"
+        >
+          Maybe Later
+        </button>
+      </div>
+    </section>
+  </div>
 )}
     </main>
   );
