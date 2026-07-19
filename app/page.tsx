@@ -5186,7 +5186,7 @@ if (!userEmail) {
           <RecipeMeta recipe={sampleRecipe} />
         </div>
 
-       <div className="flex flex-col gap-3 md:flex-row md:w-auto w-full">
+       <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 md:w-auto md:min-w-[520px]">
           <button
             type="button"
             onClick={() => {
@@ -8982,7 +8982,7 @@ Bake for 25 minutes`}
 </div>
 )}
   </div>
-<div className="flex flex-col gap-3 md:flex-row md:w-auto w-full">
+<div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 md:w-auto md:min-w-[520px]">
   {!isEditingRecipe ? (
   <>
    <button
@@ -9359,15 +9359,73 @@ Bake for 25 minutes`}
               Food items become ready when they are added to your pantry.
             </p>
 
-            <button
-              onClick={() => addItemsToShoppingList([selectedRecipe.title], selectedRecipe)}
-              className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
-            >
-              Buy Again
-            </button>
 
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+  <button
+  type="button"
+  onClick={() => {
+    const pantryItem =
+      getMatchingPantryItem(selectedRecipe.title);
+
+    if (pantryItem) {
+      setEditingPantryModalId(pantryItem.id);
+
+      setNewPantryItem(pantryItem.name || "");
+      setPantryModalImage(pantryItem.image || "");
+      setPantryModalSourceUrl(
+        pantryItem.sourceUrl || ""
+      );
+      setPantryModalQuantity(
+        String(pantryItem.quantity ?? 1)
+      );
+      setPantryModalUnit(
+        pantryItem.unit || "package"
+      );
+      setPantryModalCategory(
+        pantryItem.category || "Other"
+      );
+    } else {
+      setEditingPantryModalId(null);
+
+      setNewPantryItem(selectedRecipe.title);
+      setPantryModalImage(
+        selectedRecipe.image || ""
+      );
+      setPantryModalSourceUrl(
+        selectedRecipe.sourceUrl || ""
+      );
+      setPantryModalQuantity("1");
+      setPantryModalUnit("package");
+      setPantryModalCategory(
+        selectedRecipe.category || "Other"
+      );
+    }
+
+    setShowPantryModal(true);
+  }}
+  className="w-full rounded-full border border-[#a63a0a] bg-white px-6 py-3 font-bold text-[#a63a0a] sm:w-auto"
+>
+  {getMatchingPantryItem(selectedRecipe.title)
+    ? "Edit Pantry Details"
+    : "Add to Pantry"}
+</button>
+
+  <button
+    type="button"
+    onClick={() =>
+      addItemsToShoppingList(
+        [selectedRecipe.title],
+        selectedRecipe
+      )
+    }
+    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white sm:w-auto"
+  >
+    Buy Again
+  </button>
+</div>
           </div>
-        </div>
+         </div>
+         
 
         <div className="rounded-3xl bg-[#f8efe6] p-6">
           <h2 className="mb-4 text-2xl font-bold">Plan This Go-To Food</h2>
@@ -9574,6 +9632,12 @@ Bake for 25 minutes`}
     </>
   )
 )}
+{showPantryModal && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+   {showPantryModal && PantryModal()}
+  </div>
+)}
+
           </div>
         </section>
         
