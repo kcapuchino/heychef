@@ -63,12 +63,12 @@ export default function OnboardingModal({
           </button>
 
           <button
-            type="button"
-            onClick={onSkip}
-            className="mt-3 w-full rounded-full border border-[#ead7c8] px-5 py-3 font-semibold text-[#6d5549]"
-          >
-            Explore on My Own
-          </button>
+  type="button"
+  onClick={onSkip}
+  className="mt-3 w-full rounded-full border border-[#ead7c8] px-5 py-3 font-semibold text-[#6d5549]"
+>
+  Explore on My Own
+</button>
           </div>
         </section>
       </div>

@@ -438,6 +438,9 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [showPublishModal, setShowPublishModal] =
     useState(false);
 
+  const [showPublishConfirm, setShowPublishConfirm] =
+  useState(false);
+
   const [showUnpublishConfirm, setShowUnpublishConfirm] =
   useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -1177,8 +1180,9 @@ useEffect(() => {
     if (data?.onboarding_completed) {
       localStorage.setItem(
         `hey-chef-onboarding-${currentUserId}`,
-        "completed"
+        "complete" // <- match everywhere
       );
+
       setShowOnboarding(false);
     } else {
       setShowOnboarding(true);
@@ -9842,89 +9846,7 @@ Bake for 25 minutes`}
       <option value="Canned Food">Canned Food</option>
     </select>
 
-    {selectedRecipe.type !== "grocery" && (
-  <div className="mb-4">
-    <p className="mb-2 block font-bold text-[#2b1b14]">
-      Recipe Tags
-    </p>
-
-    <p className="mb-3 text-sm text-[#6d5549]">
-      Choose every tag that accurately describes this recipe.
-    </p>
-
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {RECIPE_TAG_OPTIONS.map((tag) => {
-        const isSelected = recipeTags.includes(tag);
-
-        return (
-          <label
-            key={tag}
-            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition ${
-              isSelected
-                ? "border-[#a63a0a] bg-[#fff3eb]"
-                : "border-[#ead7c8] bg-white"
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => {
-                setRecipeTags((currentTags) =>
-                  currentTags.includes(tag)
-                    ? currentTags.filter(
-                        (currentTag) => currentTag !== tag
-                      )
-                    : [...currentTags, tag]
-                );
-              }}
-              className="h-5 w-5 accent-[#a63a0a]"
-            />
-
-            <span className="text-sm font-semibold text-[#2b1b14]">
-              {tag}
-            </span>
-          </label>
-        );
-      })}
-    </div>
-  </div>
-)}
-
-    {selectedRecipe.type !== "grocery" && (
-  <div className="mb-4 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="font-bold text-[#2b1b14]">
-          Recipe Visibility
-        </p>
-
-        <p className="mt-1 text-sm text-[#6d5549]">
-          {recipeVisibility === "public"
-            ? "This recipe will appear in your public Hey Chef cookbook."
-            : "This recipe is private and only visible to you."}
-        </p>
-      </div>
-
-      {recipeVisibility === "public" ? (
-  <button
-    type="button"
-    onClick={() => setShowUnpublishConfirm(true)}
-    className="rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
-  >
-    🌎 Public Recipe
-  </button>
-) : (
-  <button
-    type="button"
-    onClick={() => setShowPublishModal(true)}
-    className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
-  >
-    🌎 Publish Recipe
-  </button>
-      )}
-    </div>
-  </div>
-)}
+    
 
     {selectedRecipe.type !== "grocery" && (
       <>
@@ -10122,24 +10044,75 @@ Bake for 25 minutes`}
       </div>
     </>
   ) : (
-    <>
+  <>
+      <div className="mb-5 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-bold text-[#2b1b14]">
+                Recipe Visibility
+              </p>
+
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold ${
+                  recipeVisibility === "public"
+                    ? "bg-[#e9f7ee] text-[#256c3d]"
+                    : "bg-[#eee8e3] text-[#6d5549]"
+                }`}
+              >
+                {recipeVisibility === "public"
+                  ? "🌎 Public"
+                  : "🔒 Private"}
+              </span>
+            </div>
+
+            <p className="mt-2 text-sm leading-6 text-[#6d5549]">
+              {recipeVisibility === "public"
+                ? "This recipe appears in Community and in your public cookbook."
+                : "Only you can view this recipe. Review it before sharing it with the community."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (recipeVisibility === "public") {
+                setShowUnpublishConfirm(true);
+              } else {
+                setShowPublishConfirm(true);
+              }
+            }}
+            className={`w-full shrink-0 rounded-full px-5 py-3 font-bold transition sm:w-auto ${
+              recipeVisibility === "public"
+                ? "border border-[#a63a0a] bg-white text-[#a63a0a] hover:bg-[#fff3eb]"
+                : "bg-[#a63a0a] text-white hover:bg-[#8f3108]"
+            }`}
+          >
+            {recipeVisibility === "public"
+              ? "Make Private"
+              : "Review & Publish"}
+          </button>
+        </div>
+      </div>
+
     <button
-  type="button"
-  onClick={async () => {
-    console.log("Shopping button clicked");
+      type="button"
+      onClick={async () => {
+        console.log("Shopping button clicked");
 
-    const success = await addToShoppingList(selectedRecipe);
+        const success =
+          await addToShoppingList(selectedRecipe);
 
-    console.log("Shopping add success:", success);
-  }}
-  className={`relative mb-6 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white transition ${
-    recipeTourStep === 2
-      ? "z-[5010] ring-4 ring-[#f7d5c2] shadow-xl"
-      : ""
-  }`}
->
-  Add Ingredients to Shopping List
-</button>
+        console.log("Shopping add success:", success);
+      }}
+      className={`relative mb-6 w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white transition ${
+        recipeTourStep === 2
+          ? "z-[5010] ring-4 ring-[#f7d5c2] shadow-xl"
+          : ""
+      }`}
+    >
+      Add Ingredients to Shopping List
+    </button>
       <div className="grid gap-6 md:grid-cols-[1fr_420px]">
         <div className="rounded-3xl border border-[#ead7c8] bg-white p-6">
   <h2 className="mb-5 text-2xl font-bold">Ingredients</h2>
@@ -11803,10 +11776,39 @@ Bake for 25 minutes`}
         }, 100);
       }, 50);
     }}
-    onSkip={() => {
-      setShowOnboarding(false);
-      setShowAddToHeyChefPrompt(true);
-    }}
+    onSkip={async () => {
+  if (!currentUserId) return;
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_completed: true,
+    })
+    .eq("id", currentUserId);
+
+  if (error) {
+    console.error(
+      "Could not complete onboarding:",
+      error
+    );
+
+    showToast(
+      "Could not save your onboarding choice."
+    );
+
+    return;
+  }
+
+  localStorage.setItem(
+    `hey-chef-onboarding-${currentUserId}`,
+    "complete"
+  );
+
+  setShowOnboarding(false);
+  setOnboardingTourStep(0);
+  setRecipeTourStep(0);
+  setShowAddToHeyChefPrompt(true);
+}}
   />
 )}
 {showAddToHeyChefPrompt && (
