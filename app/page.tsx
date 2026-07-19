@@ -1991,16 +1991,53 @@ package_size: foodPackageSize.trim(),
   setShowPantry(false);
 }
 function saveGuestRecipe(recipe: Recipe) {
-  const existing = JSON.parse(
+  const existing: Recipe[] = JSON.parse(
     localStorage.getItem("hey-chef-guest-recipes") || "[]"
   );
+
+  const normalizedNewTitle = normalizeItemName(recipe.title);
+
+  const normalizedNewUrl = (recipe.sourceUrl || "")
+    .trim()
+    .replace(/\/$/, "");
+
+  const duplicateRecipe = existing.find((existingRecipe) => {
+    const normalizedExistingTitle = normalizeItemName(
+      existingRecipe.title
+    );
+
+    const normalizedExistingUrl = (
+      existingRecipe.sourceUrl || ""
+    )
+      .trim()
+      .replace(/\/$/, "");
+
+    return (
+      normalizedExistingTitle === normalizedNewTitle ||
+      (
+        normalizedNewUrl &&
+        normalizedExistingUrl === normalizedNewUrl
+      )
+    );
+  });
+
+  if (duplicateRecipe) {
+    setSelectedRecipe(duplicateRecipe);
+    showToast("Recipe already exists.");
+    return false;
+  }
 
   localStorage.setItem(
     "hey-chef-guest-recipes",
     JSON.stringify([recipe, ...existing])
   );
 
-  setRecipes((currentRecipes) => [recipe, ...currentRecipes]);
+  setRecipes((currentRecipes) => [
+    recipe,
+    ...currentRecipes,
+  ]);
+
+  return true;
 }
   async function importRecipe() {
   if (recipeImportInProgressRef.current) return;
@@ -2066,30 +2103,56 @@ try {
         createdAt: new Date().toISOString(),
       };
 
-      saveGuestRecipe(guestRecipe);
+      const recipeWasSaved = saveGuestRecipe(guestRecipe);
+
+setRecipeUrl("");
+setManualRecipe("");
+setShowImport(false);
+setImportError("");
+setShowManualImport(false);
+
+if (!recipeWasSaved) {
+  return;
+}
+
 setSampleRecipe(guestRecipe);
 
-      setRecipeUrl("");
-      setManualRecipe("");
-      setShowImport(false);
-      setImportError("");
-      setShowManualImport(false);
+showToast(
+  "Recipe imported. Create an account to save it permanently."
+);
 
-      showToast("Recipe imported. Create an account to save it permanently.");
-      return;
+return;
     }
 
-    const normalizedRecipeUrl = (
+    function normalizeRecipeUrl(value: string) {
+  const trimmedUrl = value.trim();
+
+  if (!trimmedUrl) return "";
+
+  try {
+    const parsedUrl = new URL(trimmedUrl);
+
+    parsedUrl.hash = "";
+    parsedUrl.search = "";
+
+    return parsedUrl.toString().replace(/\/$/, "");
+  } catch {
+    return trimmedUrl
+      .split("?")[0]
+      .split("#")[0]
+      .replace(/\/$/, "");
+  }
+}
+
+const normalizedRecipeUrl = normalizeRecipeUrl(
   importedData.sourceUrl ||
   recipeUrl ||
   ""
-)
-  .trim()
-  .replace(/\/$/, "");
+);
 
 let duplicateQuery = supabase
   .from("recipes")
-  .select("id")
+  .select("*")
   .eq("user_id", user.id);
 
 if (normalizedRecipeUrl) {
@@ -2102,6 +2165,44 @@ if (normalizedRecipeUrl) {
     "title",
     importedData.title || "Imported Recipe"
   );
+}
+
+const normalizedImportedTitle = normalizeItemName(
+  importedData.title || "Imported Recipe"
+);
+
+const existingRecipeCard = recipes.find((recipe) => {
+  if (recipe.type === "grocery") return false;
+
+  const normalizedExistingTitle = normalizeItemName(
+    recipe.title
+  );
+
+  const normalizedExistingUrl = normalizeRecipeUrl(
+    recipe.sourceUrl || ""
+  );
+
+  return (
+    normalizedExistingTitle === normalizedImportedTitle ||
+    (
+      normalizedRecipeUrl &&
+      normalizedExistingUrl === normalizedRecipeUrl
+    )
+  );
+});
+
+if (existingRecipeCard) {
+  setSelectedRecipe(existingRecipeCard);
+
+  setRecipeUrl("");
+  setManualRecipe("");
+  setImportError("");
+  setShowManualImport(false);
+  setShowImport(false);
+
+  showToast("Recipe already exists.");
+
+  return;
 }
 
 const {
@@ -2125,9 +2226,21 @@ if (duplicateCheckError) {
 }
 
 if (existingRecipe) {
-  setImportError(
-    "This recipe is already in your Food Library."
+  const existingRecipeCard = recipes.find(
+    (recipe) => recipe.id === existingRecipe.id
   );
+
+  if (existingRecipeCard) {
+    setSelectedRecipe(existingRecipeCard);
+  }
+
+  setRecipeUrl("");
+  setManualRecipe("");
+  setImportError("");
+  setShowManualImport(false);
+  setShowImport(false);
+
+  showToast("Recipe already exists.");
 
   return;
 }
