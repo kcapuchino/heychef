@@ -53,6 +53,13 @@ export default function RecipePage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [currentUserId, setCurrentUserId] =
+  useState<string | null>(null);
+
+const [isLiked, setIsLiked] = useState(false);
+const [likeCount, setLikeCount] = useState(0);
+const [isUpdatingLike, setIsUpdatingLike] =
+  useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -85,6 +92,29 @@ export default function RecipePage() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    setCurrentUserId(user?.id ?? null);
+
+const { data: likeData, error: likeError } =
+  await supabase
+    .from("recipe_likes")
+    .select("user_id")
+    .eq("recipe_id", params.id);
+
+if (likeError) {
+  console.warn("Could not load recipe likes:", likeError);
+} else {
+  setLikeCount(likeData?.length ?? 0);
+
+  setIsLiked(
+    Boolean(
+      user &&
+        likeData?.some(
+          (like) => like.user_id === user.id
+        )
+    )
+  );
+}
+
     const isRecipeOwner =
       Boolean(user) &&
       data.user_id === user?.id;
@@ -109,6 +139,50 @@ export default function RecipePage() {
 
   void loadRecipe();
 }, [params.id, router]);
+
+async function toggleRecipeLike() {
+  if (!recipe || isUpdatingLike) return;
+
+  if (!currentUserId) {
+    setMessage("Please sign in to like this recipe.");
+    return;
+  }
+
+  setIsUpdatingLike(true);
+  setMessage("");
+
+  try {
+    if (isLiked) {
+      const { error } = await supabase
+        .from("recipe_likes")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("recipe_id", recipe.id);
+
+      if (error) throw error;
+
+      setIsLiked(false);
+      setLikeCount((count) => Math.max(0, count - 1));
+    } else {
+      const { error } = await supabase
+        .from("recipe_likes")
+        .insert({
+          user_id: currentUserId,
+          recipe_id: recipe.id,
+        });
+
+      if (error) throw error;
+
+      setIsLiked(true);
+      setLikeCount((count) => count + 1);
+    }
+  } catch (error) {
+    console.error("Could not update recipe like:", error);
+    setMessage("We could not update this like. Please try again.");
+  } finally {
+    setIsUpdatingLike(false);
+  }
+}
 
   async function saveToLibrary() {
     if (!recipe || isSaving) return;
@@ -164,6 +238,7 @@ const packageSize =
         .from("recipes")
         .insert({
           user_id: user.id,
+          original_recipe_id: recipe.id,
           title: recipe.title,
           image_url: imageUrl || null,
           ingredients: recipe.ingredients || [],
@@ -359,7 +434,24 @@ const packageSize =
               )}
             </div>
 
-            <div className="grid w-full gap-3 sm:grid-cols-2 md:w-auto md:min-w-[420px]">
+            <div className="grid w-full gap-3 sm:grid-cols-3 md:w-auto md:min-w-[620px]">
+                <button
+  type="button"
+  onClick={() => void toggleRecipeLike()}
+  disabled={isUpdatingLike}
+  aria-pressed={isLiked}
+  className={`w-full rounded-full border px-6 py-3 font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+    isLiked
+      ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+      : "border-[#a63a0a] bg-white text-[#a63a0a] hover:bg-[#fff3eb]"
+  }`}
+>
+  {isUpdatingLike
+    ? "Updating..."
+    : isLiked
+      ? `♥ Liked · ${likeCount}`
+      : `♡ Like · ${likeCount}`}
+</button>
               <button
                 type="button"
                 onClick={() => void saveToLibrary()}

@@ -334,6 +334,7 @@ export default function Home() {
 
   const [currentUserId, setCurrentUserId] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
   const [signupName, setSignupName] = useState("");
   const [isInstalledApp, setIsInstalledApp] = useState(false);
   const [userCreatedAt, setUserCreatedAt] = useState("");
@@ -1078,11 +1079,12 @@ useEffect(() => {
 const { data, error } = await supabase
   .from("profiles")
   .select(`
-    display_name,
-    founding_chef,
-    lifetime_premium,
-    supported_at
-  `)
+  display_name,
+  bio,
+  founding_chef,
+  lifetime_premium,
+  supported_at
+`)
   .eq("id", user.id)
   .single();
 
@@ -1097,6 +1099,7 @@ if (error) {
 }
 
 setDisplayName(data?.display_name || "");
+setBio(data?.bio || "");
 setFoundingChef(Boolean(data?.founding_chef));
 setLifetimePremium(Boolean(data?.lifetime_premium));
 setSupportedAt(data?.supported_at || null);
@@ -1238,6 +1241,87 @@ useEffect(() => {
   }
 }, [currentUserId]);
 
+async function updateRecipeVisibility(
+  visibility: "private" | "public"
+) {
+  if (!selectedRecipe) return false;
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    showToast(
+      "Please sign in again before changing recipe visibility."
+    );
+
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from("recipes")
+    .update({
+      visibility,
+    })
+    .eq("id", selectedRecipe.id)
+    .eq("user_id", user.id)
+    .select("id, visibility")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Recipe visibility update failed:", {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+    });
+
+    showToast(
+      error.message ||
+        "We could not update this recipe. Please try again."
+    );
+
+    return false;
+  }
+
+  if (!data) {
+    showToast(
+      "This recipe could not be updated. Please confirm it belongs to your account."
+    );
+
+    return false;
+  }
+
+  setRecipeVisibility(
+    data.visibility === "public"
+      ? "public"
+      : "private"
+  );
+
+  setSelectedRecipe((currentRecipe) =>
+    currentRecipe
+      ? {
+          ...currentRecipe,
+          visibility: data.visibility,
+        }
+      : currentRecipe
+  );
+
+  setRecipes((currentRecipes) =>
+    currentRecipes.map((recipe) =>
+      recipe.id === selectedRecipe.id
+        ? {
+            ...recipe,
+            visibility: data.visibility,
+          }
+        : recipe
+    )
+  );
+
+  return true;
+}
+
 async function loadShoppingItems() {
   if (!currentUserId) return;
 
@@ -1367,6 +1451,30 @@ async function loadShoppingItems() {
       .map((item) => item.id)
   );
 }
+
+useEffect(() => {
+  const pathname = window.location.pathname;
+
+  if (pathname === "/planner") {
+    navigateTo("planner");
+    return;
+  }
+
+  if (pathname === "/shopping") {
+    navigateTo("shopping");
+    return;
+  }
+
+  if (pathname === "/pantry") {
+    navigateTo("pantry");
+    return;
+  }
+
+  if (pathname === "/profile") {
+    navigateTo("profile");
+    return;
+  }
+}, []);
 
 useEffect(() => {
   if (recipes.length === 0) return;
@@ -5489,6 +5597,28 @@ if (showProfile) {
   placeholder="Chef"
   className="mb-5 w-full rounded-full border border-[#ead7c8] px-5 py-3"
 />
+<label
+  htmlFor="profile-bio"
+  className="mb-2 mt-5 block font-semibold"
+>
+  Bio
+</label>
+
+<textarea
+  id="profile-bio"
+  value={bio}
+  onChange={(event) =>
+    setBio(event.target.value.slice(0, 240))
+  }
+  rows={5}
+  maxLength={240}
+  placeholder="Tell the community what you enjoy cooking or what inspires your recipes."
+  className="w-full resize-none rounded-[1.25rem] border border-[#ead7c8] px-5 py-4"
+/>
+
+<p className="mt-1 text-right text-sm text-[#6d5549]">
+  {bio.length}/240
+</p>
 
 <button
   onClick={async () => {
@@ -5505,6 +5635,7 @@ if (showProfile) {
       .from("profiles")
       .update({
         display_name: displayName.trim() || null,
+        bio: bio.trim() || null,
       })
       .eq("id", user.id);
 
@@ -9948,11 +10079,11 @@ Bake for 25 minutes`}
         <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-2">
   <button
     type="button"
-    onClick={() => {
+   onClick={() => {
   if (recipeVisibility === "public") {
-    setRecipeVisibility("private");
+    setShowUnpublishConfirm(true);
   }
-    }}
+}}
     className={`rounded-2xl border px-4 py-3 text-left transition ${
       recipeVisibility === "private"
         ? "border-[#a63a0a] bg-[#fff4ef] text-[#a63a0a]"
@@ -10620,17 +10751,25 @@ Bake for 25 minutes`}
         </button>
 
         <button
-          type="button"
-          disabled={!publishPermissionConfirmed}
-          onClick={() => {
-            setRecipeVisibility("public");
-            setShowPublishModal(false);
-            setPublishPermissionConfirmed(false);
-          }}
-          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white transition hover:bg-[#8f3108] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Publish Recipe
-        </button>
+  type="button"
+  disabled={!publishPermissionConfirmed}
+  onClick={async () => {
+    const success =
+      await updateRecipeVisibility("public");
+
+    if (!success) return;
+
+    setShowPublishModal(false);
+    setPublishPermissionConfirmed(false);
+
+    showToast(
+      "Your recipe is now public and available in Community."
+    );
+  }}
+  className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white transition hover:bg-[#8f3108] disabled:cursor-not-allowed disabled:opacity-50"
+>
+  Publish Recipe
+</button>
       </div>
     </div>
   </div>
@@ -10659,10 +10798,18 @@ Bake for 25 minutes`}
 
         <button
           type="button"
-          onClick={() => {
-            setRecipeVisibility("private");
-            setShowUnpublishConfirm(false);
-          }}
+          onClick={async () => {
+  const success =
+    await updateRecipeVisibility("private");
+
+  if (!success) return;
+
+  setShowUnpublishConfirm(false);
+
+  showToast(
+    "Your recipe is now private. Copies already saved by other cooks remain in their libraries."
+  );
+}}
           className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
         >
           Make Private

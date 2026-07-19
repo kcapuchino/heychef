@@ -13,8 +13,15 @@ import { useRouter } from "next/navigation";
 type SortOption =
   | "newest"
   | "oldest"
+  | "most-liked"
+  | "most-saved"
   | "az"
   | "za";
+
+  type FeedFilter =
+  | "all"
+  | "liked"
+   | "following";
 
 type PublicRecipe = {
   id: string;
@@ -30,6 +37,9 @@ type PublicRecipe = {
   sourceUrl: string;
   createdAt: string;
   creatorName: string;
+  likeCount: number;
+  saveCount: number;
+  isLikedByCurrentUser: boolean;
 };
 
 type RecipeRow = {
@@ -57,6 +67,15 @@ type ProfileRow = {
   id: string;
   display_name?: string | null;
   full_name?: string | null;
+};
+
+type RecipeLikeRow = {
+  user_id: string;
+  recipe_id: string;
+};
+
+type SavedRecipeRow = {
+  original_recipe_id: string | null;
 };
 
 const FALLBACK_RECIPE_IMAGE = "/hero-kitchen.jpg";
@@ -160,13 +179,19 @@ export default function CommunityPage() {
     const [categoryFilter, setCategoryFilter] =
         useState("all");
     const [tagFilter, setTagFilter] = useState("all");
+    const [feedFilter, setFeedFilter] =
+  useState<FeedFilter>("all");
     const [sortOption, setSortOption] =
         useState<SortOption>("newest")
     const [isMenuOpen, setIsMenuOpen] = useState(false);
         const [showSettingsMenu, setShowSettingsMenu] =
         useState(false);
     const [currentUserId, setCurrentUserId] =
-        useState<string | null>(null);    
+        useState<string | null>(null);   
+    const [updatingLikeRecipeId, setUpdatingLikeRecipeId] =
+  useState<string | null>(null); 
+  const [followedChefIds, setFollowedChefIds] =
+  useState<Set<string>>(new Set());
 
     const mobileMenuRef = useRef<HTMLDivElement>(null);
     const settingsRef = useRef<HTMLDivElement>(null);
@@ -197,17 +222,54 @@ async function logoutUser() {
 }
 
   useEffect(() => {
-    async function loadPublicRecipes() {
-      setIsLoading(true);
-      setLoadError("");
+   async function loadPublicRecipes() {
+  setIsLoading(true);
+  setLoadError("");
 
-      try {
-        const { data: recipeData, error: recipeError } =
-  await supabase
-    .from("recipes")
-    .select("*")
-    .eq("visibility", "public")
-    .order("created_at", { ascending: false });
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const signedInUserId = user?.id ?? null;
+
+    setCurrentUserId(signedInUserId);
+
+    let loadedFollowedChefIds = new Set<string>();
+
+    if (signedInUserId) {
+      const { data: followData, error: followError } =
+        await supabase
+          .from("chef_follows")
+          .select("followed_id")
+          .eq("follower_id", signedInUserId);
+
+      if (followError) {
+        console.warn(
+          "Could not load followed chefs:",
+          followError
+        );
+      } else {
+        loadedFollowedChefIds = new Set(
+          (followData ?? [])
+            .map((follow) => follow.followed_id)
+            .filter(
+              (followedId): followedId is string =>
+                typeof followedId === "string" &&
+                followedId.length > 0
+            )
+        );
+      }
+    }
+
+    setFollowedChefIds(loadedFollowedChefIds);
+
+    const { data: recipeData, error: recipeError } =
+      await supabase
+        .from("recipes")
+        .select("*")
+        .eq("visibility", "public")
+        .order("created_at", { ascending: false });
 
 console.log("Public recipe data:", recipeData);
 console.log("Public recipe error:", recipeError);
@@ -221,20 +283,107 @@ console.log("Public recipe error:", recipeError);
         ).filter((recipe) => recipe.type !== "grocery");
 
         const creatorIds = Array.from(
-          new Set(
-            publicRecipeRows
-              .map((recipe) => recipe.user_id)
-              .filter(
-                (userId): userId is string =>
-                  typeof userId === "string" &&
-                  userId.length > 0
-              )
-          )
-        );
+  new Set(
+    publicRecipeRows
+      .map((recipe) => recipe.user_id)
+      .filter(
+        (userId): userId is string =>
+          typeof userId === "string" &&
+          userId.length > 0
+      )
+  )
+);
 
-        let profileMap = new Map<string, string>();
+const publicRecipeIds = publicRecipeRows.map(
+  (recipe) => recipe.id
+);
 
-        if (creatorIds.length > 0) {
+const likeCountMap = new Map<string, number>();
+const saveCountMap = new Map<string, number>();
+const likedRecipeIds = new Set<string>();
+
+if (publicRecipeIds.length > 0) {
+  const [
+    { data: likeData, error: likeError },
+    { data: savedRecipeData, error: savedRecipeError },
+  ] = await Promise.all([
+    supabase
+      .from("recipe_likes")
+      .select("user_id, recipe_id")
+      .in("recipe_id", publicRecipeIds),
+
+    supabase
+      .from("recipes")
+      .select("original_recipe_id")
+      .in("original_recipe_id", publicRecipeIds),
+  ]);
+
+  if (likeError) {
+    console.warn(
+      "Could not load community recipe likes:",
+      likeError
+    );
+  } else {
+    for (const like of (likeData ?? []) as RecipeLikeRow[]) {
+      likeCountMap.set(
+        like.recipe_id,
+        (likeCountMap.get(like.recipe_id) ?? 0) + 1
+      );
+
+      if (like.user_id === signedInUserId) {
+        likedRecipeIds.add(like.recipe_id);
+      }
+    }
+  }
+
+  if (savedRecipeError) {
+    console.warn(
+      "Could not load community recipe saves:",
+      savedRecipeError
+    );
+  } else {
+    for (const savedRecipe of (
+      savedRecipeData ?? []
+    ) as SavedRecipeRow[]) {
+      if (!savedRecipe.original_recipe_id) continue;
+
+      saveCountMap.set(
+        savedRecipe.original_recipe_id,
+        (saveCountMap.get(
+          savedRecipe.original_recipe_id
+        ) ?? 0) + 1
+      );
+    }
+  }
+}
+
+let profileMap = new Map<string, string>();
+
+if (creatorIds.length > 0) {
+  const { data: profileData, error: profileError } =
+    await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", creatorIds);
+
+  if (profileError) {
+    console.warn(
+      "Public recipes loaded, but creator names could not be loaded:",
+      profileError
+    );
+  } else {
+    profileMap = new Map(
+      ((profileData ?? []) as ProfileRow[]).map(
+        (profile) => [
+          profile.id,
+          profile.display_name?.trim() ||
+            "Hey Chef Cook",
+        ]
+      )
+    );
+  }
+}
+        {
           const { data: profileData, error: profileError } =
             await supabase
               .from("profiles")
@@ -291,9 +440,12 @@ console.log("Public recipe error:", recipeError);
               recipe.createdAt ??
               new Date(0).toISOString(),
             creatorName:
-              profileMap.get(recipe.user_id ?? "") ??
-              "Hey Chef Cook",
-          }));
+  profileMap.get(recipe.user_id ?? "") ??
+  "Hey Chef Cook",
+likeCount: likeCountMap.get(recipe.id) ?? 0,
+saveCount: saveCountMap.get(recipe.id) ?? 0,
+isLikedByCurrentUser: likedRecipeIds.has(recipe.id),
+}));
 
         setRecipes(formattedRecipes);
       } catch (error) {
@@ -312,6 +464,83 @@ console.log("Public recipe error:", recipeError);
 
     void loadPublicRecipes();
   }, []);
+
+  async function toggleRecipeLike(recipeId: string) {
+  if (!currentUserId) {
+    showToast("Please sign in to like community recipes.");
+    return;
+  }
+
+  if (updatingLikeRecipeId) return;
+
+  const selectedRecipe = recipes.find(
+    (recipe) => recipe.id === recipeId
+  );
+
+  if (!selectedRecipe) return;
+
+  setUpdatingLikeRecipeId(recipeId);
+
+  try {
+    if (selectedRecipe.isLikedByCurrentUser) {
+      const { error } = await supabase
+        .from("recipe_likes")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("recipe_id", recipeId);
+
+      if (error) throw error;
+
+      setRecipes((currentRecipes) =>
+        currentRecipes.map((recipe) =>
+          recipe.id === recipeId
+            ? {
+                ...recipe,
+                isLikedByCurrentUser: false,
+                likeCount: Math.max(
+                  0,
+                  recipe.likeCount - 1
+                ),
+              }
+            : recipe
+        )
+      );
+
+      showToast("Recipe removed from your likes.");
+    } else {
+      const { error } = await supabase
+        .from("recipe_likes")
+        .insert({
+          user_id: currentUserId,
+          recipe_id: recipeId,
+        });
+
+      if (error) throw error;
+
+      setRecipes((currentRecipes) =>
+        currentRecipes.map((recipe) =>
+          recipe.id === recipeId
+            ? {
+                ...recipe,
+                isLikedByCurrentUser: true,
+                likeCount: recipe.likeCount + 1,
+              }
+            : recipe
+        )
+      );
+
+      showToast("Recipe liked.");
+    }
+  } catch (error) {
+    console.error("Could not update recipe like:", error);
+
+    showToast(
+      "We could not update this like. Please try again."
+    );
+  } finally {
+    setUpdatingLikeRecipeId(null);
+  }
+}
 
   const categoryOptions = COMMUNITY_CATEGORIES;
 
@@ -354,11 +583,19 @@ console.log("Public recipe error:", recipeError);
           tagFilter === "all" ||
           recipe.tags.includes(tagFilter);
 
+          const matchesFeed =
+  feedFilter === "all" ||
+  (feedFilter === "liked" &&
+    recipe.isLikedByCurrentUser) ||
+  (feedFilter === "following" &&
+    followedChefIds.has(recipe.userId));
+
         return (
-          matchesSearch &&
-          matchesCategory &&
-          matchesTag
-        );
+  matchesSearch &&
+  matchesCategory &&
+  matchesTag &&
+  matchesFeed
+);
       }
     );
 
@@ -369,6 +606,20 @@ console.log("Public recipe error:", recipeError);
             new Date(a.createdAt).getTime() -
             new Date(b.createdAt).getTime()
           );
+
+          case "most-liked":
+  return (
+    b.likeCount - a.likeCount ||
+    new Date(b.createdAt).getTime() -
+      new Date(a.createdAt).getTime()
+  );
+
+case "most-saved":
+  return (
+    b.saveCount - a.saveCount ||
+    new Date(b.createdAt).getTime() -
+      new Date(a.createdAt).getTime()
+  );
 
         case "az":
           return a.title.localeCompare(b.title);
@@ -389,7 +640,9 @@ console.log("Public recipe error:", recipeError);
     searchQuery,
     categoryFilter,
     tagFilter,
-    sortOption,
+feedFilter,
+followedChefIds,
+sortOption,
   ]);
 
   useEffect(() => {
@@ -488,13 +741,15 @@ console.log("Public recipe error:", recipeError);
     setSearchQuery("");
     setCategoryFilter("all");
     setTagFilter("all");
+    setFeedFilter("all");
     setSortOption("newest");
   }
 
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
     categoryFilter !== "all" ||
-    tagFilter !== "all";
+    tagFilter !== "all" ||
+    feedFilter !== "all" ;
 
     function BottomNav() {
   return (
@@ -565,34 +820,38 @@ console.log("Public recipe error:", recipeError);
   </button>
 
   {/* Desktop navigation */}
-  <div className="hidden items-center gap-8 text-lg md:flex">
-    <Link
-      href="/recipes"
-      className="text-[#a63a0a] hover:underline hover:underline-offset-8"
-    >
-      Recipes
-    </Link>
+<div className="hidden items-center gap-8 text-lg md:flex">
+  <button
+    type="button"
+    onClick={() => router.push("/recipes")}
+    className="text-[#a63a0a] hover:underline hover:underline-offset-8"
+  >
+    Recipes
+  </button>
 
-    <Link
-      href="/planner"
-      className="text-[#a63a0a] hover:underline hover:underline-offset-8"
-    >
-      Meal Planner
-    </Link>
+  <button
+    type="button"
+    onClick={() => router.push("/planner")}
+    className="text-[#a63a0a] hover:underline hover:underline-offset-8"
+  >
+    Meal Planner
+  </button>
 
-    <Link
-      href="/shopping"
-      className="text-[#a63a0a] hover:underline hover:underline-offset-8"
-    >
-      Shopping List
-    </Link>
+  <button
+    type="button"
+    onClick={() => router.push("/shopping")}
+    className="text-[#a63a0a] hover:underline hover:underline-offset-8"
+  >
+    Shopping List
+  </button>
 
-    <Link
-      href="/pantry"
-      className="text-[#a63a0a] hover:underline hover:underline-offset-8"
-    >
-      Pantry
-    </Link>
+  <button
+    type="button"
+    onClick={() => router.push("/pantry")}
+    className="text-[#a63a0a] hover:underline hover:underline-offset-8"
+  >
+    Pantry
+  </button>
 
     <div ref={settingsRef} className="relative">
       <button
@@ -612,13 +871,16 @@ console.log("Public recipe error:", recipeError);
             Account
           </p>
 
-          <Link
-            href="/profile"
-            onClick={() => setShowSettingsMenu(false)}
-            className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-          >
-            👤 Profile
-          </Link>
+          <button
+  type="button"
+  onClick={() => {
+    setShowSettingsMenu(false);
+    router.push("/profile");
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👤 Profile
+</button>
 
           <Link
             href="/reminders"
@@ -733,13 +995,16 @@ console.log("Public recipe error:", recipeError);
         Account
       </p>
 
-      <Link
-        href="/profile"
-        onClick={() => setIsMenuOpen(false)}
-        className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
-      >
-        👤 Profile
-      </Link>
+      <button
+  type="button"
+  onClick={() => {
+    setIsMenuOpen(false);
+    router.push("/profile");
+  }}
+  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  👤 Profile
+</button>
 
       <Link
         href="/reminders"
@@ -888,7 +1153,35 @@ console.log("Public recipe error:", recipeError);
             />
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div>
+  <label
+    htmlFor="community-feed-filter"
+    className="mb-2 block text-sm font-bold"
+  >
+    Recipe Feed
+  </label>
+
+  <select
+    id="community-feed-filter"
+    value={feedFilter}
+    onChange={(event) =>
+      setFeedFilter(event.target.value as FeedFilter)
+    }
+    className="w-full rounded-xl border border-[#ead7c8] bg-white p-3"
+  >
+    <option value="all">
+      All Community Recipes
+    </option>
+
+    <option value="liked">
+      My Liked Recipes
+    </option>
+    <option value="following">
+  Recipes From Chefs I Follow
+</option>
+  </select>
+</div>
             <div>
               <label
                 htmlFor="community-category-filter"
@@ -972,6 +1265,13 @@ console.log("Public recipe error:", recipeError);
                 <option value="oldest">
                   Oldest
                 </option>
+                <option value="most-liked">
+  Most Liked
+</option>
+
+<option value="most-saved">
+  Most Saved
+</option>
                 <option value="az">
                   Recipe name A–Z
                 </option>
@@ -1080,6 +1380,7 @@ console.log("Public recipe error:", recipeError);
               aria-label="Public recipes"
               className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3"
             >
+                
               {filteredRecipes.map((recipe) => {
                 const recipeSlug =
                   createRecipeSlug(recipe.title);
@@ -1117,6 +1418,37 @@ console.log("Public recipe error:", recipeError);
                         </span>
                       </div>
 
+                      <div className="my-4">
+  <div className="flex flex-wrap items-center justify-between gap-3">
+    <button
+      type="button"
+      onClick={() => void toggleRecipeLike(recipe.id)}
+      disabled={updatingLikeRecipeId === recipe.id}
+      className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
+        recipe.isLikedByCurrentUser
+          ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+          : "border-[#a63a0a] bg-white text-[#a63a0a] hover:bg-[#fff3eb]"
+      }`}
+    >
+      {recipe.isLikedByCurrentUser ? "♥ Liked" : "♡ Like"}
+    </button>
+
+    <div className="flex items-center gap-5 text-sm font-semibold text-[#6d5549]">
+      <span>
+        ❤️ {recipe.likeCount}{" "}
+        {recipe.likeCount === 1 ? "Like" : "Likes"}
+      </span>
+
+      <span>
+        🔖 {recipe.saveCount}{" "}
+        {recipe.saveCount === 1 ? "Save" : "Saves"}
+      </span>
+      </div>
+
+  <div className="mt-4 w-full border-t border-[#ead7c8]" />
+</div>
+</div>
+
                       <Link
                         href={`/recipe/${recipe.id}/${recipeSlug}`}
                         className="mt-3 block"
@@ -1125,6 +1457,8 @@ console.log("Public recipe error:", recipeError);
                           {recipe.title}
                         </h2>
                       </Link>
+
+                      
 
                       <p className="mt-2 text-sm text-[#6d5549]">
                         Shared by{" "}
@@ -1174,6 +1508,8 @@ console.log("Public recipe error:", recipeError);
                           )}
                         </div>
                       )}
+
+                      
 
                       {recipe.sourceUrl && (
                         <div className="mt-4 border-t border-[#ead7c8] pt-4">
