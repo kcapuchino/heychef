@@ -5168,6 +5168,15 @@ function renderAuthCard() {
     {authError}
   </p>
 )}
+{toastMessage && (
+  <div
+    role="status"
+    aria-live="polite"
+    className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl"
+  >
+    {toastMessage}
+  </div>
+)}
 
 <button
   type="submit"
@@ -5179,22 +5188,34 @@ function renderAuthCard() {
 </form>
 
       <button
+  type="button"
   onClick={() => {
-    const ua = navigator.userAgent;
+    const ua = navigator.userAgent.toLowerCase();
 
-    if (/iPhone|iPad|iPod/.test(ua)) {
+    const isIOS =
+      /iphone|ipad|ipod/.test(ua) ||
+      (navigator.platform === "MacIntel" &&
+        navigator.maxTouchPoints > 1);
+
+    const isAndroid = /android/.test(ua);
+
+    if (isIOS) {
       showToast(
-        "Install Hey Chef:\n\nTap the Share button in Safari, then choose 'Add to Home Screen'."
+        "Install Hey Chef:\n\nTap Share, then Add to Home Screen."
       );
-    } else if (/Android/.test(ua)) {
-      showToast(
-        "Install Hey Chef:\n\nTap the browser menu and choose 'Install App' or 'Add to Home Screen'."
-      );
-    } else {
-      showToast(
-        "Install Hey Chef:\n\nLook for the install icon in Chrome's address bar or use Chrome Menu → Install Hey Chef."
-      );
+      return;
     }
+
+    if (isAndroid) {
+      showToast(
+        "Install Hey Chef:\n\nTap the browser menu, then Install App or Add to Home Screen."
+      );
+      return;
+    }
+
+    showToast(
+      "Install Hey Chef:\n\nClick the install icon in your browser's address bar."
+    );
   }}
   className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
 >
