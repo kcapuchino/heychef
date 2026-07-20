@@ -340,6 +340,13 @@ export default function Home() {
   const [userCreatedAt, setUserCreatedAt] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
+  const [newEngagementCount, setNewEngagementCount] =
+  useState(0);
+  const [communityActivity, setCommunityActivity] =
+  useState<CommunityActivity[]>([]);
+
+const [isLoadingCommunityActivity, setIsLoadingCommunityActivity] =
+  useState(false);
 
   const [plan, setPlan] = useState("free");
   const [foundingChef, setFoundingChef] = useState(false);
@@ -380,6 +387,15 @@ export default function Home() {
   "One Pot",
   "30 Minutes or Less",
 ];
+
+type CommunityActivity = {
+  activity_type: "like" | "save" | "follow";
+  actor_id: string;
+  actor_name: string;
+  recipe_id: string | null;
+  recipe_title: string | null;
+  created_at: string;
+};
 
 const [currentPage, setCurrentPage] = useState<AppPage>("home");
 
@@ -513,6 +529,8 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showEngagementPopup, setShowEngagementPopup] =
+  useState(false);
   const settingsRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -1164,6 +1182,66 @@ setSupportedAt(data?.supported_at || null);
 
   return () => subscription.unsubscribe();
 }, []);
+
+useEffect(() => {
+  async function loadNewEngagement() {
+    if (!currentUserId) {
+      setNewEngagementCount(0);
+      setCommunityActivity([]);
+      return;
+    }
+
+    setIsLoadingCommunityActivity(true);
+
+    const lastSeen =
+      localStorage.getItem(
+        `hey-chef-community-seen-${currentUserId}`
+      ) ?? new Date(0).toISOString();
+
+    const { data, error } = await supabase.rpc(
+      "get_my_community_activity",
+      {
+        since_time: lastSeen,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Could not load community activity:",
+        error
+      );
+
+      setNewEngagementCount(0);
+      setCommunityActivity([]);
+      setIsLoadingCommunityActivity(false);
+      return;
+    }
+
+    const activity =
+      (data ?? []) as CommunityActivity[];
+
+    setCommunityActivity(activity);
+    setNewEngagementCount(activity.length);
+    setIsLoadingCommunityActivity(false);
+  }
+
+  void loadNewEngagement();
+}, [currentUserId]);
+
+function openEngagementPopup() {
+  setShowSettingsMenu(false);
+  setIsMenuOpen(false);
+  setShowEngagementPopup(true);
+
+  if (!currentUserId) return;
+
+  localStorage.setItem(
+    `hey-chef-community-seen-${currentUserId}`,
+    new Date().toISOString()
+  );
+
+  setNewEngagementCount(0);
+}
 
 useEffect(() => {
   if (!currentUserId) return;
@@ -1853,6 +1931,24 @@ async function changePasswordNow() {
   }
 
   showToast("Password updated.");
+}
+
+function openMyCookbook() {
+  if (!currentUserId) {
+    showToast("Please sign in to view your cookbook.");
+    return;
+  }
+
+  localStorage.setItem(
+    `hey-chef-community-seen-${currentUserId}`,
+    new Date().toISOString()
+  );
+
+  setNewEngagementCount(0);
+  setShowSettingsMenu(false);
+  setIsMenuOpen(false);
+
+  window.location.href = `/chef/${currentUserId}`;
 }
 
   async function logoutUser() {
@@ -5902,16 +5998,29 @@ if (showProfile) {
 
     <div ref={settingsRef} className="relative">
   <button
-    type="button"
-    onClick={() => setShowSettingsMenu((open) => !open)}
-    className={
-      (["profile", "reminders"] as AppPage[]).includes(currentPage)
-        ? "font-bold text-[#a63a0a] underline underline-offset-8"
-        : "text-[#a63a0a]"
-    }
-  >
-    ⚙️ Settings
-  </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className={
+    (["profile", "reminders"] as AppPage[]).includes(
+      currentPage
+    )
+      ? "inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+      : "inline-flex items-center gap-2 text-[#a63a0a]"
+  }
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
   {showSettingsMenu && (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -5949,6 +6058,22 @@ if (showProfile) {
       </p>
 
       <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
+
+      <button
         type="button"
         onClick={() => {
           setShowSettingsMenu(false);
@@ -5961,11 +6086,8 @@ if (showProfile) {
 
       <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -6075,6 +6197,22 @@ if (showProfile) {
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
       Community
     </p>
+    
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
     <button
       type="button"
@@ -6089,11 +6227,8 @@ if (showProfile) {
 
     <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -6169,6 +6304,144 @@ if (showProfile) {
   </div>
 )}
 </nav>
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden="true">
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+            openMyCookbook();
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
+  </div>
+)}
           
 
           <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
@@ -7055,16 +7328,29 @@ const { error } = await supabase
 
     <div ref={settingsRef} className="relative">
   <button
-    type="button"
-    onClick={() => setShowSettingsMenu((open) => !open)}
-    className={
-      (["profile", "reminders"] as AppPage[]).includes(currentPage)
-        ? "font-bold text-[#a63a0a] underline underline-offset-8"
-        : "text-[#a63a0a]"
-    }
-  >
-    ⚙️ Settings
-  </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className={
+    (["profile", "reminders"] as AppPage[]).includes(
+      currentPage
+    )
+      ? "inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+      : "inline-flex items-center gap-2 text-[#a63a0a]"
+  }
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
   {showSettingsMenu && (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -7100,7 +7386,21 @@ const { error } = await supabase
       <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
         Community
       </p>
+ <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <button
         type="button"
         onClick={() => {
@@ -7114,11 +7414,8 @@ const { error } = await supabase
 
       <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -7229,7 +7526,21 @@ const { error } = await supabase
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
       Community
     </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
     <button
       type="button"
       onClick={() => {
@@ -7243,15 +7554,11 @@ const { error } = await supabase
 
     <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
-
     <hr className="my-3 border-[#ead7c8]" />
 
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
@@ -7323,6 +7630,147 @@ const { error } = await supabase
   </div>
 )}
 </nav>
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className="text-xl"
+              aria-hidden="true"
+            >
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+            openMyCookbook();
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
+  </div>
+)}
   
 
           <div className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
@@ -7786,16 +8234,29 @@ if (showPantry) {
 
     <div ref={settingsRef} className="relative">
   <button
-    type="button"
-    onClick={() => setShowSettingsMenu((open) => !open)}
-    className={
-      (["profile", "reminders"] as AppPage[]).includes(currentPage)
-        ? "font-bold text-[#a63a0a] underline underline-offset-8"
-        : "text-[#a63a0a]"
-    }
-  >
-    ⚙️ Settings
-  </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className={
+    (["profile", "reminders"] as AppPage[]).includes(
+      currentPage
+    )
+      ? "inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+      : "inline-flex items-center gap-2 text-[#a63a0a]"
+  }
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
   {showSettingsMenu && (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -7831,7 +8292,21 @@ if (showPantry) {
       <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
         Community
       </p>
+ <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <button
         type="button"
         onClick={() => {
@@ -7845,11 +8320,8 @@ if (showPantry) {
 
       <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -7960,7 +8432,21 @@ if (showPantry) {
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
       Community
     </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
     <button
       type="button"
       onClick={() => {
@@ -7974,11 +8460,8 @@ if (showPantry) {
 
     <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -8053,6 +8536,144 @@ if (showPantry) {
   </div>
 )}
 </nav>
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden="true">
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+            openMyCookbook();
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
+  </div>
+)}
 
         <div className="mb-8">
   <div className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
@@ -8665,16 +9286,29 @@ if (showPantry) {
 
     <div ref={settingsRef} className="relative">
   <button
-    type="button"
-    onClick={() => setShowSettingsMenu((open) => !open)}
-    className={
-      (["profile", "reminders"] as AppPage[]).includes(currentPage)
-        ? "font-bold text-[#a63a0a] underline underline-offset-8"
-        : "text-[#a63a0a]"
-    }
-  >
-    ⚙️ Settings
-  </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className={
+    (["profile", "reminders"] as AppPage[]).includes(
+      currentPage
+    )
+      ? "inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+      : "inline-flex items-center gap-2 text-[#a63a0a]"
+  }
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
   {showSettingsMenu && (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -8710,7 +9344,21 @@ if (showPantry) {
       <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
         Community
       </p>
+ <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <button
         type="button"
         onClick={() => {
@@ -8724,11 +9372,8 @@ if (showPantry) {
 
       <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -8826,7 +9471,21 @@ if (showPantry) {
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
       Community
     </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
     <button
       type="button"
       onClick={() => {
@@ -8840,11 +9499,8 @@ if (showPantry) {
 
     <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -8920,6 +9576,144 @@ if (showPantry) {
   </div>
 )}
 </nav>
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden="true">
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+            openMyCookbook();
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
+  </div>
+)}
 
 
         <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
@@ -9497,16 +10291,29 @@ Bake for 25 minutes`}
 
     <div ref={settingsRef} className="relative">
   <button
-    type="button"
-    onClick={() => setShowSettingsMenu((open) => !open)}
-    className={
-      (["profile", "reminders"] as AppPage[]).includes(currentPage)
-        ? "font-bold text-[#a63a0a] underline underline-offset-8"
-        : "text-[#a63a0a]"
-    }
-  >
-    ⚙️ Settings
-  </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className={
+    (["profile", "reminders"] as AppPage[]).includes(
+      currentPage
+    )
+      ? "inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+      : "inline-flex items-center gap-2 text-[#a63a0a]"
+  }
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
   {showSettingsMenu && (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -9542,7 +10349,21 @@ Bake for 25 minutes`}
       <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
         Community
       </p>
+ <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <button
         type="button"
         onClick={() => {
@@ -9553,14 +10374,25 @@ Bake for 25 minutes`}
       >
         🌎 Explore Recipes
       </button>
+ <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -9671,7 +10503,21 @@ Bake for 25 minutes`}
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
       Community
     </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
     <button
       type="button"
       onClick={() => {
@@ -9685,11 +10531,8 @@ Bake for 25 minutes`}
 
     <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -9762,6 +10605,144 @@ Bake for 25 minutes`}
     >
       ↪ Log Out
     </button>
+  </div>
+)}
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden="true">
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+            openMyCookbook();
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
   </div>
 )}
 </nav>
@@ -10941,16 +11922,29 @@ if (!hasLoadedUser) {
 
     <div ref={settingsRef} className="relative">
   <button
-    type="button"
-    onClick={() => setShowSettingsMenu((open) => !open)}
-    className={
-      (["profile", "reminders"] as AppPage[]).includes(currentPage)
-        ? "font-bold text-[#a63a0a] underline underline-offset-8"
-        : "text-[#a63a0a]"
-    }
-  >
-    ⚙️ Settings
-  </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className={
+    (["profile", "reminders"] as AppPage[]).includes(
+      currentPage
+    )
+      ? "inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+      : "inline-flex items-center gap-2 text-[#a63a0a]"
+  }
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
   {showSettingsMenu && (
     <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -10986,7 +11980,21 @@ if (!hasLoadedUser) {
       <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
         Community
       </p>
+ <button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <button
         type="button"
         onClick={() => {
@@ -11000,11 +12008,8 @@ if (!hasLoadedUser) {
 
       <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
   👨‍🍳 My Cookbook
 </button>
@@ -11115,7 +12120,21 @@ if (!hasLoadedUser) {
     <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
       Community
     </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
     <button
       type="button"
       onClick={() => {
@@ -11129,13 +12148,10 @@ if (!hasLoadedUser) {
 
     <button
   type="button"
-  onClick={() => {
-    setIsMenuOpen(false);
-    window.location.href = `/chef/${currentUserId}`;
-  }}
-  className="block w-full rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+  onClick={openMyCookbook}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
 >
-  👨‍🍳 My Cookbook
+👨‍🍳 My Cookbook
 </button>
 
     <hr className="my-3 border-[#ead7c8]" />
@@ -11206,6 +12222,144 @@ if (!hasLoadedUser) {
     >
       ↪ Log Out
     </button>
+  </div>
+)}
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-xl" aria-hidden="true">
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+            openMyCookbook();
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
   </div>
 )}
 </nav>

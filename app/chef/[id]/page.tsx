@@ -20,6 +20,9 @@ type PublicRecipe = {
   cook_time?: string | number | null;
   servings?: string | number | null;
   created_at?: string | null;
+  likeCount: number;
+  saveCount: number;
+  isLikedByCurrentUser: boolean;
 };
 
 type FollowedChef = {
@@ -108,6 +111,8 @@ const [totalSaves, setTotalSaves] = useState(0);
 const [isFollowing, setIsFollowing] = useState(false);
 const [isUpdatingFollow, setIsUpdatingFollow] =
   useState(false);
+  const [updatingLikeRecipeId, setUpdatingLikeRecipeId] =
+  useState<string | null>(null);
 
   const [likedRecipes, setLikedRecipes] =
   useState<PublicRecipe[]>([]);
@@ -237,47 +242,72 @@ const publicRecipeIds = publicRecipes.map(
   (recipe) => recipe.id
 );
 
+const likeCountMap = new Map<string, number>();
+const saveCountMap = new Map<string, number>();
+const likedRecipeIds = new Set<string>();
+
 if (publicRecipeIds.length > 0) {
-  const {
-    count: likesCount,
-    error: likesError,
-  } = await supabase
-    .from("recipe_likes")
-    .select("*", {
-      count: "exact",
-      head: true,
-    })
-    .in("recipe_id", publicRecipeIds);
+  const [
+    { data: likeRows, error: likesError },
+    { data: savedRows, error: savesError },
+  ] = await Promise.all([
+    supabase
+      .from("recipe_likes")
+      .select("user_id, recipe_id")
+      .in("recipe_id", publicRecipeIds),
+
+   supabase.rpc("get_public_recipe_save_counts", {
+  recipe_ids: publicRecipeIds,
+}),
+  ]);
 
   if (likesError) {
     throw likesError;
   }
 
-  setTotalLikes(likesCount ?? 0);
-} else {
-  setTotalLikes(0);
-}
-
-if (publicRecipeIds.length > 0) {
-  const {
-    count: savesCount,
-    error: savesError,
-  } = await supabase
-    .from("recipes")
-    .select("*", {
-      count: "exact",
-      head: true,
-    })
-    .in("original_recipe_id", publicRecipeIds);
-
   if (savesError) {
     throw savesError;
   }
 
-  setTotalSaves(savesCount ?? 0);
+  for (const like of likeRows ?? []) {
+    likeCountMap.set(
+      like.recipe_id,
+      (likeCountMap.get(like.recipe_id) ?? 0) + 1
+    );
+
+    if (like.user_id === signedInUserId) {
+      likedRecipeIds.add(like.recipe_id);
+    }
+  }
+
+  for (const savedRecipe of savedRows ?? []) {
+  saveCountMap.set(
+    savedRecipe.recipe_id,
+    Number(savedRecipe.save_count)
+  );
+}
+
+  setTotalLikes(likeRows?.length ?? 0);
+  const cookbookSaveTotal = Array.from(
+  saveCountMap.values()
+).reduce(
+  (total, count) => total + count,
+  0
+);
+
+setTotalSaves(cookbookSaveTotal);
 } else {
+  setTotalLikes(0);
   setTotalSaves(0);
 }
+
+const enrichedPublicRecipes: PublicRecipe[] =
+  publicRecipes.map((recipe) => ({
+    ...recipe,
+    likeCount: likeCountMap.get(recipe.id) ?? 0,
+    saveCount: saveCountMap.get(recipe.id) ?? 0,
+    isLikedByCurrentUser: likedRecipeIds.has(recipe.id),
+  }));
 
 if (
   signedInUserId &&
@@ -306,7 +336,7 @@ const loadedProfile =
   profileData as PublicProfile | null;
 
 setProfile(loadedProfile);
-setRecipes(publicRecipes);
+setRecipes(enrichedPublicRecipes);
 
 setEditDisplayName(
   loadedProfile?.display_name?.trim() || ""
@@ -562,6 +592,93 @@ async function loadSavedRecipes() {
     setSavedRecipes([]);
   } finally {
     setIsLoadingSavedRecipes(false);
+  }
+}
+
+async function toggleRecipeLike(recipeId: string) {
+  if (!currentUserId) {
+    setStatusMessage(
+      "Please sign in before liking a recipe."
+    );
+    return;
+  }
+
+  if (updatingLikeRecipeId) return;
+
+  const selectedRecipe = recipes.find(
+    (recipe) => recipe.id === recipeId
+  );
+
+  if (!selectedRecipe) return;
+
+  setUpdatingLikeRecipeId(recipeId);
+  setStatusMessage("");
+
+  try {
+    if (selectedRecipe.isLikedByCurrentUser) {
+      const { error } = await supabase
+        .from("recipe_likes")
+        .delete()
+        .eq("user_id", currentUserId)
+        .eq("recipe_id", recipeId);
+
+      if (error) throw error;
+
+      setRecipes((currentRecipes) =>
+        currentRecipes.map((recipe) =>
+          recipe.id === recipeId
+            ? {
+                ...recipe,
+                isLikedByCurrentUser: false,
+                likeCount: Math.max(
+                  0,
+                  recipe.likeCount - 1
+                ),
+              }
+            : recipe
+        )
+      );
+
+      setTotalLikes((count) =>
+        Math.max(0, count - 1)
+      );
+    } else {
+      const { error } = await supabase
+        .from("recipe_likes")
+        .insert({
+          user_id: currentUserId,
+          recipe_id: recipeId,
+        });
+
+      if (error) throw error;
+
+      setRecipes((currentRecipes) =>
+        currentRecipes.map((recipe) =>
+          recipe.id === recipeId
+            ? {
+                ...recipe,
+                isLikedByCurrentUser: true,
+                likeCount: recipe.likeCount + 1,
+              }
+            : recipe
+        )
+      );
+
+      setTotalLikes((count) => count + 1);
+    }
+  } catch (error) {
+    console.error(
+      "Recipe like update failed:",
+      error
+    );
+
+    setStatusMessage(
+      error instanceof Error
+        ? error.message
+        : "We could not update this like."
+    );
+  } finally {
+    setUpdatingLikeRecipeId(null);
   }
 }
 
@@ -948,6 +1065,50 @@ return (
                       </span>
                     </div>
 
+                    <div className="my-4">
+  <div className="flex flex-wrap items-center justify-between gap-3">
+    <button
+      type="button"
+      onClick={() =>
+        void toggleRecipeLike(recipe.id)
+      }
+      disabled={
+        updatingLikeRecipeId === recipe.id
+      }
+      aria-pressed={
+        recipe.isLikedByCurrentUser
+      }
+      className={`rounded-full border px-4 py-2 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+        recipe.isLikedByCurrentUser
+          ? "border-[#a63a0a] bg-[#a63a0a] text-white"
+          : "border-[#a63a0a] bg-white text-[#a63a0a] hover:bg-[#fff3eb]"
+      }`}
+    >
+      {recipe.isLikedByCurrentUser
+        ? "♥ Liked"
+        : "♡ Like"}
+    </button>
+
+    <div className="flex items-center gap-4 text-sm font-semibold text-[#6d5549]">
+      <span>
+        ❤️ {recipe.likeCount}{" "}
+        {recipe.likeCount === 1
+          ? "Like"
+          : "Likes"}
+      </span>
+
+      <span>
+        🔖 {recipe.saveCount}{" "}
+        {recipe.saveCount === 1
+          ? "Save"
+          : "Saves"}
+      </span>
+    </div>
+  </div>
+
+  <div className="mt-4 h-px w-full bg-[#ead7c8]" />
+</div>
+
                     <Link
                       href={`/recipe/${recipe.id}/${recipeSlug}`}
                       className="mt-3 block"
@@ -993,69 +1154,105 @@ return (
 {activePanel === "likes" && (
   <section className="mt-8 rounded-[2rem] border border-[#ead7c8] bg-white p-6 md:p-8">
     <h2 className="text-3xl font-bold text-[#2b1b14]">
-      Liked Recipes
+      Recipes People Liked
     </h2>
 
     <p className="mt-2 text-[#6d5549]">
-      Public recipes this cook has liked.
+      Public recipes from this cookbook that received likes.
     </p>
 
-    {isLoadingLikedRecipes ? (
-      <p className="mt-6 text-[#6d5549]">
-        Loading liked recipes…
-      </p>
-    ) : likedRecipes.length === 0 ? (
+    {recipes.filter((recipe) => recipe.likeCount > 0).length === 0 ? (
       <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
         <p className="font-bold text-[#2b1b14]">
-          No liked recipes yet
+          No recipe likes yet
         </p>
       </div>
     ) : (
       <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-        {likedRecipes.map((recipe) => {
-          const recipeSlug =
-            createRecipeSlug(recipe.title);
+        {recipes
+          .filter((recipe) => recipe.likeCount > 0)
+          .sort((a, b) => b.likeCount - a.likeCount)
+          .map((recipe) => {
+            const recipeSlug =
+              createRecipeSlug(recipe.title);
 
-          return (
-            <article
-              key={recipe.id}
-              className="overflow-hidden rounded-[2rem] border border-[#ead7c8] bg-white shadow-sm"
-            >
-              <Link
-                href={`/recipe/${recipe.id}/${recipeSlug}`}
-                className="block"
+            return (
+              <article
+                key={recipe.id}
+                className="overflow-hidden rounded-[2rem] border border-[#ead7c8] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
-                <div className="aspect-[4/3] overflow-hidden bg-[#f8efe6]">
-                  <img
-                    src={
-                      recipe.image_url ||
-                      FALLBACK_RECIPE_IMAGE
-                    }
-                    alt=""
-                    className="h-full w-full object-cover"
-                    onError={(event) => {
-                      event.currentTarget.src =
-                        FALLBACK_RECIPE_IMAGE;
-                    }}
-                  />
-                </div>
-              </Link>
-
-              <div className="p-5">
-                <h3 className="text-xl font-bold text-[#2b1b14]">
-                  {recipe.title}
-                </h3>
-
                 <Link
                   href={`/recipe/${recipe.id}/${recipeSlug}`}
-                  className="mt-4 block rounded-full bg-[#a63a0a] px-5 py-3 text-center font-bold text-white"
+                  className="block"
                 >
-                  View Recipe
+                  <div className="aspect-[4/3] overflow-hidden bg-[#f8efe6]">
+                    <img
+                      src={
+                        recipe.image_url ||
+                        FALLBACK_RECIPE_IMAGE
+                      }
+                      alt=""
+                      className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.src =
+                          FALLBACK_RECIPE_IMAGE;
+                      }}
+                    />
+                  </div>
                 </Link>
-              </div>
-            </article>
-          );
-        })}
+
+                <div className="p-5">
+                  <div className="flex flex-wrap gap-2">
+                    {recipe.category && (
+                      <span className="rounded-full bg-[#fff3eb] px-3 py-1 text-xs font-bold text-[#a63a0a]">
+                        {recipe.category}
+                      </span>
+                    )}
+
+                    <span className="rounded-full border border-[#ead7c8] bg-white px-3 py-1 text-xs font-bold text-[#6d5549]">
+                      ❤️ {recipe.likeCount}{" "}
+                      {recipe.likeCount === 1
+                        ? "Like"
+                        : "Likes"}
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/recipe/${recipe.id}/${recipeSlug}`}
+                    className="mt-3 block"
+                  >
+                    <h3 className="text-xl font-bold text-[#2b1b14] transition hover:text-[#a63a0a]">
+                      {recipe.title}
+                    </h3>
+                  </Link>
+
+                  {(recipe.cook_time ||
+                    recipe.servings) && (
+                    <div className="mt-4 flex flex-wrap gap-4 text-sm text-[#6d5549]">
+                      {recipe.cook_time && (
+                        <span>
+                          ⏱ {recipe.cook_time}
+                        </span>
+                      )}
+
+                      {recipe.servings && (
+                        <span>
+                          🍽 {recipe.servings} servings
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  <Link
+                    href={`/recipe/${recipe.id}/${recipeSlug}`}
+                    className="mt-5 block rounded-full bg-[#a63a0a] px-5 py-3 text-center font-bold text-white transition hover:bg-[#8f3108]"
+                  >
+                    View Recipe
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
       </div>
     )}
   </section>
@@ -1064,107 +1261,105 @@ return (
 {activePanel === "saved" && (
   <section className="mt-8 rounded-[2rem] border border-[#ead7c8] bg-white p-6 md:p-8">
     <h2 className="text-3xl font-bold text-[#2b1b14]">
-      Saved Recipes
+      Recipes People Saved
     </h2>
 
     <p className="mt-2 text-[#6d5549]">
-      Public recipes this cook has saved.
+      Public recipes from this cookbook that other cooks saved.
     </p>
 
-    {isLoadingSavedRecipes ? (
-      <p className="mt-6 text-[#6d5549]">
-        Loading saved recipes…
-      </p>
-    ) : savedRecipes.length === 0 ? (
+    {recipes.filter((recipe) => recipe.saveCount > 0).length === 0 ? (
       <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
         <p className="font-bold text-[#2b1b14]">
-          No saved recipes yet
-        </p>
-
-        <p className="mt-2 text-sm text-[#6d5549]">
-          Recipes saved from the community will appear here.
+          No recipe saves yet
         </p>
       </div>
     ) : (
       <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-        {savedRecipes.map((recipe) => {
-          const recipeSlug =
-            createRecipeSlug(recipe.title);
+        {recipes
+          .filter((recipe) => recipe.saveCount > 0)
+          .sort((a, b) => b.saveCount - a.saveCount)
+          .map((recipe) => {
+            const recipeSlug =
+              createRecipeSlug(recipe.title);
 
-          return (
-            <article
-              key={recipe.id}
-              className="overflow-hidden rounded-[2rem] border border-[#ead7c8] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-            >
-              <Link
-                href={`/recipe/${recipe.id}/${recipeSlug}`}
-                className="block"
+            return (
+              <article
+                key={recipe.id}
+                className="overflow-hidden rounded-[2rem] border border-[#ead7c8] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
-                <div className="aspect-[4/3] overflow-hidden bg-[#f8efe6]">
-                  <img
-                    src={
-                      recipe.image_url ||
-                      FALLBACK_RECIPE_IMAGE
-                    }
-                    alt=""
-                    className="h-full w-full object-cover transition duration-300 hover:scale-105"
-                    onError={(event) => {
-                      event.currentTarget.src =
-                        FALLBACK_RECIPE_IMAGE;
-                    }}
-                  />
-                </div>
-              </Link>
+                <Link
+                  href={`/recipe/${recipe.id}/${recipeSlug}`}
+                  className="block"
+                >
+                  <div className="aspect-[4/3] overflow-hidden bg-[#f8efe6]">
+                    <img
+                      src={
+                        recipe.image_url ||
+                        FALLBACK_RECIPE_IMAGE
+                      }
+                      alt=""
+                      className="h-full w-full object-cover transition duration-300 hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.src =
+                          FALLBACK_RECIPE_IMAGE;
+                      }}
+                    />
+                  </div>
+                </Link>
 
-              <div className="p-5">
-                <div className="flex flex-wrap gap-2">
-                  {recipe.category && (
-                    <span className="rounded-full bg-[#fff3eb] px-3 py-1 text-xs font-bold text-[#a63a0a]">
-                      {recipe.category}
+                <div className="p-5">
+                  <div className="flex flex-wrap gap-2">
+                    {recipe.category && (
+                      <span className="rounded-full bg-[#fff3eb] px-3 py-1 text-xs font-bold text-[#a63a0a]">
+                        {recipe.category}
+                      </span>
+                    )}
+
+                    <span className="rounded-full border border-[#ead7c8] bg-white px-3 py-1 text-xs font-bold text-[#6d5549]">
+                      🔖 {recipe.saveCount}{" "}
+                      {recipe.saveCount === 1
+                        ? "Save"
+                        : "Saves"}
                     </span>
+                  </div>
+
+                  <Link
+                    href={`/recipe/${recipe.id}/${recipeSlug}`}
+                    className="mt-3 block"
+                  >
+                    <h3 className="text-xl font-bold text-[#2b1b14] transition hover:text-[#a63a0a]">
+                      {recipe.title}
+                    </h3>
+                  </Link>
+
+                  {(recipe.cook_time ||
+                    recipe.servings) && (
+                    <div className="mt-4 flex flex-wrap gap-4 text-sm text-[#6d5549]">
+                      {recipe.cook_time && (
+                        <span>
+                          ⏱ {recipe.cook_time}
+                        </span>
+                      )}
+
+                      {recipe.servings && (
+                        <span>
+                          🍽 {recipe.servings} servings
+                        </span>
+                      )}
+                    </div>
                   )}
 
-                  <span className="rounded-full border border-[#ead7c8] bg-white px-3 py-1 text-xs font-bold text-[#6d5549]">
-                    🔖 Saved
-                  </span>
+                  <Link
+                    href={`/recipe/${recipe.id}/${recipeSlug}`}
+                    className="mt-5 block rounded-full bg-[#a63a0a] px-5 py-3 text-center font-bold text-white transition hover:bg-[#8f3108]"
+                  >
+                    View Recipe
+                  </Link>
                 </div>
-
-                <Link
-                  href={`/recipe/${recipe.id}/${recipeSlug}`}
-                  className="mt-3 block"
-                >
-                  <h3 className="text-xl font-bold text-[#2b1b14] transition hover:text-[#a63a0a]">
-                    {recipe.title}
-                  </h3>
-                </Link>
-
-                {(recipe.cook_time ||
-                  recipe.servings) && (
-                  <div className="mt-4 flex flex-wrap gap-4 text-sm text-[#6d5549]">
-                    {recipe.cook_time && (
-                      <span>
-                        ⏱ {recipe.cook_time}
-                      </span>
-                    )}
-
-                    {recipe.servings && (
-                      <span>
-                        🍽 {recipe.servings} servings
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <Link
-                  href={`/recipe/${recipe.id}/${recipeSlug}`}
-                  className="mt-5 block rounded-full bg-[#a63a0a] px-5 py-3 text-center font-bold text-white transition hover:bg-[#8f3108]"
-                >
-                  View Recipe
-                </Link>
-              </div>
-            </article>
-          );
-        })}
+              </article>
+            );
+          })}
       </div>
     )}
   </section>

@@ -23,6 +23,15 @@ type SortOption =
   | "liked"
    | "following";
 
+   type CommunityActivity = {
+  activity_type: "like" | "save" | "follow";
+  actor_id: string;
+  actor_name: string;
+  recipe_id: string | null;
+  recipe_title: string | null;
+  created_at: string;
+};
+
 type PublicRecipe = {
   id: string;
   userId: string;
@@ -186,6 +195,18 @@ export default function CommunityPage() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
         const [showSettingsMenu, setShowSettingsMenu] =
         useState(false);
+        const [showEngagementPopup, setShowEngagementPopup] =
+  useState(false);
+
+const [newEngagementCount, setNewEngagementCount] =
+  useState(0);
+  const [communityActivity, setCommunityActivity] =
+  useState<CommunityActivity[]>([]);
+
+const [
+  isLoadingCommunityActivity,
+  setIsLoadingCommunityActivity,
+] = useState(false);
     const [currentUserId, setCurrentUserId] =
         useState<string | null>(null);   
     const [updatingLikeRecipeId, setUpdatingLikeRecipeId] =
@@ -305,17 +326,16 @@ const likedRecipeIds = new Set<string>();
 if (publicRecipeIds.length > 0) {
   const [
     { data: likeData, error: likeError },
-    { data: savedRecipeData, error: savedRecipeError },
+    { data: savedRows, error: savedRecipeError },
   ] = await Promise.all([
     supabase
       .from("recipe_likes")
       .select("user_id, recipe_id")
       .in("recipe_id", publicRecipeIds),
 
-    supabase
-      .from("recipes")
-      .select("original_recipe_id")
-      .in("original_recipe_id", publicRecipeIds),
+    supabase.rpc("get_public_recipe_save_counts", {
+  recipe_ids: publicRecipeIds,
+}),
   ]);
 
   if (likeError) {
@@ -342,18 +362,15 @@ if (publicRecipeIds.length > 0) {
       savedRecipeError
     );
   } else {
-    for (const savedRecipe of (
-      savedRecipeData ?? []
-    ) as SavedRecipeRow[]) {
-      if (!savedRecipe.original_recipe_id) continue;
-
-      saveCountMap.set(
-        savedRecipe.original_recipe_id,
-        (saveCountMap.get(
-          savedRecipe.original_recipe_id
-        ) ?? 0) + 1
-      );
-    }
+    for (const savedRecipe of (savedRows ?? []) as {
+  recipe_id: string;
+  save_count: number;
+}[]) {
+  saveCountMap.set(
+    savedRecipe.recipe_id,
+    Number(savedRecipe.save_count)
+  );
+}
   }
 }
 
@@ -708,6 +725,66 @@ sortOption,
   void loadCurrentUser();
 }, []);
 
+useEffect(() => {
+  async function loadNewEngagement() {
+    if (!currentUserId) {
+      setNewEngagementCount(0);
+      setCommunityActivity([]);
+      return;
+    }
+
+    setIsLoadingCommunityActivity(true);
+
+    const lastSeen =
+      localStorage.getItem(
+        `hey-chef-community-seen-${currentUserId}`
+      ) ?? new Date(0).toISOString();
+
+    const { data, error } = await supabase.rpc(
+      "get_my_community_activity",
+      {
+        since_time: lastSeen,
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Could not load community activity:",
+        error
+      );
+
+      setNewEngagementCount(0);
+      setCommunityActivity([]);
+      setIsLoadingCommunityActivity(false);
+      return;
+    }
+
+    const activity =
+      (data ?? []) as CommunityActivity[];
+
+    setCommunityActivity(activity);
+    setNewEngagementCount(activity.length);
+    setIsLoadingCommunityActivity(false);
+  }
+
+  void loadNewEngagement();
+}, [currentUserId]);
+
+function openEngagementPopup() {
+  setShowSettingsMenu(false);
+  setIsMenuOpen(false);
+  setShowEngagementPopup(true);
+
+  if (!currentUserId) return;
+
+  localStorage.setItem(
+    `hey-chef-community-seen-${currentUserId}`,
+    new Date().toISOString()
+  );
+
+  setNewEngagementCount(0);
+}
+
   useEffect(() => {
   function handleOutsideClick(event: MouseEvent) {
     const target = event.target as Node;
@@ -855,15 +932,23 @@ sortOption,
 
     <div ref={settingsRef} className="relative">
       <button
-        type="button"
-        onClick={() =>
-          setShowSettingsMenu((open) => !open)
-        }
-        aria-expanded={showSettingsMenu}
-        className="font-bold text-[#a63a0a] underline underline-offset-8"
-      >
-        ⚙️ Settings
-      </button>
+  type="button"
+  onClick={() =>
+    setShowSettingsMenu((open) => !open)
+  }
+  aria-expanded={showSettingsMenu}
+  className="inline-flex items-center gap-2 font-bold text-[#a63a0a] underline underline-offset-8"
+>
+  <span>⚙️ Settings</span>
+
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
 
       {showSettingsMenu && (
         <div className="absolute right-0 top-10 z-50 w-64 rounded-2xl bg-white p-2 shadow-xl">
@@ -895,7 +980,21 @@ sortOption,
           <p className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#6d5549]">
             Community
           </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
           <Link
             href="/community"
             onClick={() => setShowSettingsMenu(false)}
@@ -1019,7 +1118,21 @@ sortOption,
       <p className="mb-2 px-4 text-xs font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
         Community
       </p>
+<button
+  type="button"
+  onClick={openEngagementPopup}
+  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
+>
+  <span>✨ Activity</span>
 
+  {newEngagementCount > 0 && (
+    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
+      {newEngagementCount > 99
+        ? "99+"
+        : newEngagementCount}
+    </span>
+  )}
+</button>
       <Link
         href="/community"
         onClick={() => setIsMenuOpen(false)}
@@ -1027,6 +1140,8 @@ sortOption,
       >
         🌎 Explore Recipes
       </Link>
+
+      
 
       <Link
         href={`/chef/${currentUserId}`}
@@ -1106,6 +1221,151 @@ sortOption,
     </div>
   )}
 </nav>
+
+{showEngagementPopup && (
+  <div
+    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="community-activity-title"
+    onClick={() => setShowEngagementPopup(false)}
+  >
+    <section
+      className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-[2rem] bg-white p-6 shadow-2xl md:p-8"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
+            Hey Chef Community
+          </p>
+
+          <h2
+            id="community-activity-title"
+            className="mt-2 text-3xl font-bold text-[#2b1b14]"
+          >
+            Recent Activity
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          aria-label="Close activity"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#ead7c8] bg-white text-2xl text-[#a63a0a]"
+        >
+          ×
+        </button>
+      </div>
+
+      {isLoadingCommunityActivity ? (
+  <div
+    className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center"
+    role="status"
+  >
+    <p className="font-bold text-[#2b1b14]">
+      Loading your activity…
+    </p>
+  </div>
+) : communityActivity.length === 0 ? (
+  <div className="mt-6 rounded-2xl bg-[#fffaf5] p-6 text-center">
+    <p className="font-bold text-[#2b1b14]">
+      No new activity
+    </p>
+
+    <p className="mt-2 text-sm text-[#6d5549]">
+      New recipe likes, saves, and followers will appear here.
+    </p>
+  </div>
+) : (
+  <div className="mt-6 space-y-3">
+    {communityActivity.map((activity) => {
+      const activityIcon =
+        activity.activity_type === "like"
+          ? "❤️"
+          : activity.activity_type === "save"
+            ? "🔖"
+            : "👤";
+
+      const activityMessage =
+        activity.activity_type === "like"
+          ? "liked"
+          : activity.activity_type === "save"
+            ? "saved"
+            : "started following you";
+
+      return (
+        <div
+          key={`${activity.activity_type}-${activity.actor_id}-${activity.recipe_id ?? "follow"}-${activity.created_at}`}
+          className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4"
+        >
+          <div className="flex items-start gap-3">
+            <span
+              className="text-xl"
+              aria-hidden="true"
+            >
+              {activityIcon}
+            </span>
+
+            <div className="min-w-0">
+              <p className="text-[#2b1b14]">
+                <span className="font-bold">
+                  {activity.actor_name}
+                </span>{" "}
+                {activityMessage}
+
+                {activity.recipe_title && (
+                  <>
+                    {" "}
+                    <span className="font-bold">
+                      “{activity.recipe_title}”
+                    </span>
+                  </>
+                )}
+              </p>
+
+              <p className="mt-1 text-sm text-[#6d5549]">
+                {new Date(
+                  activity.created_at
+                ).toLocaleString([], {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => {
+            setShowEngagementPopup(false);
+
+            if (currentUserId) {
+              router.push(`/chef/${currentUserId}`);
+            }
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          View My Cookbook
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowEngagementPopup(false)}
+          className="flex-1 rounded-full border border-[#a63a0a] bg-white px-5 py-3 font-bold text-[#a63a0a]"
+        >
+          Close
+        </button>
+      </div>
+    </section>
+  </div>
+)}
 </header>
       <div className="mx-auto w-full max-w-7xl px-5 py-8 lg:px-8 lg:py-12">
         <section className="rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
