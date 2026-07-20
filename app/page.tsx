@@ -10115,37 +10115,32 @@ Bake for 25 minutes`}
   <div className="mb-4 grid gap-2 sm:grid-cols-2 md:grid-cols-4">
     <button
       onClick={() => {
-        setFoodTypeFilter("all");
-        setVisibilityFilter("all");
-        setCategoryFilter("all");
-        setRecipeSort("newest");
-      }}
+  setFoodTypeFilter("all");
+  setVisibilityFilter("all");
+  setCategoryFilter("all");
+  setRecipeSort("newest");
+}}
       className={`rounded-full px-4 py-2 font-bold ${
         foodTypeFilter === "all" && visibilityFilter === "all"
           ? "bg-[#a63a0a] text-white"
           : "bg-[#fff4ef] text-[#a63a0a]"
       }`}
     >
-      All
+      All Items
     </button>
 
     <button
-      onClick={() => {
+     onClick={() => {
   setFoodTypeFilter("recipe");
-
-  setVisibilityFilter(
-    visibilityFilter === "public"
-      ? "private"
-      : "public"
-  );
 }}
-      className={`rounded-full px-4 py-2 font-bold ${
-        foodTypeFilter === "recipe" && visibilityFilter === "all"
-          ? "bg-[#a63a0a] text-white"
-          : "bg-[#fff4ef] text-[#a63a0a]"
-      }`}
+
+className={`rounded-full px-4 py-2 font-bold ${
+  foodTypeFilter === "recipe"
+    ? "bg-[#a63a0a] text-white"
+    : "bg-[#fff4ef] text-[#a63a0a]"
+}`}
     >
-      Recipes
+    Recipes
     </button>
 
     <button
@@ -10163,23 +10158,20 @@ Bake for 25 minutes`}
     </button>
 
     <button
-      onClick={() =>
-        setVisibilityFilter(
-          visibilityFilter === "public"
-            ? "private"
-            : "public"
-        )
-      }
-      className={`rounded-full px-4 py-2 font-bold ${
-        visibilityFilter === "public"
-          ? "bg-[#2d8a4b] text-white"
-          : "bg-[#6d5549] text-white"
-      }`}
-    >
-      {visibilityFilter === "public"
-        ? "🌎 Public"
-        : "🔒 Private"}
-    </button>
+  type="button"
+  onClick={() =>
+    setVisibilityFilter(
+      visibilityFilter === "public"
+        ? "private"
+        : "public"
+    )
+  }
+  className="rounded-full border-2 border-[#a63a0a] bg-white px-4 py-2 font-bold text-[#a63a0a] transition hover:bg-[#fff4ef]"
+>
+  {visibilityFilter === "public"
+    ? "🌎 Public Recipes"
+    : "🔒 Private Recipes"}
+</button>
   </div>
   
 
