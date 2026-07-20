@@ -10374,21 +10374,7 @@ Bake for 25 minutes`}
       >
         🌎 Explore Recipes
       </button>
- <button
-  type="button"
-  onClick={openEngagementPopup}
-  className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left hover:bg-[#fff4ef]"
->
-  <span>✨ Activity</span>
-
-  {newEngagementCount > 0 && (
-    <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-[#a63a0a] px-2 py-0.5 text-xs font-bold text-white">
-      {newEngagementCount > 99
-        ? "99+"
-        : newEngagementCount}
-    </span>
-  )}
-</button>
+ 
       <button
   type="button"
   onClick={openMyCookbook}
