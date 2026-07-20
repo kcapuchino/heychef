@@ -420,6 +420,8 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showDiscardChangesConfirm, setShowDiscardChangesConfirm] =
+  useState(false);
 
   const [shoppingList, setShoppingList] = useState<string[]>([])
   const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
@@ -448,6 +450,11 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   meal: string;
 } | null>(null);
   const [isEditingRecipe, setIsEditingRecipe] = useState(false);
+  const [publishValidationErrors, setPublishValidationErrors] =
+  useState<string[]>([]);
+
+  const [publishAfterSave, setPublishAfterSave] =
+  useState(false);
   const [editRecipeDraft, setEditRecipeDraft] = useState<Recipe | null>(null);
   const [recipeVisibility, setRecipeVisibility] = useState<
   "private" | "public"
@@ -1101,7 +1108,8 @@ const { data, error } = await supabase
   bio,
   founding_chef,
   lifetime_premium,
-  supported_at
+  supported_at,
+  tags
 `)
   .eq("id", user.id)
   .single();
@@ -1290,28 +1298,31 @@ useEffect(() => {
     }
 
     setRecipes(
-      (data || []).map((recipe) => ({
-        id: recipe.id,
-        title: recipe.title,
-        image: recipe.image_url || "",
-        ingredients: recipe.ingredients || [],
-        steps: recipe.steps || [],
-        cookTime: recipe.cook_time || "",
-        servings: recipe.servings || "",
-        category: recipe.category || "",
-        sourceUrl: recipe.source_url || "",
-        isFavorite: recipe.is_favorite || false,
-        isPlanningQueue: recipe.is_planning_queue || false,
-        createdAt: recipe.created_at,
-        visibility:
-  recipe.visibility === "public"
-    ? "public"
-    : "private",
-        type: recipe.type || "recipe",
-        brand: recipe.brand || "",
-        packageSize: recipe.package_size || "",
-      }))
-    );
+  (data || []).map((recipe) => ({
+    id: recipe.id,
+    title: recipe.title,
+    image: recipe.image_url || "",
+    ingredients: recipe.ingredients || [],
+    steps: recipe.steps || [],
+    cookTime: recipe.cook_time || "",
+    servings: recipe.servings || "",
+    category: recipe.category || "",
+    sourceUrl: recipe.source_url || "",
+    isFavorite: recipe.is_favorite || false,
+    isPlanningQueue: recipe.is_planning_queue || false,
+    createdAt: recipe.created_at,
+    visibility:
+      recipe.visibility === "public"
+        ? "public"
+        : "private",
+    type: recipe.type || "recipe",
+    brand: recipe.brand || "",
+    packageSize: recipe.package_size || "",
+    tags: Array.isArray(recipe.tags)
+      ? recipe.tags
+      : [],
+  }))
+);
   }
 
   if (currentUserId) {
@@ -1389,6 +1400,7 @@ async function updateRecipeVisibility(
   setRecipes((currentRecipes) =>
     currentRecipes.map((recipe) =>
       recipe.id === selectedRecipe.id
+  
         ? {
             ...recipe,
             visibility: data.visibility,
@@ -1398,6 +1410,21 @@ async function updateRecipeVisibility(
   );
 
   return true;
+}
+function closeRecipeDetails() {
+  setSelectedRecipe(null);
+  setShowAllRecipes(true);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+  setPublishAfterSave(false);
+  setPublishValidationErrors([]);
+
+  setTimeout(() => {
+    window.scrollTo({
+      top: 250,
+      behavior: "smooth",
+    });
+  }, 0);
 }
 
 async function loadShoppingItems() {
@@ -3473,85 +3500,182 @@ setMealPlan((current) => ({
       : "Recipe deleted."
   );
 }
-  async function updateSelectedRecipe(updatedRecipe: Recipe) {
-    console.log("Saving recipe:", updatedRecipe);
-    if (updatedRecipe.id === "new-recipe") {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  async function updateSelectedRecipe(
+  updatedRecipe: Recipe
+) {
+  console.log("Saving recipe:", updatedRecipe);
 
-  if (!user) {
-    showToast("Please log in again.");
-    return;
+  if (
+    publishAfterSave &&
+    updatedRecipe.type !== "grocery"
+  ) {
+    const errors: string[] = [];
+
+    if (!updatedRecipe.title?.trim()) {
+      errors.push("title");
+    }
+
+    if (!updatedRecipe.cookTime?.trim()) {
+      errors.push("cookTime");
+    }
+
+    if (!updatedRecipe.servings?.trim()) {
+      errors.push("servings");
+    }
+
+    if (!updatedRecipe.category?.trim()) {
+      errors.push("category");
+    }
+
+    if (recipeTags.length === 0) {
+      errors.push("tags");
+    }
+
+    const validIngredients =
+      updatedRecipe.ingredients?.filter(
+        (ingredient) =>
+          ingredient.trim().length > 0
+      ) || [];
+
+    if (validIngredients.length === 0) {
+      errors.push("ingredients");
+    }
+
+    const validSteps =
+      updatedRecipe.steps?.filter(
+        (step) => step.trim().length > 0
+      ) || [];
+
+    if (validSteps.length === 0) {
+      errors.push("steps");
+    }
+
+    if (errors.length > 0) {
+      setPublishValidationErrors(errors);
+
+      showToast(
+        "Complete all highlighted fields before publishing."
+      );
+
+      return;
+    }
   }
 
-  const { data, error } = await supabase
-    .from("recipes")
-    .insert({
-      user_id: user.id,
-      title: updatedRecipe.title || "Untitled Recipe",
-      category: updatedRecipe.category || null,
-      image_url: updatedRecipe.image || "",
-      cook_time: updatedRecipe.cookTime || "",
-      servings: updatedRecipe.servings || "",
-      ingredients: updatedRecipe.ingredients,
-      steps: updatedRecipe.steps,
-      source_url: updatedRecipe.sourceUrl || "",
-      is_favorite: updatedRecipe.isFavorite || false,
-      is_planning_queue: updatedRecipe.isPlanningQueue || false,
-      type: updatedRecipe.type || "recipe",
-brand: updatedRecipe.brand || "",
-package_size: updatedRecipe.packageSize || "",
-visibility:
-  updatedRecipe.type === "grocery"
-    ? "private"
-    : recipeVisibility,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    showToast(error.message);
-    return;
-  }
-
-  const savedRecipe: Recipe = {
-  ...updatedRecipe,
-  id: data.id,
-  title: data.title,
-  createdAt: data.created_at,
-  visibility:
+  const nextVisibility =
     updatedRecipe.type === "grocery"
       ? "private"
-      : recipeVisibility,
-};
+      : publishAfterSave
+        ? "public"
+        : recipeVisibility;
 
-  setRecipes([savedRecipe, ...recipes]);
-  setSelectedRecipe(savedRecipe);
-  setIsEditingRecipe(false);
-  setEditRecipeDraft(null);
+  if (updatedRecipe.id === "new-recipe") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  return;
-}
+    if (!user) {
+      showToast("Please log in again.");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("recipes")
+      .insert({
+        user_id: user.id,
+        title:
+          updatedRecipe.title || "Untitled Recipe",
+        category:
+          updatedRecipe.category || null,
+        image_url: updatedRecipe.image || "",
+        cook_time:
+          updatedRecipe.cookTime || "",
+        servings:
+          updatedRecipe.servings || "",
+        ingredients:
+          updatedRecipe.ingredients,
+        steps: updatedRecipe.steps,
+        source_url:
+          updatedRecipe.sourceUrl || "",
+        is_favorite:
+          updatedRecipe.isFavorite || false,
+        is_planning_queue:
+          updatedRecipe.isPlanningQueue || false,
+        type:
+          updatedRecipe.type || "recipe",
+        brand: updatedRecipe.brand || "",
+        package_size:
+          updatedRecipe.packageSize || "",
+        tags:
+          updatedRecipe.type === "grocery"
+            ? []
+            : recipeTags,
+        visibility: nextVisibility,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      showToast(error.message);
+      return;
+    }
+
+    const savedRecipe: Recipe = {
+      ...updatedRecipe,
+      id: data.id,
+      title: data.title,
+      createdAt: data.created_at,
+      visibility: nextVisibility,
+    };
+
+    setRecipes((currentRecipes) => [
+      savedRecipe,
+      ...currentRecipes,
+    ]);
+
+    setSelectedRecipe(savedRecipe);
+    setRecipeVisibility(nextVisibility);
+    setIsEditingRecipe(false);
+    setEditRecipeDraft(null);
+    setPublishAfterSave(false);
+    setPublishValidationErrors([]);
+
+    showToast(
+      nextVisibility === "public"
+        ? "Recipe saved and published!"
+        : "Recipe saved."
+    );
+
+    return;
+  }
+
   const { error } = await supabase
     .from("recipes")
     .update({
       title: updatedRecipe.title,
-      category: updatedRecipe.category || null,
+      category:
+        updatedRecipe.category || null,
       image_url: updatedRecipe.image || "",
-      cook_time: updatedRecipe.cookTime || "",
-      servings: updatedRecipe.servings || "",
-      ingredients: updatedRecipe.ingredients,
+      cook_time:
+        updatedRecipe.cookTime || "",
+      servings:
+        updatedRecipe.servings || "",
+      ingredients:
+        updatedRecipe.ingredients,
       steps: updatedRecipe.steps,
-      source_url: updatedRecipe.sourceUrl || "",
-      is_favorite: updatedRecipe.isFavorite || false,
-      type: updatedRecipe.type || "recipe",
-brand: updatedRecipe.brand || "",
-package_size: updatedRecipe.packageSize || "",
-visibility:
-  updatedRecipe.type === "grocery"
-    ? "private"
-    : recipeVisibility,
+      source_url:
+        updatedRecipe.sourceUrl || "",
+      is_favorite:
+        updatedRecipe.isFavorite || false,
+      type:
+        updatedRecipe.type || "recipe",
+      brand: updatedRecipe.brand || "",
+      package_size:
+        updatedRecipe.packageSize || "",
+      tags:
+        updatedRecipe.type === "grocery"
+          ? []
+          : recipeTags,
+      visibility: nextVisibility,
     })
     .eq("id", updatedRecipe.id);
 
@@ -3561,23 +3685,30 @@ visibility:
   }
 
   const savedUpdatedRecipe: Recipe = {
-  ...updatedRecipe,
-  visibility:
-    updatedRecipe.type === "grocery"
-      ? "private"
-      : recipeVisibility,
-};
+    ...updatedRecipe,
+    visibility: nextVisibility,
+  };
 
-  const updatedRecipes = recipes.map((recipe) =>
-  recipe.id === updatedRecipe.id
-    ? savedUpdatedRecipe
-    : recipe
-);
+  setRecipes((currentRecipes) =>
+    currentRecipes.map((recipe) =>
+      recipe.id === updatedRecipe.id
+        ? savedUpdatedRecipe
+        : recipe
+    )
+  );
 
-setRecipes(updatedRecipes);
-setSelectedRecipe(savedUpdatedRecipe);
+  setSelectedRecipe(savedUpdatedRecipe);
+  setRecipeVisibility(nextVisibility);
   setIsEditingRecipe(false);
-setEditRecipeDraft(null);
+  setEditRecipeDraft(null);
+  setPublishAfterSave(false);
+  setPublishValidationErrors([]);
+
+  showToast(
+    nextVisibility === "public"
+      ? "Recipe saved and published!"
+      : "Recipe changes saved."
+  );
 }
 async function toggleShoppingItemChecked(item: string, checked: boolean) {
   if (checked) {
@@ -7220,6 +7351,9 @@ const { error } = await supabase
       ? "public"
       : "private"
   );
+  tags: Array.isArray(recipe.tags)
+  ? recipe.tags
+  : [],
 
   setCurrentPage("recipes");
   setShowAllRecipes(false);
@@ -10769,6 +10903,11 @@ Bake for 25 minutes`}
             <div className="sticky top-25 z-40 mb-4 flex justify-end">
   <button
     onClick={() => {
+  if (isEditingRecipe) {
+    setShowDiscardChangesConfirm(true);
+    return;
+  }
+
   setSelectedRecipe(null);
   setShowAllRecipes(true);
   setIsEditingRecipe(false);
@@ -10832,17 +10971,19 @@ Bake for 25 minutes`}
    <button
   type="button"
   onClick={(e) => {
-    e.stopPropagation();
-    setEditRecipeDraft(selectedRecipe);
-    setRecipeVisibility(
-  selectedRecipe.visibility === "public"
-    ? "public"
-    : "private"
-);
+  e.stopPropagation();
 
-    setIsEditingRecipe(true);
-    setRecipeTags(selectedRecipe.tags ?? []);
-  }}
+  setEditRecipeDraft(selectedRecipe);
+
+  setRecipeVisibility(
+    selectedRecipe.visibility === "public"
+      ? "public"
+      : "private"
+  );
+console.log("selectedRecipe", selectedRecipe);
+  setRecipeTags(selectedRecipe.tags ?? []);
+  setIsEditingRecipe(true);
+}}
   
   className={`relative w-full rounded-full bg-[#fff4ef] px-4 py-2 text-[#a63a0a] transition ${
   recipeTourStep === 1
@@ -10879,34 +11020,60 @@ Bake for 25 minutes`}
 ) : (
   <>
     <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        if (!selectedRecipe) return;
-        updateSelectedRecipe(selectedRecipe);
-      }}
-      className="w-full rounded-full bg-[#a63a0a] px-6 py-3 text-white"
-    >
-      Save Changes
-    </button>
+  type="button"
+  onClick={(e) => {
+    e.stopPropagation();
+    if (!selectedRecipe) return;
+    updateSelectedRecipe(selectedRecipe);
+  }}
+  className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white"
+>
+  {publishAfterSave
+    ? "Publish"
+    : "Save Changes"}
+</button>
 
     <button
       onClick={() => {
-        if (selectedRecipe?.id === "new-recipe") {
-          setSelectedRecipe(null);
-          setEditRecipeDraft(null);
-          setIsEditingRecipe(false);
-          setShowAllRecipes(true);
-          return;
-        }
+  setShowDiscardChangesConfirm(false);
 
-        setEditRecipeDraft(null);
-        setIsEditingRecipe(false);
-      }}
+  if (selectedRecipe?.id === "new-recipe") {
+    closeRecipeDetails();
+    return;
+  }
+
+  if (editRecipeDraft) {
+    setSelectedRecipe(editRecipeDraft);
+
+    setRecipeVisibility(
+      editRecipeDraft.visibility === "public"
+        ? "public"
+        : "private"
+    );
+
+    setRecipeTags(editRecipeDraft.tags ?? []);
+  }
+
+  setEditRecipeDraft(null);
+  setIsEditingRecipe(false);
+  setPublishAfterSave(false);
+  setPublishValidationErrors([]);
+}}
       className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
     >
       Cancel Editing
     </button>
+    <button
+  type="button"
+  onClick={() => {
+    if (confirm(`Delete ${selectedRecipe.title}?`)) {
+      deleteRecipe(selectedRecipe.id);
+    }
+  }}
+  className="w-full rounded-full border border-red-500 px-4 py-2 font-bold text-red-600"
+>
+  Delete
+</button>
   </>
 )}
 </div>
@@ -11045,6 +11212,20 @@ Bake for 25 minutes`}
 </div>
   </div>
 )}
+{publishAfterSave && (
+  <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+    <h3 className="text-lg font-bold text-[#8f3108]">
+      Finish your recipe before publishing
+    </h3>
+
+    <p className="mt-2 text-[#6d5549]">
+      Your recipe is almost ready! Before it can be shared with the
+      Hey Chef community, please complete the highlighted fields below.
+      Once everything is filled out, click
+      <strong> Publish</strong>.
+    </p>
+  </div>
+)}
 {selectedRecipe.type !== "grocery" && (
   <div className="mb-5 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-4">
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -11101,9 +11282,61 @@ Bake for 25 minutes`}
   <button
     type="button"
     onClick={() => {
-  if (recipeVisibility === "private") {
-    setShowPublishModal(true);
+  if (recipeVisibility !== "private") return;
+
+  const errors: string[] = [];
+
+  if (!selectedRecipe.title?.trim()) {
+    errors.push("title");
   }
+
+  if (!selectedRecipe.cookTime?.trim()) {
+    errors.push("cookTime");
+  }
+
+  if (!selectedRecipe.servings?.trim()) {
+    errors.push("servings");
+  }
+
+  if (!selectedRecipe.category?.trim()) {
+    errors.push("category");
+  }
+
+  if (recipeTags.length === 0) {
+    errors.push("tags");
+  }
+
+  const validIngredients =
+    selectedRecipe.ingredients?.filter(
+      (ingredient) => ingredient.trim().length > 0
+    ) || [];
+
+  if (validIngredients.length === 0) {
+    errors.push("ingredients");
+  }
+
+  const validSteps =
+    selectedRecipe.steps?.filter(
+      (step) => step.trim().length > 0
+    ) || [];
+
+  if (validSteps.length === 0) {
+    errors.push("steps");
+  }
+
+  if (errors.length > 0) {
+    setPublishValidationErrors(errors);
+    setPublishAfterSave(true);
+    setIsEditingRecipe(true);
+
+    showToast(
+      "Complete the highlighted fields before publishing."
+    );
+
+    return;
+  }
+
+  setShowPublishModal(true);
 }}
     className={`rounded-2xl border px-4 py-3 text-left transition ${
       recipeVisibility === "public"
@@ -11132,12 +11365,33 @@ Bake for 25 minutes`}
 
     <label className="mb-2 block font-bold">Title</label>
     <input
-      value={selectedRecipe.title || ""}
-      onChange={(e) =>
-        setSelectedRecipe({ ...selectedRecipe, title: e.target.value })
-      }
-      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+  value={selectedRecipe.title || ""}
+  onChange={(e) => {
+    setSelectedRecipe({
+      ...selectedRecipe,
+      title: e.target.value,
+    });
+
+    setPublishValidationErrors((current) =>
+      current.filter((field) => field !== "title")
+    );
+  }}
+  className={`w-full rounded-xl border p-3 ${
+    publishValidationErrors.includes("title")
+      ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+      : "border-[#ead7c8] bg-white"
+  }`}
+/>
+
+{publishValidationErrors.includes("title") && (
+  <p className="mb-4 mt-2 text-sm font-semibold text-red-600">
+    Add a recipe title.
+  </p>
+)}
+
+{!publishValidationErrors.includes("title") && (
+  <div className="mb-4" />
+)}
 
     <label className="mb-2 block font-bold">
   Recipe Source <span className="font-normal text-[#6d5549]">(optional)</span>
@@ -11202,61 +11456,131 @@ Bake for 25 minutes`}
       </>
     )}
 
-    <label className="mb-2 block font-bold">Cook Time</label>
     <input
-      value={selectedRecipe.cookTime || ""}
-      onChange={(e) =>
-        setSelectedRecipe({ ...selectedRecipe, cookTime: e.target.value })
-      }
-      placeholder="30 min"
-      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+  value={selectedRecipe.cookTime || ""}
+  onChange={(e) => {
+    setSelectedRecipe({
+      ...selectedRecipe,
+      cookTime: e.target.value,
+    });
 
-    <label className="mb-2 block font-bold">Servings</label>
+    setPublishValidationErrors((current) =>
+      current.filter((field) => field !== "cookTime")
+    );
+  }}
+  placeholder="30 min"
+  className={`w-full rounded-xl border p-3 ${
+    publishValidationErrors.includes("cookTime")
+      ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+      : "border-[#ead7c8] bg-white"
+  }`}
+/>
+
+{publishValidationErrors.includes("cookTime") && (
+  <p className="mb-4 mt-2 text-sm font-semibold text-red-600">
+    Add a cook time.
+  </p>
+)}
+
+{!publishValidationErrors.includes("cookTime") && (
+  <div className="mb-4" />
+)}
+
     <input
-      value={selectedRecipe.servings || ""}
-      onChange={(e) =>
-        setSelectedRecipe({ ...selectedRecipe, servings: e.target.value })
-      }
-      placeholder="1 serving"
-      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
-    />
+  value={selectedRecipe.servings || ""}
+  onChange={(e) => {
+    setSelectedRecipe({
+      ...selectedRecipe,
+      servings: e.target.value,
+    });
+
+    setPublishValidationErrors((current) =>
+      current.filter((field) => field !== "servings")
+    );
+  }}
+  placeholder="1 serving"
+  className={`w-full rounded-xl border p-3 ${
+    publishValidationErrors.includes("servings")
+      ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+      : "border-[#ead7c8] bg-white"
+  }`}
+/>
+
+{publishValidationErrors.includes("servings") && (
+  <p className="mb-4 mt-2 text-sm font-semibold text-red-600">
+    Add the number of servings.
+  </p>
+)}
+
+{!publishValidationErrors.includes("servings") && (
+  <div className="mb-4" />
+)}
 
     <label className="mb-2 block font-bold">Category</label>
     <select
-      value={selectedRecipe.category || ""}
-      onChange={(e) =>
-        setSelectedRecipe({ ...selectedRecipe, category: e.target.value })
-      }
-      className="mb-4 w-full rounded-xl border border-[#ead7c8] p-3"
-    >
-      <option value="">Select Category</option>
-      <option value="Main Dish">Main Dish</option>
-      <option value="Side Dish">Side Dish</option>
-      <option value="Dessert">Dessert</option>
-      <option value="Breakfast">Breakfast</option>
-      <option value="Soup">Soup</option>
-      <option value="Snack">Snack</option>
-      <option value="Drink">Drink</option>
-      <option value="Frozen Food">Frozen Food</option>
-      <option value="Boxed Meal">Boxed Meal</option>
-      <option value="Prepared Food">Prepared Food</option>
-      <option value="Canned Food">Canned Food</option>
-    </select>
+  value={selectedRecipe.category || ""}
+  onChange={(e) => {
+    setSelectedRecipe({
+      ...selectedRecipe,
+      category: e.target.value,
+    });
+
+    setPublishValidationErrors((current) =>
+      current.filter((field) => field !== "category")
+    );
+  }}
+  className={`w-full rounded-xl border p-3 ${
+    publishValidationErrors.includes("category")
+      ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+      : "border-[#ead7c8] bg-white"
+  }`}
+>
+  <option value="">Select Category</option>
+  <option value="Main Dish">Main Dish</option>
+  <option value="Side Dish">Side Dish</option>
+  <option value="Dessert">Dessert</option>
+  <option value="Breakfast">Breakfast</option>
+  <option value="Soup">Soup</option>
+  <option value="Snack">Snack</option>
+  <option value="Drink">Drink</option>
+  <option value="Frozen Food">Frozen Food</option>
+  <option value="Boxed Meal">Boxed Meal</option>
+  <option value="Prepared Food">Prepared Food</option>
+  <option value="Canned Food">Canned Food</option>
+</select>
+
+{publishValidationErrors.includes("category") && (
+  <p className="mb-4 mt-2 text-sm font-semibold text-red-600">
+    Choose a category.
+  </p>
+)}
+
+{!publishValidationErrors.includes("category") && (
+  <div className="mb-4" />
+)}
 
       {selectedRecipe.type !== "grocery" && (
-  <div className="mb-5">
+  <div
+    className={`mb-5 rounded-2xl border p-4 ${
+      publishValidationErrors.includes("tags")
+        ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+        : "border-transparent"
+    }`}
+  >
     <div className="mb-3">
       <p className="font-bold text-[#2b1b14]">
         Recipe Tags
-        <span className="ml-1 font-normal text-[#6d5549]">
-          (optional)
-        </span>
       </p>
 
       <p className="mt-1 text-sm text-[#6d5549]">
-        Choose all that apply.
+        Choose at least one tag. Select all that apply.
       </p>
+
+      {publishValidationErrors.includes("tags") && (
+        <p className="mt-2 text-sm font-semibold text-red-600">
+          Choose at least one recipe tag.
+        </p>
+      )}
     </div>
 
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -11273,6 +11597,12 @@ Bake for 25 minutes`}
         "Dairy Free",
         "Kid Friendly",
         "Comfort Food",
+        "Under 30 Minutes",
+        "Freezer Friendly",
+        "Beginner Friendly",
+        "No Cook",
+        "Low Effort",
+        "Date Night",
       ].map((tag) => {
         const isSelected = recipeTags.includes(tag);
 
@@ -11282,19 +11612,27 @@ Bake for 25 minutes`}
             className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
               isSelected
                 ? "border-[#a63a0a] bg-[#fff4ef]"
-                : "border-[#ead7c8] bg-white"
+                : publishValidationErrors.includes("tags")
+                  ? "border-red-300 bg-white"
+                  : "border-[#ead7c8] bg-white"
             }`}
           >
             <input
               type="checkbox"
               checked={isSelected}
               onChange={(event) => {
-                if (event.target.checked) {
-                  setRecipeTags([...recipeTags, tag]);
-                } else {
-                  setRecipeTags(
-                    recipeTags.filter(
+                const updatedTags = event.target.checked
+                  ? [...recipeTags, tag]
+                  : recipeTags.filter(
                       (currentTag) => currentTag !== tag
+                    );
+
+                setRecipeTags(updatedTags);
+
+                if (updatedTags.length > 0) {
+                  setPublishValidationErrors((current) =>
+                    current.filter(
+                      (field) => field !== "tags"
                     )
                   );
                 }
@@ -11315,34 +11653,92 @@ Bake for 25 minutes`}
 
 
     {selectedRecipe.type !== "grocery" && (
-      <>
-        <label className="mb-2 block font-bold">Ingredients</label>
-        <textarea
-          value={selectedRecipe.ingredients.join("\n")}
-          onChange={(e) =>
-            setSelectedRecipe({
-              ...selectedRecipe,
-              ingredients: e.target.value.split("\n"),
-            })
-          }
-          rows={10}
-          className="mb-4 min-h-[250px] w-full rounded-xl border border-[#ead7c8] p-3"
-        />
+  <>
+    <div
+      className={`mb-5 rounded-2xl border p-4 ${
+        publishValidationErrors.includes("ingredients")
+          ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+          : "border-transparent"
+      }`}
+    >
+      <label className="mb-2 block font-bold">
+        Ingredients
+      </label>
 
-        <label className="mb-2 block font-bold">Steps</label>
-        <textarea
-          value={selectedRecipe.steps.join("\n")}
-          onChange={(e) => 
-            setSelectedRecipe({
-              ...selectedRecipe,
-              steps: e.target.value.split("\n"),
-            })
+      {publishValidationErrors.includes("ingredients") && (
+        <p className="mb-3 text-sm font-semibold text-red-600">
+          Add at least one ingredient before publishing.
+        </p>
+      )}
+
+      <textarea
+        value={selectedRecipe.ingredients.join("\n")}
+        onChange={(e) => {
+          setSelectedRecipe({
+            ...selectedRecipe,
+            ingredients: e.target.value.split("\n"),
+          });
+
+          if (e.target.value.trim()) {
+            setPublishValidationErrors((current) =>
+              current.filter(
+                (field) => field !== "ingredients"
+              )
+            );
           }
-          rows={12}
-          className="min-h-[300px] w-full rounded-xl border border-[#ead7c8] p-3"
-        />
-      </>
-    )}
+        }}
+        rows={10}
+        className={`min-h-[250px] w-full rounded-xl border p-3 ${
+          publishValidationErrors.includes("ingredients")
+            ? "border-red-400 bg-white"
+            : "border-[#ead7c8] bg-white"
+        }`}
+      />
+    </div>
+
+    <div
+      className={`mb-5 rounded-2xl border p-4 ${
+        publishValidationErrors.includes("steps")
+          ? "border-red-500 bg-red-50 ring-2 ring-red-200"
+          : "border-transparent"
+      }`}
+    >
+      <label className="mb-2 block font-bold">
+        Steps
+      </label>
+
+      {publishValidationErrors.includes("steps") && (
+        <p className="mb-3 text-sm font-semibold text-red-600">
+          Add at least one instruction step before publishing.
+        </p>
+      )}
+
+      <textarea
+        value={selectedRecipe.steps.join("\n")}
+        onChange={(e) => {
+          setSelectedRecipe({
+            ...selectedRecipe,
+            steps: e.target.value.split("\n"),
+          });
+
+          if (e.target.value.trim()) {
+            setPublishValidationErrors((current) =>
+              current.filter(
+                (field) => field !== "steps"
+              )
+            );
+          }
+        }}
+        rows={12}
+        className={`min-h-[300px] w-full rounded-xl border p-3 ${
+          publishValidationErrors.includes("steps")
+            ? "border-red-400 bg-white"
+            : "border-[#ead7c8] bg-white"
+        }`}
+      />
+    </div>
+  </>
+)}
   </div>
 )}
 
@@ -11820,6 +12216,38 @@ Bake for 25 minutes`}
 
           </div>
         </section>
+        {showDiscardChangesConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/40">
+    <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+      <h2 className="text-2xl font-bold text-[#2b1b14]">
+        Discard your changes?
+      </h2>
+
+      <p className="mt-3 text-[#6d5549]">
+        You have unsaved changes. If you leave now, your edits will be lost.
+      </p>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          onClick={() => setShowDiscardChangesConfirm(false)}
+          className="rounded-full border border-[#a63a0a] px-5 py-2 text-[#a63a0a]"
+        >
+          Keep Editing
+        </button>
+
+        <button
+          onClick={() => {
+            setShowDiscardChangesConfirm(false);
+            closeRecipeDetails();
+          }}
+          className="rounded-full bg-red-600 px-5 py-2 text-white"
+        >
+          Discard Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         
 <BottomNav />
  <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
@@ -12749,6 +13177,7 @@ if (!hasLoadedUser) {
         })
         .select()
         .single();
+        console.log("Saved row:", data);
 
       if (error || !data) {
         console.error(error);

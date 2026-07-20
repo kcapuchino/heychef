@@ -102,18 +102,24 @@ const COMMUNITY_CATEGORIES = [
 ];
 
 const FEATURED_TAGS = [
+  "Quick & Easy",
+  "Family Favorite",
+  "Budget Friendly",
+  "Meal Prep",
+  "One Pot",
+  "High Protein",
   "Vegetarian",
   "Vegan",
   "Gluten Free",
   "Dairy Free",
-  "High Protein",
-  "Quick & Easy",
-  "Meal Prep",
-  "One Pot",
-  "Budget Friendly",
   "Kid Friendly",
-  "Family Favorite",
   "Comfort Food",
+  "Under 30 Minutes",
+  "Freezer Friendly",
+  "Beginner Friendly",
+  "No Cook",
+  "Low Effort",
+  "Date Night",
 ];
 
 
