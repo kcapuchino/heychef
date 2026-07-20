@@ -5816,6 +5816,16 @@ if (showProfile) {
   </div>
 </div>
 
+{toastMessage && (
+  <div
+    role="status"
+    aria-live="polite"
+    className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl"
+  >
+    {toastMessage}
+  </div>
+)}
+
   <div className="mt-8 border-t border-[#ead7c8] pt-6">
   <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-5">
     <p className="mb-1 text-sm font-bold uppercase tracking-[0.2em] text-red-700">
@@ -5905,6 +5915,7 @@ if (showProfile) {
 </section>
      </div> 
      </section>
+     
 
       <BottomNav />
        <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
@@ -7233,7 +7244,7 @@ const { error } = await supabase
     
 
       {toastMessage && (
-  <div className="fixed left-1/2 top-6 z-[9999] -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
   </div>
 )}
@@ -9193,7 +9204,7 @@ if (showPantry) {
         {showPantryModal && PantryModal()}
 
       {toastMessage && (
-  <div className="fixed left-1/2 top-6 z-[9999] -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
   </div>
 )}
@@ -13336,7 +13347,7 @@ window.history.pushState(
     
 
       {toastMessage && (
-  <div className="fixed left-1/2 top-6 z-[9999] -translate-x-1/2 rounded-full bg-[#2b1a12] px-6 py-3 text-white shadow-xl">
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
   </div>
 )}

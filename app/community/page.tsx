@@ -1810,7 +1810,7 @@ function openEngagementPopup() {
   <div
     role="status"
     aria-live="polite"
-    className="fixed bottom-24 left-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 whitespace-pre-line rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl"
+    className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl"
   >
     {toastMessage}
   </div>
