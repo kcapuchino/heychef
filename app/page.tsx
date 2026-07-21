@@ -418,14 +418,35 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [recipeTags, setRecipeTags] = useState<string[]>([]);
   const recipeImportInProgressRef = useRef(false);
   const [recipeFile, setRecipeFile] = useState<File | null>(null);
-const [isImportingFile, setIsImportingFile] = useState(false);
-const [recipeFileError, setRecipeFileError] = useState("");
+  const [isImportingFile, setIsImportingFile] = useState(false);
+  const [recipeFileError, setRecipeFileError] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showClearShoppingConfirm, setShowClearShoppingConfirm] =
+  useState(false);
+  const [showResetWeekConfirm, setShowResetWeekConfirm] =
+  useState(false);
   const [showDiscardChangesConfirm, setShowDiscardChangesConfirm] =
   useState(false);
+  const [showResetPantryConfirm, setShowResetPantryConfirm] =
+  useState(false);
+  const [mealPlanRecipeToRemove, setMealPlanRecipeToRemove] =
+  useState<{
+    date: string;
+    meal: string;
+    mealPlanId: string;
+    title: string;
+  } | null>(null);
+  const [recipeToDelete, setRecipeToDelete] =
+  useState<Recipe | null>(null);
 
+const [shoppingItemToRemove, setShoppingItemToRemove] =
+  useState<string | null>(null);
+
+const [pantryItemToDelete, setPantryItemToDelete] =
+  useState<PantryItem | null>(null);
+  
   const [shoppingList, setShoppingList] = useState<string[]>([])
   const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
   const [showShoppingList, setShowShoppingList] = useState(false);
@@ -528,6 +549,8 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const [showAllRecentlyMade, setShowAllRecentlyMade] = useState(false);
 
   const [loginPassword, setLoginPassword] = useState("");
+  const [confirmSignupPassword, setConfirmSignupPassword] =
+  useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup">("signup");
   const [authError, setAuthError] = useState("");
   const [acceptedTerms, setAcceptedTerms] =
@@ -537,7 +560,25 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const LEGAL_VERSION = "2026-07-10";
 
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] =
+  useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] =
+  useState("");
+
+const [showNewPassword, setShowNewPassword] =
+  useState(false);
+
+const [isChangingPassword, setIsChangingPassword] =
+  useState(false);
+
+const [changePasswordError, setChangePasswordError] =
+  useState("");
+
+  const [showResetPasswordModal, setShowResetPasswordModal] =
+  useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showEngagementPopup, setShowEngagementPopup] =
   useState(false);
@@ -1098,47 +1139,52 @@ useEffect(() => {
   
 useEffect(() => {
   async function loadProfile() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    if (!currentUserId) return;
 
-    if (!user) return;
-
-const { data, error } = await supabase
+    const { data, error } = await supabase
   .from("profiles")
   .select(`
-  display_name,
-  bio,
-  founding_chef,
-  lifetime_premium,
-  supported_at,
-  tags
-`)
-  .eq("id", user.id)
-  .single();
+    id,
+    display_name,
+    bio,
+    founding_chef,
+    lifetime_premium,
+    supported_at
+  `)
+  .eq("id", currentUserId)
+  .maybeSingle();
 
-if (error) {
-  console.error("loadRecentlyMade failed:", {
-    message: error.message,
-    details: error.details,
-    hint: error.hint,
-    code: error.code,
-  });
-  return;
-}
+console.log("PROFILE DEBUG:", {
+  currentUserId,
+  data,
+  error,
+});
 
-setDisplayName(data?.display_name || "");
-setBio(data?.bio || "");
-setFoundingChef(Boolean(data?.founding_chef));
-setLifetimePremium(Boolean(data?.lifetime_premium));
-setSupportedAt(data?.supported_at || null);
+    if (error) {
+      console.error("loadProfile failed:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      return;
+    }
 
+    if (!data) {
+      console.warn("No profile row found for:", currentUserId);
+      return;
+    }
+
+    setDisplayName(data.display_name || "");
+    setBio(data.bio || "");
+    setFoundingChef(Boolean(data.founding_chef));
+    setLifetimePremium(Boolean(data.lifetime_premium));
+    setSupportedAt(data.supported_at || null);
   }
 
-  if (userEmail) {
-    loadProfile();
-  }
-}, [userEmail]);
+  loadProfile();
+}, [currentUserId]);
+
   useEffect(() => {
   async function loadSession() {
     const {
@@ -1906,7 +1952,7 @@ useEffect(() => {
     return;
   }
 
-  const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = loginEmail.trim().toLowerCase();
 
   if (authMode === "signup" && !acceptedTerms) {
   setAuthError(
@@ -1992,18 +2038,41 @@ async function updatePassword() {
   showToast("Password updated. You can log in now.");
 }
 async function changePasswordNow() {
-  const password = prompt("Enter your new password:");
+  const trimmedPassword = newPassword.trim();
 
-  if (!password) return;
+  setChangePasswordError("");
 
-  const { error } = await supabase.auth.updateUser({
-    password,
-  });
-
-  if (error) {
-    showToast(error.message);
+  if (trimmedPassword.length < 8) {
+    setChangePasswordError(
+      "Use at least 8 characters."
+    );
     return;
   }
+
+  if (trimmedPassword !== confirmNewPassword) {
+    setChangePasswordError(
+      "The passwords do not match."
+    );
+    return;
+  }
+
+  setIsChangingPassword(true);
+
+  const { error } = await supabase.auth.updateUser({
+    password: trimmedPassword,
+  });
+
+  setIsChangingPassword(false);
+
+  if (error) {
+    setChangePasswordError(error.message);
+    return;
+  }
+
+  setNewPassword("");
+  setConfirmNewPassword("");
+  setChangePasswordError("");
+  setShowChangePasswordModal(false);
 
   showToast("Password updated.");
 }
@@ -4804,13 +4873,6 @@ if (product.image) {
 }
 
 async function resetPantry() {
-  if (
-    !confirm(
-      "Remove all pantry items and start over?"
-    )
-  ) {
-    return;
-  }
 
   const {
     data: { user },
@@ -5092,25 +5154,7 @@ function RecipeMeta({ recipe }: { recipe: Recipe }) {
     </div>
   );
 }
-async function resetPassword() {
-  const email = prompt("Enter your email address:");
 
-  if (!email) return;
-
-  const { error } = await supabase.auth.resetPasswordForEmail(
-    email.trim().toLowerCase(),
-    {
-      redirectTo: "https://heychef-six.vercel.app",
-    }
-  );
-
-  if (error) {
-    showToast(error.message);
-    return;
-  }
-
-  showToast("Password reset email sent.");
-}
 function PantryModal() {
 
   if (!showPantryModal) return null;
@@ -5356,6 +5400,37 @@ function BottomNav() {
     </div>
   );
 }
+async function resetPassword() {
+  const normalizedEmail = resetEmail.trim().toLowerCase();
+
+  if (!normalizedEmail) {
+    showToast("Enter your email address.");
+    return;
+  }
+
+  setIsResettingPassword(true);
+
+  const { error } =
+    await supabase.auth.resetPasswordForEmail(
+      normalizedEmail,
+      {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }
+    );
+
+  setIsResettingPassword(false);
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  setShowResetPasswordModal(false);
+  setResetEmail("");
+
+  showToast("Password reset email sent. Check your inbox.");
+}
+
 function renderAuthCard() {
   return (
     <>
@@ -5372,13 +5447,31 @@ function renderAuthCard() {
       <form
   onSubmit={(e) => {
     e.preventDefault();
+    setAuthError("");
 
-    const formData = new FormData(e.currentTarget);
+    if (
+      authMode === "signup" &&
+      loginPassword.length < 8
+    ) {
+      setAuthError(
+        "Use at least 8 characters for your password."
+      );
+      return;
+    }
+
+    if (
+      authMode === "signup" &&
+      loginPassword !== confirmSignupPassword
+    ) {
+      setAuthError("The passwords do not match.");
+      return;
+    }
+
     loginUser(
-  String(formData.get("email") || ""),
-  String(formData.get("password") || ""),
-  String(formData.get("displayName") || "")
-);
+      loginEmail,
+      loginPassword,
+      signupName
+    );
   }}
 >
   {authMode === "signup" && (
@@ -5392,26 +5485,30 @@ function renderAuthCard() {
   />
 )}
   <input
-    name="email"
-    type="email"
-    placeholder="Email"
-    autoComplete="email"
-    className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
-  />
+  name="email"
+  type="email"
+  value={loginEmail}
+  onChange={(e) => setLoginEmail(e.target.value)}
+  placeholder="Email"
+  autoComplete="email"
+  className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-4 text-lg text-[#2b1a12] outline-none"
+/>
 
 
 <div className="relative mb-4">
   <input
-    name="password"
-    type={showPassword ? "text" : "password"}
-    placeholder="Password"
-    autoComplete={
-      authMode === "signup"
-        ? "new-password"
-        : "current-password"
-    }
-    className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
-  />
+  name="password"
+  type={showPassword ? "text" : "password"}
+  value={loginPassword}
+  onChange={(e) => setLoginPassword(e.target.value)}
+  placeholder="Password"
+  autoComplete={
+    authMode === "signup"
+      ? "new-password"
+      : "current-password"
+  }
+  className="w-full rounded-full border border-[#ead7c8] px-5 py-3 pr-20"
+/>
 
   <button
     type="button"
@@ -5423,38 +5520,28 @@ function renderAuthCard() {
 </div>
 
 {authMode === "signup" && (
-  <label className="mb-3 flex items-start gap-2 text-xs leading-5 text-[#6d5549]">
-    <input
-      type="checkbox"
-      checked={acceptedTerms}
-      onChange={(event) =>
-        setAcceptedTerms(event.target.checked)
-      }
-      className="mt-0.5 h-4 w-4 shrink-0 accent-[#a63a0a]"
-    />
+  <>
+    <div className="mb-4 rounded-2xl bg-[#fff7f1] p-4 text-sm text-[#6d5549]">
+      <p className="font-bold text-[#2b1b14]">
+        Password tips
+      </p>
 
-    <span>
-      I agree to the{" "}
-      <a
-        href="/terms"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-bold text-[#a63a0a] underline"
-      >
-        Terms of Use
-      </a>{" "}
-      and acknowledge the{" "}
-      <a
-        href="/privacy"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-bold text-[#a63a0a] underline"
-      >
-        Privacy Policy
-      </a>
-      .
-    </span>
-  </label>
+      <p className="mt-1">
+        Use at least 8 characters. A mix of words, numbers, and symbols is stronger.
+      </p>
+    </div>
+
+    <input
+      type={showPassword ? "text" : "password"}
+      value={confirmSignupPassword}
+      onChange={(e) =>
+        setConfirmSignupPassword(e.target.value)
+      }
+      placeholder="Confirm password"
+      autoComplete="new-password"
+      className="mb-4 w-full rounded-full border border-[#ead7c8] bg-white px-5 py-3"
+    />
+  </>
 )}
 
 {authError && (
@@ -5463,11 +5550,7 @@ function renderAuthCard() {
   </p>
 )}
 {toastMessage && (
-  <div
-    role="status"
-    aria-live="polite"
-    className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl"
-  >
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
   </div>
 )}
@@ -5518,19 +5601,30 @@ function renderAuthCard() {
 
       {authMode === "login" && (
   <button
-    type="button"
-    onClick={resetPassword}
-    className="mt-4 w-full text-[#a63a0a] underline"
-  >
-    Forgot password?
-  </button>
+  type="button"
+  onClick={() => {
+    setResetEmail(loginEmail || "");
+    setShowResetPasswordModal(true);
+  }}
+  className="mt-4 w-full text-[#a63a0a] underline"
+>
+  Forgot password?
+</button>
 )}
+
+
 
 <button
   type="button"
-  onClick={() =>
-    setAuthMode(authMode === "login" ? "signup" : "login")
-  }
+  onClick={() => {
+  setAuthMode(
+    authMode === "login" ? "signup" : "login"
+  );
+
+  setLoginPassword("");
+  setConfirmSignupPassword("");
+  setAuthError("");
+}}
   className="mt-4 w-full text-[#a63a0a]"
 >
   {authMode === "login"
@@ -5563,6 +5657,7 @@ if (currentPage === "reminders") {
           placeholder="New password"
           className="mb-4 w-full rounded-full border border-[#ead7c8] px-5 py-3"
         />
+        
 
         {authError && <p className="mb-4 text-red-600">{authError}</p>}
 
@@ -5572,7 +5667,14 @@ if (currentPage === "reminders") {
         >
           Save new password
         </button>
+        
       </section>
+      {toastMessage && (
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
+    {toastMessage}
+  </div>
+)}
+
       <BottomNav />
     </main>
   );
@@ -5644,6 +5746,61 @@ if (!userEmail) {
           <div className="mb-8 rounded-[2rem] bg-white p-6 shadow-xl md:hidden">
             {renderAuthCard()}
           </div>
+          {showResetPasswordModal && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Reset your password
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Enter the email address connected to your Hey Chef account.
+      </p>
+
+      <label
+        htmlFor="reset-password-email"
+        className="mt-5 block font-bold text-white"
+      >
+        Email address
+      </label>
+
+      <input
+        id="reset-password-email"
+        type="email"
+        value={resetEmail}
+        onChange={(event) => setResetEmail(event.target.value)}
+        placeholder="you@example.com"
+        autoComplete="email"
+        className="mt-2 w-full rounded-full border border-white/30 bg-white px-5 py-3 text-[#2b1b14]"
+      />
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setShowResetPasswordModal(false);
+            setResetEmail("");
+          }}
+          disabled={isResettingPassword}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={resetPassword}
+          disabled={isResettingPassword || !resetEmail.trim()}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isResettingPassword
+            ? "Sending…"
+            : "Send Reset Email"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
           
 
@@ -6063,11 +6220,142 @@ if (showProfile) {
 </button>
 
   <button
-    onClick={changePasswordNow}
-    className="mt-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-  >
-    Change Password
-  </button>
+  type="button"
+  onClick={() => {
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setChangePasswordError("");
+    setShowNewPassword(false);
+    setShowChangePasswordModal(true);
+  }}
+  className="mt-3 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  Change Password
+</button>
+{showChangePasswordModal && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="change-password-title"
+      className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl"
+    >
+      <h2
+        id="change-password-title"
+        className="text-2xl font-bold text-white"
+      >
+        Change your password
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Choose a strong password you have not used before.
+      </p>
+
+      <div className="mt-5 rounded-2xl bg-white/10 p-4 text-sm text-white/80">
+        <p className="font-bold text-white">
+          Password tips
+        </p>
+
+        <p className="mt-2">
+          Use at least 8 characters. A mix of words, numbers,
+          and symbols is stronger and easier to remember.
+        </p>
+      </div>
+
+      <label
+        htmlFor="new-account-password"
+        className="mt-5 block font-bold text-white"
+      >
+        New password
+      </label>
+
+      <div className="relative mt-2">
+        <input
+          id="new-account-password"
+          type={showNewPassword ? "text" : "password"}
+          value={newPassword}
+          onChange={(event) => {
+            setNewPassword(event.target.value);
+            setChangePasswordError("");
+          }}
+          autoComplete="new-password"
+          placeholder="Enter a new password"
+          className="w-full rounded-full border border-white/30 bg-white px-5 py-3 pr-20 text-[#2b1b14] outline-none"
+        />
+
+        <button
+          type="button"
+          onClick={() =>
+            setShowNewPassword((current) => !current)
+          }
+          className="absolute right-5 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#a63a0a]"
+        >
+          {showNewPassword ? "Hide" : "Show"}
+        </button>
+      </div>
+
+      <label
+        htmlFor="confirm-account-password"
+        className="mt-5 block font-bold text-white"
+      >
+        Confirm new password
+      </label>
+
+      <input
+        id="confirm-account-password"
+        type={showNewPassword ? "text" : "password"}
+        value={confirmNewPassword}
+        onChange={(event) => {
+          setConfirmNewPassword(event.target.value);
+          setChangePasswordError("");
+        }}
+        autoComplete="new-password"
+        placeholder="Enter it again"
+        className="mt-2 w-full rounded-full border border-white/30 bg-white px-5 py-3 text-[#2b1b14] outline-none"
+      />
+
+      {changePasswordError && (
+        <p
+          role="alert"
+          className="mt-3 text-sm font-semibold text-[#ffd5c2]"
+        >
+          {changePasswordError}
+        </p>
+      )}
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setShowChangePasswordModal(false);
+            setNewPassword("");
+            setConfirmNewPassword("");
+            setChangePasswordError("");
+          }}
+          disabled={isChangingPassword}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={changePasswordNow}
+          disabled={
+            isChangingPassword ||
+            !newPassword.trim() ||
+            !confirmNewPassword.trim()
+          }
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isChangingPassword
+            ? "Updating…"
+            : "Update Password"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
   <div className="mt-8 border-t border-[#ead7c8] pt-6">
   <div className="rounded-[1.5rem] border border-[#ead7c8] bg-[#fffaf5] p-5">
     <p className="mb-1 text-sm font-bold uppercase tracking-[0.2em] text-[#a63a0a]">
@@ -6131,15 +6419,6 @@ if (showProfile) {
   </div>
 </div>
 
-{toastMessage && (
-  <div
-    role="status"
-    aria-live="polite"
-    className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl"
-  >
-    {toastMessage}
-  </div>
-)}
 
   <div className="mt-8 border-t border-[#ead7c8] pt-6">
   <div className="rounded-[1.5rem] border border-red-200 bg-red-50 p-5">
@@ -6230,7 +6509,11 @@ if (showProfile) {
 </section>
      </div> 
      </section>
-     
+     {toastMessage && (
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
+    {toastMessage}
+  </div>
+)}
 
       <BottomNav />
        <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
@@ -6773,41 +7056,75 @@ if (showProfile) {
           <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
   <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
     <div>
-      <h1 className="text-4xl font-bold md:text-5xl">Shopping List</h1>
+      <h1 className="text-4xl font-bold md:text-5xl">
+        Shopping List
+      </h1>
 
-       <p className="mt-2 text-[#6d5549]">
+      <p className="mt-2 text-[#6d5549]">
         Review ingredients you need and move items into your pantry.
       </p>
     </div>
 
     <button
-  onClick={async () => {
-    if (confirm("Clear your shopping list?")) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("shopping_items")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) {
-        showToast(error.message);
-        return;
-      }
-
-      setShoppingList([]);
-      showToast("Shopping list cleared.");
-    }
-  }}
-  className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
->
-  🗑 Clear Shopping List
-</button>
+      type="button"
+      onClick={() => setShowClearShoppingConfirm(true)}
+      className="rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+    >
+      🗑 Clear Shopping List
+    </button>
   </div>
+
+  {showClearShoppingConfirm && (
+    <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-5">
+      <div className="w-full max-w-sm rounded-2xl bg-[#2b1b14] p-6 text-center text-white shadow-xl">
+        <h2 className="text-xl font-bold">
+          Clear Shopping List?
+        </h2>
+
+        <p className="mt-2 text-sm text-white/80">
+          This will remove all items from your shopping list.
+        </p>
+
+        <div className="mt-5 flex gap-3">
+          <button
+            type="button"
+            onClick={() => setShowClearShoppingConfirm(false)}
+            className="flex-1 rounded-full border border-white/40 px-5 py-3 font-bold text-white"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={async () => {
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+
+              if (!user) return;
+
+              const { error } = await supabase
+                .from("shopping_items")
+                .delete()
+                .eq("user_id", user.id);
+
+              if (error) {
+                showToast(error.message);
+                return;
+              }
+
+              setShoppingList([]);
+              setShowClearShoppingConfirm(false);
+              showToast("Shopping list cleared.");
+            }}
+            className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+          >
+            Clear List
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
     <input
@@ -7219,16 +7536,12 @@ const { error } = await supabase
       </button>
 
       <button
-        onClick={() => {
-          if (!confirm(`Remove ${item} from your shopping list?`))
-            return;
-
-          removeShoppingItem(item);
-        }}
-        className="text-sm font-medium text-[#a63a0a]"
-      >
-        Remove
-      </button>
+  type="button"
+  onClick={() => setShoppingItemToRemove(item)}
+  className="text-sm font-medium text-[#a63a0a]"
+>
+  Remove
+</button>
     </>
   )}
 </div>
@@ -8120,33 +8433,12 @@ const { error } = await supabase
     </button>
 
     <button
-      onClick={async () => {
-  if (confirm("Clear your meal plan and start fresh?")) {
-    const { error } = await supabase
-      .from("meal_plan")
-  .delete()
-  .eq("week_start", getWeekStartDate(activePlannerWeek));
-
-    if (error) {
-      showToast(error.message);
-      return;
-    }
-
-    const updatedMealPlan = { ...mealPlan };
-
-Object.keys(updatedMealPlan).forEach((key) => {
-  if (key.startsWith(`${activePlannerWeek}-`)) {
-    delete updatedMealPlan[key];
-  }
-});
-
-setMealPlan(updatedMealPlan);
-  }
-}}
-      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
-    >
-      Reset Week
-    </button>
+  type="button"
+  onClick={() => setShowResetWeekConfirm(true)}
+  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
+>
+  Reset Week
+</button>
   </div>
 </div>
 </div>
@@ -8406,20 +8698,15 @@ setMealPlan(updatedMealPlan);
 </div>
 
                         <button
-  onClick={() => {
-    if (
-      !confirm(
-        `Remove ${recipe.title} from your meal plan?`
-      )
-    )
-      return;
-
-    removeRecipeFromMealPlan(
-      day.date,
+  type="button"
+  onClick={() =>
+    setMealPlanRecipeToRemove({
+      date: day.date,
       meal,
-      recipe.mealPlanId
-    );
-  }}
+      mealPlanId: recipe.mealPlanId,
+      title: recipe.title,
+    })
+  }
   className="shrink-0 text-[#a63a0a]"
 >
   Remove
@@ -8450,6 +8737,105 @@ setMealPlan(updatedMealPlan);
   ))}
 </div>
         </section>
+        {toastMessage && (
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
+    {toastMessage}
+  </div>
+)}
+{showResetWeekConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-5">
+    <div className="w-full max-w-sm rounded-2xl bg-[#2b1b14] p-6 text-center text-white shadow-xl">
+      <h2 className="text-xl font-bold">
+        Reset This Week?
+      </h2>
+
+      <p className="mt-2 text-sm text-white/80">
+        This will remove every meal from this week's plan.
+      </p>
+
+      <div className="mt-5 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setShowResetWeekConfirm(false)}
+          className="flex-1 rounded-full border border-white/40 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const { error } = await supabase
+              .from("meal_plan")
+              .delete()
+              .eq("week_start", getWeekStartDate(activePlannerWeek));
+
+            if (error) {
+              showToast(error.message);
+              return;
+            }
+
+            const updatedMealPlan = { ...mealPlan };
+
+            Object.keys(updatedMealPlan).forEach((key) => {
+              if (key.startsWith(`${activePlannerWeek}-`)) {
+                delete updatedMealPlan[key];
+              }
+            });
+
+            setMealPlan(updatedMealPlan);
+            setShowResetWeekConfirm(false);
+            showToast("Week reset.");
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Reset Week
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{mealPlanRecipeToRemove && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-5">
+    <div className="w-full max-w-sm rounded-2xl bg-[#2b1b14] p-6 text-center text-white shadow-xl">
+      <h2 className="text-xl font-bold">
+        Remove Recipe?
+      </h2>
+
+      <p className="mt-2 text-sm text-white/80">
+        Remove{" "}
+        <strong>{mealPlanRecipeToRemove.title}</strong> from
+        your meal plan?
+      </p>
+
+      <div className="mt-5 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setMealPlanRecipeToRemove(null)}
+          className="flex-1 rounded-full border border-white/40 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            removeRecipeFromMealPlan(
+              mealPlanRecipeToRemove.date,
+              mealPlanRecipeToRemove.meal,
+              mealPlanRecipeToRemove.mealPlanId
+            );
+
+            setMealPlanRecipeToRemove(null);
+          }}
+          className="flex-1 rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 <BottomNav />
  <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
           <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
@@ -9154,11 +9540,12 @@ if (showPantry) {
     {isBulkEditingPantry ? "Cancel Bulk Edit" : "Bulk Edit"}
   </button>
    <button
-    onClick={resetPantry}
-    className="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600"
-  >
-    Reset Pantry
-  </button>
+  type="button"
+  onClick={() => setShowResetPantryConfirm(true)}
+  className="rounded-full border border-red-300 px-4 py-2 text-sm font-bold text-red-600"
+>
+  Reset Pantry
+</button>
 
   {isBulkEditingPantry && (
   <button
@@ -9469,27 +9856,12 @@ if (showPantry) {
     </button>
 
     <button
-      onClick={async () => {
-        if (!confirm(`Delete ${item.name} from your pantry?`)) return;
-
-        const { error } = await supabase
-          .from("pantry_items")
-          .delete()
-          .eq("id", item.id);
-
-        if (error) {
-          showToast(error.message);
-          return;
-        }
-
-        setPantryItems(
-          pantryItems.filter((p) => p.id !== item.id)
-        );
-      }}
-      className="text-sm text-[#a63a0a]"
-    >
-      Delete
-    </button>
+  type="button"
+  onClick={() => setPantryItemToDelete(item)}
+  className="text-sm text-[#a63a0a]"
+>
+  Delete
+</button>
     </div>
 )}
   </div>
@@ -9518,14 +9890,100 @@ if (showPantry) {
   )}
 </div>
       </section>
-      <BottomNav />
-        {showPantryModal && PantryModal()}
-
       {toastMessage && (
   <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
   </div>
 )}
+      {showResetPantryConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-5">
+    <div className="w-full max-w-sm rounded-2xl bg-[#2b1b14] p-6 text-center text-white shadow-xl">
+      <h2 className="text-xl font-bold">
+        Reset Pantry?
+      </h2>
+
+      <p className="mt-2 text-sm text-white/80">
+        This will permanently remove every item from your pantry.
+      </p>
+
+      <div className="mt-5 flex gap-3">
+        <button
+          type="button"
+          onClick={() => setShowResetPantryConfirm(false)}
+          className="flex-1 rounded-full border border-white/40 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            setShowResetPantryConfirm(false);
+            await resetPantry();
+          }}
+          className="flex-1 rounded-full bg-red-600 px-5 py-3 font-bold text-white"
+        >
+          Reset Pantry
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{pantryItemToDelete && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Delete Pantry Item?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Delete <strong>{pantryItemToDelete.name}</strong> from your pantry?
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => setPantryItemToDelete(null)}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const item = pantryItemToDelete;
+
+            setPantryItemToDelete(null);
+
+            const { error } = await supabase
+              .from("pantry_items")
+              .delete()
+              .eq("id", item.id);
+
+            if (error) {
+              showToast(error.message);
+              return;
+            }
+
+            setPantryItems((current) =>
+              current.filter(
+                (pantryItem) => pantryItem.id !== item.id
+              )
+            );
+
+            showToast(`${item.name} deleted.`);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+      <BottomNav />
+      
  <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
           <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
 
@@ -9757,7 +10215,20 @@ if (showPantry) {
         >
           📱 Install App
         </button>
+      
         )}
+      <hr className="my-2 border-[#ead7c8]" />
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowSettingsMenu(false);
+          logoutUser();
+        }}
+        className="block w-full rounded-xl px-4 py-3 text-left text-red-600 hover:bg-[#fff4ef]"
+      >
+        ↪ Log Out
+      </button>
 
     </div>
   )}
@@ -10611,12 +11082,10 @@ className={`rounded-full px-4 py-2 font-bold ${
 
 
                 <button
-  onClick={(e) => {
-    e.stopPropagation();
-
-    if (confirm(`Delete ${recipe.title}?`)) {
-      deleteRecipe(recipe.id);
-    }
+  type="button"
+  onClick={(event) => {
+    event.stopPropagation();
+    setRecipeToDelete(recipe);
   }}
   className="mt-4 rounded-full border border-[#a63a0a] px-4 py-2 text-sm text-[#a63a0a]"
 >
@@ -10628,6 +11097,12 @@ className={`rounded-full px-4 py-2 font-bold ${
         )}
         
       </section>
+      {toastMessage && (
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
+    {toastMessage}
+  </div>
+)}
+
       <BottomNav />
 
        <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
@@ -11271,11 +11746,8 @@ console.log("selectedRecipe", selectedRecipe);
       {selectedRecipe?.isFavorite ? "★ Favorite" : "☆ Favorite"}
     </button>
     <button
-  onClick={() => {
-    if (confirm(`Delete ${selectedRecipe.title}?`)) {
-      deleteRecipe(selectedRecipe.id);
-    }
-  }}
+  type="button"
+  onClick={() => setRecipeToDelete(selectedRecipe)}
   className="w-full rounded-full border border-red-500 px-4 py-2 font-bold text-red-600"
 >
   Delete
@@ -11329,11 +11801,7 @@ console.log("selectedRecipe", selectedRecipe);
     </button>
     <button
   type="button"
-  onClick={() => {
-    if (confirm(`Delete ${selectedRecipe.title}?`)) {
-      deleteRecipe(selectedRecipe.id);
-    }
-  }}
+  onClick={() => setRecipeToDelete(selectedRecipe)}
   className="w-full rounded-full border border-red-500 px-4 py-2 font-bold text-red-600"
 >
   Delete
@@ -12435,13 +12903,13 @@ console.log("selectedRecipe", selectedRecipe);
 )}
 
 {showUnpublishConfirm && selectedRecipe && (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
-    <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl">
-      <h2 className="text-2xl font-bold text-[#2b1b14]">
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
         Make this recipe private?
       </h2>
 
-      <p className="mt-3 text-[#6d5549]">
+      <p className="mt-3 text-white/80">
         This recipe will be removed from your public cookbook, but it will
         remain in your personal recipe library.
       </p>
@@ -12450,7 +12918,7 @@ console.log("selectedRecipe", selectedRecipe);
         <button
           type="button"
           onClick={() => setShowUnpublishConfirm(false)}
-          className="rounded-full border border-[#ead7c8] bg-white px-5 py-3 font-bold text-[#6d5549]"
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
         >
           Keep Public
         </button>
@@ -12458,17 +12926,17 @@ console.log("selectedRecipe", selectedRecipe);
         <button
           type="button"
           onClick={async () => {
-  const success =
-    await updateRecipeVisibility("private");
+            const success =
+              await updateRecipeVisibility("private");
 
-  if (!success) return;
+            if (!success) return;
 
-  setShowUnpublishConfirm(false);
+            setShowUnpublishConfirm(false);
 
-  showToast(
-    "Your recipe is now private. Copies already saved by other cooks remain in their libraries."
-  );
-}}
+            showToast(
+              "Your recipe is now private. Copies already saved by other cooks remain in their libraries."
+            );
+          }}
           className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
         >
           Make Private
@@ -12478,38 +12946,122 @@ console.log("selectedRecipe", selectedRecipe);
   </div>
 )}
 
+
+
           </div>
         </section>
+        {recipeToDelete && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Delete Recipe?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Delete <strong>{recipeToDelete.title}</strong>? This cannot
+        be undone.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => setRecipeToDelete(null)}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const recipeId = recipeToDelete.id;
+
+            setRecipeToDelete(null);
+            await deleteRecipe(recipeId);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{recipeToDelete && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Delete Recipe?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Delete <strong>{recipeToDelete.title}</strong>? This cannot
+        be undone.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() => setRecipeToDelete(null)}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const recipeId = recipeToDelete.id;
+
+            setRecipeToDelete(null);
+            await deleteRecipe(recipeId);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         {showDiscardChangesConfirm && (
-  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/40">
-    <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
-      <h2 className="text-2xl font-bold text-[#2b1b14]">
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
         Discard your changes?
       </h2>
 
-      <p className="mt-3 text-[#6d5549]">
+      <p className="mt-3 text-white/80">
         You have unsaved changes. If you leave now, your edits will be lost.
       </p>
 
-      <div className="mt-6 flex justify-end gap-3">
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button
+          type="button"
           onClick={() => setShowDiscardChangesConfirm(false)}
-          className="rounded-full border border-[#a63a0a] px-5 py-2 text-[#a63a0a]"
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
         >
           Keep Editing
         </button>
 
         <button
+          type="button"
           onClick={() => {
             setShowDiscardChangesConfirm(false);
             closeRecipeDetails();
           }}
-          className="rounded-full bg-red-600 px-5 py-2 text-white"
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
         >
           Discard Changes
         </button>
       </div>
     </div>
+  </div>
+)}
+
+{toastMessage && (
+  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
+    {toastMessage}
   </div>
 )}
         
@@ -14259,6 +14811,7 @@ window.history.pushState(
     </section>
   </div>
 )}
+
     </main>
   );
 }
