@@ -417,6 +417,9 @@ const [currentPage, setCurrentPage] = useState<AppPage>("home");
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [recipeTags, setRecipeTags] = useState<string[]>([]);
   const recipeImportInProgressRef = useRef(false);
+  const [recipeFile, setRecipeFile] = useState<File | null>(null);
+const [isImportingFile, setIsImportingFile] = useState(false);
+const [recipeFileError, setRecipeFileError] = useState("");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showAllRecipes, setShowAllRecipes] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -1427,6 +1430,51 @@ function closeRecipeDetails() {
   }, 0);
 }
 
+function openImportedItemDetails(item: Recipe) {
+  setSelectedRecipe(item);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
+
+  setCurrentPage("recipes");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
+  setShowProfile(false);
+
+  setShowImport(false);
+  setShowFoodImport(false);
+  setShowRecipeImport(false);
+  setShowManualImport(false);
+  setShowShoppingImport(false);
+  setFoodPreview(null);
+
+  setRecipeVisibility(
+    item.visibility === "public"
+      ? "public"
+      : "private"
+  );
+
+  setRecipeTags(item.tags ?? []);
+
+  const slug = createRecipeSlug(item.title);
+
+  window.history.pushState(
+    {
+      page: "recipes",
+      recipeId: item.id,
+      view: "owner",
+    },
+    "",
+    `/recipe/${item.id}/${slug}?view=owner`
+  );
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}
+
 async function loadShoppingItems() {
   if (!currentUserId) return;
 
@@ -2130,11 +2178,11 @@ async function importFoodItem() {
     });
 
     if (existingFoodCard) {
-      showToast("Grocery product already exists.");
-      setSelectedRecipe(existingFoodCard);
-      setFoodTypeFilter("grocery");
-      return;
-    }
+  showToast("Grocery product already exists.");
+  setFoodTypeFilter("grocery");
+  openImportedItemDetails(existingFoodCard);
+  return;
+}
 
     const importedCategory =
       data.category && data.category !== "Prepared Food"
@@ -2162,49 +2210,59 @@ async function importFoodItem() {
       .select()
       .single();
 
-    if (error) {
-      console.error("Save grocery product failed:", error);
-      setImportError(error.message);
-      return;
-    }
+    if (error || !savedFoodItem) {
+  console.error("Save grocery product failed:", error);
+  setImportError(
+    error?.message || "Could not save this grocery product."
+  );
+  return;
+}
 
-    const newFoodItem: Recipe = {
-      id: savedFoodItem.id,
-      title: savedFoodItem.title,
-      image: savedFoodItem.image_url || "",
-      ingredients: [],
-      steps: [],
-      cookTime: "",
-      servings: "",
-      category: savedFoodItem.category || "Other",
-      sourceUrl: savedFoodItem.source_url || "",
-      isFavorite: false,
-      isPlanningQueue: false,
-      createdAt: savedFoodItem.created_at,
-      type: "grocery",
-      brand: savedFoodItem.brand || "",
-      packageSize: savedFoodItem.package_size || "",
-      price: data.price || "",
-    };
+const newFoodItem: Recipe = {
+  id: savedFoodItem.id,
+  title: savedFoodItem.title,
+  image: savedFoodItem.image_url || "",
+  ingredients: [],
+  steps: [],
+  cookTime: "",
+  servings: "",
+  category: savedFoodItem.category || "Other",
+  sourceUrl: savedFoodItem.source_url || "",
+  isFavorite: savedFoodItem.is_favorite || false,
+  isPlanningQueue:
+    savedFoodItem.is_planning_queue || false,
+  createdAt:
+    savedFoodItem.created_at || new Date().toISOString(),
+  type: "grocery",
+  brand: savedFoodItem.brand || "",
+  packageSize: savedFoodItem.package_size || "",
+  price: data.price || "",
+};
 
-    setRecipes((currentRecipes) => [
-      newFoodItem,
-      ...currentRecipes,
-    ]);
+setRecipes((currentRecipes) => [
+  newFoodItem,
+  ...currentRecipes.filter(
+    (recipe) => recipe.id !== newFoodItem.id
+  ),
+]);
 
-    setFoodUrl("");
-    setFoodBrand("");
-    setFoodTitle("");
-    setFoodPackageSize("");
-    setFoodCategory("Frozen Food");
-    setFoodImage("");
-    setFoodPreview(null);
+setFoodUrl("");
+setFoodBrand("");
+setFoodTitle("");
+setFoodPackageSize("");
+setFoodCategory("Frozen Food");
+setFoodImage("");
+setFoodPreview(null);
 
-    setFoodTypeFilter("grocery");
-    setCategoryFilter("all");
-    setRecipeSort("newest");
+setFoodTypeFilter("grocery");
+setCategoryFilter("all");
+setRecipeSort("newest");
 
-    showToast("Grocery product added to your Food Library.");
+openImportedItemDetails(newFoodItem);
+
+showToast(
+  `${newFoodItem.title} added to your Food Library.`
+);
   } catch (error) {
   console.error("Food import failed:", error);
 
@@ -2256,8 +2314,11 @@ async function saveFoodItem() {
 
 if (existingFoodCard) {
   showToast("Food card already exists.");
-  setSelectedRecipe(existingFoodCard);
+
   setShowFoodImport(false);
+
+  openImportedItemDetails(existingFoodCard);
+
   return;
 }
 
@@ -2636,9 +2697,16 @@ if (existingRecipe) {
       createdAt: savedRecipe.created_at,
     };
 
-   setRecipes((current) => [newRecipe, ...current]);
-setSelectedRecipe(newRecipe);
+   setRecipes((current) => [
+  newRecipe,
+  ...current.filter(
+    (recipe) => recipe.id !== newRecipe.id
+  ),
+]);
+
 setPlannerRecipeId(newRecipe.id);
+
+openImportedItemDetails(newRecipe);
 
 setRecipeUrl("");
 setManualRecipe("");
@@ -2669,8 +2737,10 @@ if (onboardingTourStep === 5) {
 }
 
 
-  async function importManualRecipe() {
-  if (!manualRecipe) return;
+  async function importManualRecipe(
+  recipeText: string = manualRecipe
+) {
+  if (!recipeText.trim()) return;
 
   const {
     data: { user },
@@ -2681,7 +2751,7 @@ if (onboardingTourStep === 5) {
     return;
   }
 
-  const lines = manualRecipe
+  const lines = recipeText
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
@@ -2750,13 +2820,103 @@ if (onboardingTourStep === 5) {
     createdAt: savedRecipe.created_at,
   };
 
-  setRecipes([dbRecipe, ...recipes]);
-  setPlannerRecipeId(dbRecipe.id);
-  setManualRecipe("");
-  setRecipeUrl("");
-  setShowManualImport(false);
+  setRecipes((currentRecipes) => [
+  dbRecipe,
+  ...currentRecipes.filter(
+    (recipe) => recipe.id !== dbRecipe.id
+  ),
+]);
+
+setPlannerRecipeId(dbRecipe.id);
+
+setManualRecipe("");
+setRecipeUrl("");
+setShowManualImport(false);
+setImportError("");
+setShowImport(false);
+
+openImportedItemDetails(dbRecipe);
+
+showToast(`${dbRecipe.title} added to your Recipe Library.`);
+}
+
+async function importRecipeFile() {
+  if (!recipeFile) {
+    setRecipeFileError("Choose a Word, PDF, or text file first.");
+    return;
+  }
+
+  setIsImportingFile(true);
+  setRecipeFileError("");
   setImportError("");
-  setShowImport(false);
+
+  try {
+    const formData = new FormData();
+    formData.append("file", recipeFile);
+
+    const response = await fetch("/api/import-recipe-file", {
+      method: "POST",
+      body: formData,
+    });
+
+    const responseText = await response.text();
+
+    let result: {
+      text?: string;
+      fileName?: string;
+      error?: string;
+    };
+
+    try {
+      result = responseText
+        ? JSON.parse(responseText)
+        : {};
+    } catch {
+      console.error(
+        "Non-JSON recipe file response:",
+        responseText
+      );
+
+      throw new Error(
+        responseText ||
+          "The recipe file route stopped without returning a response. Check the development terminal."
+      );
+    }
+
+    if (!response.ok) {
+      throw new Error(
+        result.error ||
+          `Could not read this recipe file. Server returned ${response.status}.`
+      );
+    }
+
+    if (!result.text?.trim()) {
+      throw new Error(
+        "We could not find readable text in this file."
+      );
+    }
+
+    setManualRecipe(result.text);
+    setShowManualImport(false);
+
+    await importManualRecipe(result.text);
+
+    setRecipeFile(null);
+
+    showToast(
+      "Recipe file imported. Review the recipe before saving."
+    );
+  } catch (error) {
+    console.error("Recipe file import error:", error);
+
+    setRecipeFileError(
+      error instanceof Error
+        ? error.message
+        : "Could not read this recipe file."
+    );
+  } finally {
+    setIsImportingFile(false);
+  }
 }
 
 function getRecipeForShoppingItem(itemName: string) {
@@ -4506,8 +4666,11 @@ return (
 
 if (existingFoodCard) {
   showToast("Food card already exists.");
-  setSelectedRecipe(existingFoodCard);
-  setCurrentPage("recipes");
+
+  setShowFoodImport(false);
+
+  openImportedItemDetails(existingFoodCard);
+
   return;
 }
   const { data, error } = await supabase
@@ -9939,39 +10102,148 @@ if (showPantry) {
       Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
     </p>
 
-    <div className="flex flex-col gap-3 md:flex-row">
+    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+  <input
+    value={recipeUrl}
+    onChange={(e) => setRecipeUrl(e.target.value)}
+    placeholder="https://example.com/recipe"
+    className="min-w-0 rounded-full border border-[#ead7c8] px-5 py-3"
+  />
+
+  <button
+    type="button"
+    onClick={importRecipe}
+    disabled={isImporting}
+    className={`w-full rounded-full px-8 py-3 font-bold text-white transition-all duration-300 disabled:opacity-60 sm:w-auto ${
+      onboardingTourStep === 5 && !isImporting
+        ? "relative z-[5010] bg-[#a63a0a] shadow-lg ring-4 ring-[#f7d5c2]"
+        : "bg-[#a63a0a]"
+    }`}
+  >
+    {isImporting ? "Importing..." : "Import Recipe"}
+  </button>
+</div>
+
+{importError && (
+  <p className="mt-4 text-sm text-red-700">
+    {importError}
+  </p>
+)}
+
+<div className="my-5 flex items-center gap-4">
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+  <span className="text-sm text-[#6d5549]">OR</span>
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+</div>
+
+<div className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+  <div className="mb-4">
+    <h3 className="text-lg font-bold text-[#2b1b14]">
+      Upload a Recipe File
+    </h3>
+
+    <p className="mt-1 text-sm text-[#6d5549]">
+      Upload a Word document, typed PDF, or text file. You can
+      review the extracted recipe before saving it.
+    </p>
+  </div>
+
+  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+    <label className="min-w-0">
+      <span className="sr-only">Choose recipe file</span>
+
       <input
-        value={recipeUrl}
-        onChange={(e) => setRecipeUrl(e.target.value)}
-        placeholder="https://example.com/recipe"
-        className="flex-1 rounded-full border border-[#ead7c8] px-5 py-3"
+        type="file"
+        accept=".docx,.pdf,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={(e) => {
+          const selectedFile = e.target.files?.[0] || null;
+
+          setRecipeFile(selectedFile);
+          setRecipeFileError("");
+        }}
+        className="block w-full min-w-0 rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-sm text-[#2b1b14] file:mr-4 file:rounded-full file:border-0 file:bg-[#fff1e8] file:px-4 file:py-2 file:font-bold file:text-[#a63a0a]"
       />
-
-      <button
-        onClick={importRecipe}
-        disabled={isImporting}
-        className="rounded-full bg-[#a63a0a] px-6 py-3 text-white disabled:opacity-60"
-      >
-        {isImporting ? "Importing..." : "Import"}
-      </button>
-    </div>
-
-    {importError && (
-      <p className="mt-4 text-sm text-red-700">{importError}</p>
-    )}
-
-    <div className="my-6 flex items-center gap-3 text-sm text-[#6d5549]">
-      <div className="h-px flex-1 bg-[#ead7c8]" />
-      OR
-      <div className="h-px flex-1 bg-[#ead7c8]" />
-    </div>
+    </label>
 
     <button
-      onClick={createNewRecipe}
-      className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+      type="button"
+      onClick={importRecipeFile}
+      disabled={!recipeFile || isImportingFile}
+      className="w-full rounded-full border border-[#a63a0a] bg-white px-6 py-3 font-bold text-[#a63a0a] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
     >
-      + Create Recipe From Scratch
+      {isImportingFile ? "Reading..." : "Read Recipe File"}
     </button>
+  </div>
+
+  {recipeFile && (
+    <p className="mt-3 break-all text-sm text-[#6d5549]">
+      Selected: {recipeFile.name}
+    </p>
+  )}
+
+  {recipeFileError && (
+    <p className="mt-3 text-sm text-red-700">
+      {recipeFileError}
+    </p>
+  )}
+</div>
+
+
+{showManualImport && (
+  <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+    <h3 className="mb-2 text-xl font-bold">
+      Review Recipe Text
+    </h3>
+
+    <p className="mb-4 text-[#6d5549]">
+      Review and correct the recipe text before Hey Chef organizes
+      it into ingredients and steps.
+    </p>
+
+    <textarea
+      value={manualRecipe}
+      onChange={(e) => setManualRecipe(e.target.value)}
+      rows={12}
+      placeholder={`Recipe Title
+
+Ingredients
+2 cups flour
+2 cups sugar
+1 cup butter
+
+Directions
+Mix ingredients
+Bake for 25 minutes`}
+      className="w-full rounded-2xl border border-[#ead7c8] p-4"
+    />
+
+    <button
+      type="button"
+      onClick={() => importManualRecipe()}
+      disabled={!manualRecipe.trim()}
+      className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white disabled:opacity-60"
+    >
+      Create Recipe
+    </button>
+  </div>
+)}
+
+<div className="my-5 flex items-center gap-4">
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+  <span className="text-sm text-[#6d5549]">OR</span>
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+</div>
+
+<button
+  type="button"
+  onClick={() => {
+    createNewRecipe();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }}
+  className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+>
+  + Create from Scratch
+</button>
 
     {showManualImport && (
       <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
@@ -10000,7 +10272,7 @@ Bake for 25 minutes`}
         />
 
         <button
-          onClick={importManualRecipe}
+          onClick={() => importManualRecipe()}
           className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 text-white"
         >
           Create Recipe
@@ -13280,6 +13552,66 @@ if (!hasLoadedUser) {
     {importError}
   </p>
 )}
+<div className="my-5 flex items-center gap-4">
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+  <span className="text-sm text-[#6d5549]">OR</span>
+  <div className="h-px flex-1 bg-[#ead7c8]" />
+</div>
+
+<div className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
+  <div className="mb-4">
+    <h3 className="text-lg font-bold text-[#2b1b14]">
+      Upload a Recipe File
+    </h3>
+
+    <p className="mt-1 text-sm text-[#6d5549]">
+       Upload a Word document, typed PDF, or text file. Hey Chef
+  will open it in the recipe editor for you to review.
+    </p>
+  </div>
+
+  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+    <label className="min-w-0">
+      <span className="sr-only">Choose recipe file</span>
+
+      <input
+        type="file"
+        accept=".docx,.pdf,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={(e) => {
+          const selectedFile =
+            e.target.files?.[0] || null;
+
+          setRecipeFile(selectedFile);
+          setRecipeFileError("");
+        }}
+        className="block w-full min-w-0 rounded-2xl border border-[#ead7c8] bg-white px-4 py-3 text-sm text-[#2b1b14] file:mr-4 file:rounded-full file:border-0 file:bg-[#fff1e8] file:px-4 file:py-2 file:font-bold file:text-[#a63a0a]"
+      />
+    </label>
+
+    <button
+      type="button"
+      onClick={importRecipeFile}
+      disabled={!recipeFile || isImportingFile}
+      className="w-full rounded-full border border-[#a63a0a] bg-white px-6 py-3 font-bold text-[#a63a0a] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+    >
+      {isImportingFile
+        ? "Reading..."
+        : "Read Recipe File"}
+    </button>
+  </div>
+
+  {recipeFile && (
+    <p className="mt-3 break-all text-sm text-[#6d5549]">
+      Selected: {recipeFile.name}
+    </p>
+  )}
+
+  {recipeFileError && (
+    <p className="mt-3 text-sm text-red-700">
+      {recipeFileError}
+    </p>
+  )}
+</div>
 
 {showManualImport && (
   <div className="mt-6 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5">
@@ -13310,7 +13642,7 @@ Bake for 25 minutes`}
     />
 
     <button
-      onClick={importManualRecipe}
+      onClick={() => importManualRecipe()}
       disabled={!manualRecipe.trim()}
       className="mt-4 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white disabled:opacity-60"
     >
