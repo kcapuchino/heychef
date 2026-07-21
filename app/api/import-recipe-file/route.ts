@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import mammoth from "mammoth";
+import { CanvasFactory } from "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
 
 export const runtime = "nodejs";
@@ -68,14 +69,15 @@ export async function POST(request: Request) {
 
       extractedText = result.value || "";
     } else if (fileName.endsWith(".pdf")) {
-      parser = new PDFParse({
-        data: buffer,
-      });
+  parser = new PDFParse({
+    data: buffer,
+    CanvasFactory,
+  });
 
-      const result = await parser.getText();
+  const result = await parser.getText();
 
-      extractedText = result.text || "";
-    } else if (fileName.endsWith(".txt")) {
+  extractedText = result.text || "";
+} else if (fileName.endsWith(".txt")) {
       extractedText = buffer.toString("utf-8");
     } else {
       return NextResponse.json(
