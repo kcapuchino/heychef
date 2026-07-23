@@ -14021,7 +14021,7 @@ if (!hasLoadedUser) {
 }`}
   >
     <span className="block text-lg">🥫</span>
-    <span className="mt-1 block">Grocery Product</span>
+    <span className="mt-1 block">Quick Eat</span>
   </button>
 
   <button
@@ -14444,7 +14444,7 @@ Bake for 25 minutes`}
       onClick={saveFoodItem}
       className="rounded-full bg-[#a63a0a] px-6 py-3 text-white md:col-span-2"
     >
-      Save Grocery Product
+      Save Quick Eat
     </button>
   </div>
 )}
@@ -14454,7 +14454,7 @@ Bake for 25 minutes`}
     onClick={() => setShowFoodImport(true)}
     className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 text-[#a63a0a]"
   >
-    + Enter Grocery Product Manually
+    + Enter GQuick Eat Manually
   </button>
 )}
   </>
