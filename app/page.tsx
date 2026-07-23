@@ -14021,7 +14021,7 @@ if (!hasLoadedUser) {
 }`}
   >
     <span className="block text-lg">🥫</span>
-    <span className="mt-1 block">Quick Eat</span>
+    <span className="mt-1 block">Quick Eats</span>
   </button>
 
   <button
