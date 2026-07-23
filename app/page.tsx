@@ -1330,6 +1330,29 @@ useEffect(() => {
   checkOnboarding();
 }, [currentUserId]);
 
+async function completeOnboarding() {
+  if (!currentUserId) return;
+
+  const storageKey =
+    `hey-chef-onboarding-${currentUserId}`;
+
+  localStorage.setItem(storageKey, "complete");
+  setShowOnboarding(false);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      onboarding_completed: true,
+    })
+    .eq("id", currentUserId);
+
+  if (error) {
+    console.error(
+      "Could not save onboarding completion:",
+      error
+    );
+  }
+}
 
   useEffect(() => {
   async function loadRecipes() {
@@ -6372,50 +6395,34 @@ if (showProfile) {
     </p>
 
     <button
-      type="button"
-      onClick={async () => {
-  if (!currentUserId) return;
+  type="button"
+  onClick={() => {
+    if (!currentUserId) return;
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      onboarding_completed: false,
-    })
-    .eq("id", currentUserId);
+    setOnboardingTourStep(0);
+    setRecipeTourStep(0);
 
-  if (error) {
-    console.error("Could not restart onboarding:", error);
-    showToast("Could not restart the tour.");
-    return;
-  }
+    setShowImport(false);
+    setShowFoodImport(false);
+    setShowShoppingImport(false);
+    setShowPantryModal(false);
 
-  localStorage.removeItem(
-    `hey-chef-onboarding-${currentUserId}`
-  );
+    window.history.replaceState(
+      { page: "home" },
+      "",
+      "/"
+    );
 
-  setOnboardingTourStep(0);
-  setRecipeTourStep(0);
-  setShowImport(false);
-  setShowFoodImport(false);
-  setShowShoppingImport(false);
-  setShowPantryModal(false);
+    showPage("home");
 
-  window.history.replaceState(
-    { page: "home" },
-    "",
-    "/"
-  );
-
-  showPage("home");
-
-  setTimeout(() => {
-    setShowOnboarding(true);
-  }, 50);
-}}
-      className="mt-5 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-semibold text-[#a63a0a] transition hover:bg-[#a63a0a] hover:text-white"
-    >
-      Replay Quick Tour
-    </button>
+    window.setTimeout(() => {
+      setShowOnboarding(true);
+    }, 50);
+  }}
+  className="mt-5 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-semibold text-[#a63a0a] transition hover:bg-[#a63a0a] hover:text-white"
+>
+  Replay Quick Tour
+</button>
   </div>
 </div>
 
@@ -11909,34 +11916,35 @@ console.log("selectedRecipe", selectedRecipe);
 
   <button
   type="button"
-  onClick={() => {
-    setShowExitTourConfirm(false);
-    setShowOnboarding(false);
+  onClick={async () => {
+  setShowExitTourConfirm(false);
 
-    setOnboardingTourStep(0);
-    setRecipeTourStep(0);
+  await completeOnboarding();
 
-    setShowImport(false);
-    setShowFoodImport(false);
-    setShowRecipeImport(false);
-    setShowShoppingImport(false);
-    setShowPantryModal(false);
+  setOnboardingTourStep(0);
+  setRecipeTourStep(0);
 
-    setSelectedRecipe(null);
-    setIsEditingRecipe(false);
-    setEditRecipeDraft(null);
+  setShowImport(false);
+  setShowFoodImport(false);
+  setShowRecipeImport(false);
+  setShowShoppingImport(false);
+  setShowPantryModal(false);
 
-    setRecipeUrl("");
-    setImportError("");
+  setSelectedRecipe(null);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
 
-    window.history.replaceState(
-      { page: "home" },
-      "",
-      "/"
-    );
+  setRecipeUrl("");
+  setImportError("");
 
-    setShowAddToHeyChefPrompt(true);
-  }}
+  window.history.replaceState(
+    { page: "home" },
+    "",
+    "/"
+  );
+
+  setShowAddToHeyChefPrompt(true);
+}}
   className="ml-auto shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
 >
   Exit Tour
@@ -13807,34 +13815,35 @@ if (!hasLoadedUser) {
 
   <button
   type="button"
-  onClick={() => {
-    setShowExitTourConfirm(false);
-    setShowOnboarding(false);
+  onClick={async () => {
+  setShowExitTourConfirm(false);
 
-    setOnboardingTourStep(0);
-    setRecipeTourStep(0);
+  await completeOnboarding();
 
-    setShowImport(false);
-    setShowFoodImport(false);
-    setShowRecipeImport(false);
-    setShowShoppingImport(false);
-    setShowPantryModal(false);
+  setOnboardingTourStep(0);
+  setRecipeTourStep(0);
 
-    setSelectedRecipe(null);
-    setIsEditingRecipe(false);
-    setEditRecipeDraft(null);
+  setShowImport(false);
+  setShowFoodImport(false);
+  setShowRecipeImport(false);
+  setShowShoppingImport(false);
+  setShowPantryModal(false);
 
-    setRecipeUrl("");
-    setImportError("");
+  setSelectedRecipe(null);
+  setIsEditingRecipe(false);
+  setEditRecipeDraft(null);
 
-    window.history.replaceState(
-      { page: "home" },
-      "",
-      "/"
-    );
+  setRecipeUrl("");
+  setImportError("");
 
-    setShowAddToHeyChefPrompt(true);
-  }}
+  window.history.replaceState(
+    { page: "home" },
+    "",
+    "/"
+  );
+
+  setShowAddToHeyChefPrompt(true);
+}}
   className="ml-auto shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-[#6d5549] underline-offset-4 hover:underline"
 >
   Exit Tour
