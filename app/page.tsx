@@ -7131,6 +7131,25 @@ if (showProfile) {
       <p className="mt-2 text-[#6d5549]">
         Review ingredients you need and move items into your pantry.
       </p>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-[#6d5549]">
+
+        Want a faster way to save food from around the web?{" "}
+
+        <a
+
+          href="/add-to-hey-chef"
+
+          className="font-bold text-[#a63a0a] underline underline-offset-4 hover:no-underline"
+
+        >
+
+          Get the free Hey Chef import tools
+
+        </a>{" "}
+
+        to add recipes, groceries, shopping items, and pantry staples in just one tap.
+
+      </p>
     </div>
 
     <button
@@ -9467,6 +9486,25 @@ if (showPantry) {
         <p className="mt-2 max-w-xl text-[#6d5549]">
           See what you already have, find ingredients fast, and keep your kitchen organized.
         </p>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-[#6d5549]">
+
+        Want a faster way to save food from around the web?{" "}
+
+        <a
+
+          href="/add-to-hey-chef"
+
+          className="font-bold text-[#a63a0a] underline underline-offset-4 hover:no-underline"
+
+        >
+
+          Get the free Hey Chef import tools
+
+        </a>{" "}
+
+        to add recipes, groceries, shopping items, and pantry staples in just one tap.
+
+      </p>
       </div>
 
       <button
@@ -10584,44 +10622,56 @@ if (showPantry) {
 )}
 
 
-        <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
-  <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-<div>
-    <h1 className="text-4xl font-bold md:text-5xl">
-      Food Library
-    </h1>
+       <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-[#fffaf5] p-6 shadow-sm md:p-8">
+  <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+    <div>
+      <h1 className="text-4xl font-bold md:text-5xl">
+        Food Library
+      </h1>
 
-    <p className="mt-2 max-w-xl text-[#6d5549]">
-      Build your personal food library with recipes, grocery items, and pantry favorites.
-    </p>
+      <p className="mt-2 max-w-xl text-[#6d5549]">
+        Build your personal food library with recipes, grocery items, and pantry favorites.
+      </p>
+
+      <p className="mt-3 max-w-xl text-sm leading-6 text-[#6d5549]">
+        Want a faster way to save food from around the web?{" "}
+        <a
+          href="/add-to-hey-chef"
+          className="font-bold text-[#a63a0a] underline underline-offset-4 hover:no-underline"
+        >
+          Get the free Hey Chef import tools
+        </a>{" "}
+        to add recipes, groceries, shopping items, and pantry staples in just one tap.
+      </p>
+    </div>
+
+    <div className="grid w-full gap-3 sm:grid-cols-2 md:w-auto">
+      <button
+        type="button"
+        onClick={() => {
+          setShowImport(true);
+          setShowFoodImport(false);
+        }}
+        className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white transition hover:bg-[#8f3108] md:w-auto"
+      >
+        Import Recipe
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowFoodImport(true);
+          setShowImport(false);
+          setFoodPreview(null);
+          setFoodUrl("");
+          setImportError("");
+        }}
+        className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] transition hover:bg-[#fff3eb] md:w-auto"
+      >
+        Add Go-To Food
+      </button>
+    </div>
   </div>
-  
-
-  <div className="grid w-full gap-3 md:w-auto md:grid-cols-2">
-  <button
-    onClick={() => {
-      setShowImport(true);
-      setShowFoodImport(false);
-    }}
-    className="w-full rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white md:w-auto"
-  >
-    Import Recipe
-  </button>
-
-  <button
-    onClick={() => {
-  setShowFoodImport(true);
-  setShowImport(false);
-  setFoodPreview(null);
-  setFoodUrl("");
-  setImportError("");
-}}
-    className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] md:w-auto"
-  >
-    Add Go-To Food
-  </button>
-</div>
-</div>
 </section>
 
         {showImport && (
@@ -10638,8 +10688,9 @@ if (showPantry) {
     </div>
 
     <p className="mb-4 text-[#6d5549]">
-      Paste a recipe URL. Hey Chef will clean it into ingredients and steps.
-    </p>
+      Paste a recipe URL. Hey Chef will clean it into ingredients and steps.</p>  
+      
+
 
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
   <input
@@ -14615,6 +14666,47 @@ window.history.pushState(
 <p className="text-[#6d5549]">meals planned</p>
   </button>
     </div>
+    <div className="mt-5 flex flex-col gap-3 rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-5 sm:flex-row sm:items-center sm:justify-between">
+  <div>
+    <p className="font-bold text-[#2b1b14]">
+      Still filling your week?
+    </p>
+
+    <p className="text-sm text-[#6d5549]">
+      Browse community recipes or import one you already love.
+    </p>
+  </div>
+
+  <div className="flex flex-col gap-2 sm:flex-row">
+    <button
+      type="button"
+      onClick={() => {
+        window.location.href = "/community";
+      }}
+      className="rounded-full border border-[#a63a0a] bg-white px-5 py-2 font-bold text-[#a63a0a] hover:bg-[#fff4ef]"
+    >
+      Get Inspired
+    </button>
+
+    <button
+      type="button"
+      onClick={() => {
+        setShowImport(true);
+        setShowFoodImport(false);
+        setCurrentPage("recipes");
+        setShowAllRecipes(true);
+        setShowMealPlanner(false);
+
+        window.setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 0);
+      }}
+      className="rounded-full bg-[#a63a0a] px-5 py-2 font-bold text-white hover:bg-[#8f3108]"
+    >
+      Import a Recipe
+    </button>
+  </div>
+</div>
   </section>
 
   <section className="mb-8 rounded-[2rem] border border-[#ead7c8] bg-white p-6 shadow-lg">
