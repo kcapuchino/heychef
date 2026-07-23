@@ -10993,18 +10993,26 @@ className={`rounded-full px-4 py-2 font-bold ${
       className="rounded-full border border-[#ead7c8] bg-white px-5 py-3"
     >
       <option value="all">All Categories</option>
-      <option value="Main Dish">Main Dish</option>
-      <option value="Side Dish">Side Dish</option>
-      <option value="Dessert">Dessert</option>
-      <option value="Breakfast">Breakfast</option>
-      <option value="Soup">Soup</option>
-      <option value="Snack">Snack</option>
-      <option value="Condiments">Condiments</option>
-      <option value="Drink">Drink</option>
-      <option value="Frozen Food">Frozen Food</option>
-      <option value="Boxed Meal">Boxed Meal</option>
-      <option value="Prepared Food">Prepared Food</option>
-      <option value="Canned Food">Canned Food</option>
+
+<option value="Main Dish">Main Dish</option>
+<option value="Side Dish">Side Dish</option>
+<option value="Breakfast">Breakfast</option>
+<option value="Lunch">Lunch</option>
+<option value="Soup">Soup</option>
+<option value="Salad">Salad</option>
+<option value="Appetizer">Appetizer</option>
+<option value="Snack">Snack</option>
+<option value="Dessert">Dessert</option>
+
+<option value="Condiments">Condiments</option>
+<option value="Sauce & Marinade">Sauce & Marinade</option>
+
+<option value="Drink">Drink</option>
+
+<option value="Prepared Food">Prepared Food</option>
+<option value="Frozen Food">Frozen Food</option>
+<option value="Boxed Meal">Boxed Meal</option>
+<option value="Canned Food">Canned Food</option>
     </select>
 
     <select
@@ -12341,19 +12349,27 @@ console.log("selectedRecipe", selectedRecipe);
       : "border-[#ead7c8] bg-white"
   }`}
 >
-  <option value="">Select Category</option>
-  <option value="Main Dish">Main Dish</option>
-  <option value="Side Dish">Side Dish</option>
-  <option value="Dessert">Dessert</option>
-  <option value="Breakfast">Breakfast</option>
-  <option value="Soup">Soup</option>
-  <option value="Snack">Snack</option>
-  <option value="Condiments">Condiments</option>
-  <option value="Drink">Drink</option>
-  <option value="Frozen Food">Frozen Food</option>
-  <option value="Boxed Meal">Boxed Meal</option>
-  <option value="Prepared Food">Prepared Food</option>
-  <option value="Canned Food">Canned Food</option>
+  <option value="all">All Categories</option>
+
+<option value="Main Dish">Main Dish</option>
+<option value="Side Dish">Side Dish</option>
+<option value="Breakfast">Breakfast</option>
+<option value="Lunch">Lunch</option>
+<option value="Soup">Soup</option>
+<option value="Salad">Salad</option>
+<option value="Appetizer">Appetizer</option>
+<option value="Snack">Snack</option>
+<option value="Dessert">Dessert</option>
+
+<option value="Condiments">Condiments</option>
+<option value="Sauce & Marinade">Sauce & Marinade</option>
+
+<option value="Drink">Drink</option>
+
+<option value="Prepared Food">Prepared Food</option>
+<option value="Frozen Food">Frozen Food</option>
+<option value="Boxed Meal">Boxed Meal</option>
+<option value="Canned Food">Canned Food</option>
 </select>
 
 {publishValidationErrors.includes("category") && (
