@@ -297,7 +297,7 @@ const onboardingTourSteps = [
     body: "Import a recipe from a website and Hey Chef will save the image, ingredients, instructions, cook time, and servings.",
   },
   {
-    title: "Grocery Products",
+    title: "Quick Eats",
     body: "Import a packaged food from a grocery product page to save its brand, image, package size, and price.",
   },
   {
@@ -4873,7 +4873,7 @@ if (existingFoodCard) {
     ...recipes,
   ]);
 
-  showToast("Added to Grocery Products.");
+  showToast("Added to Quick Eats.");
 }
 
 async function addShoppingItemToPantry(shoppingItem: string, count = 1) {
@@ -9917,7 +9917,7 @@ if (showPantry) {
     onClick={() => savePantryItemAsFoodCard(item)}
     className="text-sm font-bold text-[#a63a0a]"
   >
-    Grocery Products
+    Quick Eats
   </button>
   <button
   onClick={async () => {
@@ -10668,7 +10668,7 @@ if (showPantry) {
         }}
         className="w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a] transition hover:bg-[#fff3eb] md:w-auto"
       >
-        Add Go-To Food
+        Add Quick Eat
       </button>
     </div>
   </div>
@@ -10876,7 +10876,7 @@ Bake for 25 minutes`}
 {showFoodImport && (
   <section className="mb-8 rounded-3xl bg-white p-6 shadow-lg">
     <div className="mb-4 flex items-center justify-between">
-      <h2 className="text-2xl font-bold">Add a Go-To Food</h2>
+      <h2 className="text-2xl font-bold">Add Quick Eat</h2>
 
       <button
   onClick={() => {
@@ -11016,7 +11016,7 @@ className={`rounded-full px-4 py-2 font-bold ${
           : "bg-[#fff4ef] text-[#a63a0a]"
       }`}
     >
-      Grocery Products
+      Quick Eats
     </button>
 
     <button
@@ -11863,7 +11863,7 @@ console.log("selectedRecipe", selectedRecipe);
 }`}
 >
   {selectedRecipe.type === "grocery"
-    ? "Edit Go-To Food Item"
+    ? "Edit Quick Eat"
     : "Edit Recipe"}
 </button>
 
@@ -12225,7 +12225,7 @@ console.log("selectedRecipe", selectedRecipe);
               
   <div className="mb-8 rounded-3xl bg-[#fff4ef] p-6">
     <h2 className="mb-4 text-2xl font-bold">
-      {selectedRecipe.type === "grocery" ? "Edit Go-To Food Item" : "Edit Recipe"}
+      {selectedRecipe.type === "grocery" ? "Edit Quick Eat" : "Edit Recipe"}
     </h2>
 
     <label className="mb-2 block font-bold">Title</label>
@@ -12625,7 +12625,7 @@ console.log("selectedRecipe", selectedRecipe);
     <>
       <div className="grid gap-6 md:grid-cols-[1fr_420px]">
         <div className="rounded-3xl bg-[#fffaf5] p-6 shadow-sm">
-          <h2 className="mb-4 text-2xl font-bold">Go-To Food Details</h2>
+          <h2 className="mb-4 text-2xl font-bold">Grocery Item Details</h2>
 
           <div className="flex flex-wrap gap-2 text-sm">
             {selectedRecipe.brand && (
@@ -12727,7 +12727,7 @@ console.log("selectedRecipe", selectedRecipe);
          
 
         <div className="rounded-3xl bg-[#f8efe6] p-6">
-          <h2 className="mb-4 text-2xl font-bold">Plan This Go-To Food</h2>
+          <h2 className="mb-4 text-2xl font-bold">Plan This Quick Eat</h2>
 
           <button
             onClick={() => togglePlanningQueue(selectedRecipe.id)}
