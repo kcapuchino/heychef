@@ -7147,7 +7147,7 @@ if (showProfile) {
 
         </a>{" "}
 
-        to add recipes, groceries, shopping items, and pantry staples in just one tap.
+        to add recipes, groceries, shopping items, and pantry staples in just a few taps.
 
       </p>
     </div>
@@ -9502,7 +9502,7 @@ if (showPantry) {
 
         </a>{" "}
 
-        to add recipes, groceries, shopping items, and pantry staples in just one tap.
+        to add recipes, groceries, shopping items, and pantry staples in just a few taps.
 
       </p>
       </div>
@@ -10641,7 +10641,7 @@ if (showPantry) {
         >
           Get the free Hey Chef import tools
         </a>{" "}
-        to add recipes, groceries, shopping items, and pantry staples in just one tap.
+        to add recipes, groceries, shopping items, and pantry staples in just a few taps.
       </p>
     </div>
 
