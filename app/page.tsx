@@ -536,6 +536,8 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const [pantryModalCategory, setPantryModalCategory] = useState("Other");
   const [addAnotherPantryItem, setAddAnotherPantryItem] = useState(false);
   const [manuallyMarkedOnHand, setManuallyMarkedOnHand] = useState<string[]>([]);
+  const [isRemovingShoppingItem, setIsRemovingShoppingItem] =
+  useState(false);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
   const [checkedRecipeIngredients, setCheckedRecipeIngredients] = useState<string[]>([]);
   const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
@@ -4517,46 +4519,68 @@ async function makeRecentlyMadeAgain(item: any) {
   showToast("Added back to your meal plan options.");
 }
   async function removeShoppingItem(item: string) {
-  const { data: row } = await supabase
-    .from("shopping_items")
-    .select("id")
-    .eq("name", item)
-    .limit(1)
-    .single();
+  if (isRemovingShoppingItem) return;
 
-  if (!row) return;
+  setIsRemovingShoppingItem(true);
 
-  const { error } = await supabase
-    .from("shopping_items")
-    .delete()
-    .eq("id", row.id);
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (error) {
-    showToast(error.message);
-    return;
+    if (!user) {
+      showToast("Please sign in to update your shopping list.");
+      return;
+    }
+
+    const { data: row, error: findError } = await supabase
+      .from("shopping_items")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("name", item)
+      .limit(1)
+      .maybeSingle();
+
+    if (findError) {
+      showToast(findError.message);
+      return;
+    }
+
+    if (!row) {
+      showToast("That item is no longer on your shopping list.");
+      setShoppingItemToRemove(null);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("shopping_items")
+      .delete()
+      .eq("id", row.id)
+      .eq("user_id", user.id);
+
+    if (deleteError) {
+      showToast(deleteError.message);
+      return;
+    }
+
+    setShoppingList((current) => {
+      const index = current.indexOf(item);
+
+      if (index === -1) return current;
+
+      const updated = [...current];
+      updated.splice(index, 1);
+      return updated;
+    });
+
+    setShoppingItemToRemove(null);
+    showToast(`${item} removed from your shopping list.`);
+  } catch (error) {
+    console.error("Remove shopping item error:", error);
+    showToast("Could not remove that item. Please try again.");
+  } finally {
+    setIsRemovingShoppingItem(false);
   }
-
-  const index = shoppingList.indexOf(item);
-
-  if (index !== -1) {
-    const updated = [...shoppingList];
-    updated.splice(index, 1);
-    setShoppingList(updated);
-  }
-}
-
-  function goHome() {
-  navigateTo("home");
-
-  setSelectedRecipe(null);
-  setShowImport(false);
-  setIsMenuOpen(false);
-  setShowSettingsMenu(false);
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
 }
 
 function pantryNamesMatch(ingredient: string, pantryName: string) {
@@ -5149,6 +5173,25 @@ if (shouldImportProduct) {
   setTimeout(() => setRecentlyAddedPantryId(null), 2000);
 
   setShowPantryModal(false);
+}
+
+function goHome() {
+  navigateTo("home");
+
+  setSelectedRecipe(null);
+  setShowImport(false);
+  setShowFoodImport(false);
+  setShowShoppingList(false);
+  setShowAllRecipes(false);
+  setShowPantry(false);
+  setShowMealPlanner(false);
+  setIsMenuOpen(false);
+  setShowSettingsMenu(false);
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
 }
 
 function goAllRecipes() {
@@ -7675,15 +7718,16 @@ const { error } = await supabase
   ) : (
     <>
       <button
-        onClick={() =>
-          setManuallyMarkedOnHand((current) => [...current, item])
-        }
-        className="text-sm font-medium text-[#a63a0a]"
-      >
-        Mark On Hand
-      </button>
+  type="button"
+  onClick={() =>
+    setManuallyMarkedOnHand((current) => [...current, item])
+  }
+  className="text-sm font-medium text-[#a63a0a]"
+>
+  Mark On Hand
+</button>
 
-      <button
+<button
   type="button"
   onClick={() => setShoppingItemToRemove(item)}
   className="text-sm font-medium text-[#a63a0a]"
@@ -7762,6 +7806,42 @@ const { error } = await supabase
     </button>
   </div>
 </div>
+
+{shoppingItemToRemove && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Remove Shopping Item?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Remove <strong>{shoppingItemToRemove}</strong> from your shopping list?
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          disabled={isRemovingShoppingItem}
+          onClick={() => setShoppingItemToRemove(null)}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          disabled={isRemovingShoppingItem}
+          onClick={() => {
+            removeShoppingItem(shoppingItemToRemove);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isRemovingShoppingItem ? "Removing…" : "Remove"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
   {cookingQueue.filter((recipe) => !recipe.isMade).length === 0 ? (
   <p className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-[#6d5549]">
