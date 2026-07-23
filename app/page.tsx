@@ -641,18 +641,24 @@ const cookingQueue = useMemo(() => {
 ]);
 
   const favoriteRecipes = useMemo(
-  () => recipes.filter((recipe) => recipe.isFavorite),
+  () =>
+    recipes.filter(
+      (recipe) =>
+        recipe.type !== "grocery" &&
+        recipe.isFavorite
+    ),
   [recipes]
 );
 
-const homeRecipes = useMemo(
-  () =>
-    recipes
-      .filter((recipe) => recipe.isFavorite)
-      .slice(-6)
-      .reverse(),
-  [recipes]
-);
+const homeRecipes = useMemo(() => {
+  if (favoriteRecipes.length > 0) {
+    return favoriteRecipes.slice(0, 6);
+  }
+
+  return recipes
+    .filter((recipe) => recipe.type !== "grocery")
+    .slice(0, 6);
+}, [recipes, favoriteRecipes]);
 
 const homeSectionTitle =
   favoriteRecipes.length > 0 ? "Favorite Recipes" : "Recent Recipes";
@@ -751,7 +757,7 @@ const smartRestockItems = [
   .slice(0, 8);
   
   const filteredRecipes = useMemo(() => {
-  return recipes
+  const filtered = recipes
     .filter((recipe) => {
       if (foodTypeFilter === "all") return true;
 
@@ -767,26 +773,57 @@ const smartRestockItems = [
 
       if (recipe.type === "grocery") return false;
 
-      return (recipe.visibility ?? "private") === visibilityFilter;
+      return (
+        (recipe.visibility ?? "private") ===
+        visibilityFilter
+      );
     })
 
-    .filter((recipe) =>
-      categoryFilter === "all"
-        ? true
-        : recipe.category === categoryFilter
-    )
+    .filter((recipe) => {
+      if (categoryFilter === "all") return true;
 
+      return recipe.category === categoryFilter;
+    })
+
+    // Favorites must filter out recipes without a filled star
+    .filter((recipe) => {
+      if (recipeSort !== "favorites") return true;
+
+      return recipe.isFavorite;
+    })
+
+    // Ready also behaves as a filter
     .filter((recipe) => {
       if (recipeSort !== "ready") return true;
 
       return canMakeRecipeFromPantry(recipe);
-    })
-
-    .filter((recipe) => {
-      if (recipe.type !== "grocery") return true;
-
-      // keep the rest of your existing grocery filter code here
     });
+
+  return filtered.sort((a, b) => {
+    if (recipeSort === "newest") {
+      return (
+        new Date(b.createdAt).getTime() -
+        new Date(a.createdAt).getTime()
+      );
+    }
+
+    if (recipeSort === "oldest") {
+      return (
+        new Date(a.createdAt).getTime() -
+        new Date(b.createdAt).getTime()
+      );
+    }
+
+    if (recipeSort === "az") {
+      return a.title.localeCompare(b.title);
+    }
+
+    if (recipeSort === "za") {
+      return b.title.localeCompare(a.title);
+    }
+
+    return 0;
+  });
 }, [
   recipes,
   foodTypeFilter,
@@ -3079,34 +3116,58 @@ function getKitchenGreeting() {
 }
 
   async function toggleFavorite(recipeId: string) {
-  const recipe = recipes.find((item) => item.id === recipeId);
+  const recipe = recipes.find(
+    (item) => item.id === recipeId
+  );
+
   if (!recipe) return;
 
-  const newFavoriteValue = !recipe.isFavorite;
+  const nextFavoriteValue = !recipe.isFavorite;
+
+  setRecipes((currentRecipes) =>
+    currentRecipes.map((item) =>
+      item.id === recipeId
+        ? {
+            ...item,
+            isFavorite: nextFavoriteValue,
+          }
+        : item
+    )
+  );
 
   const { error } = await supabase
     .from("recipes")
     .update({
-      is_favorite: newFavoriteValue,
+      is_favorite: nextFavoriteValue,
     })
     .eq("id", recipeId);
 
   if (error) {
-    showToast(error.message);
-    return;
-  }
+    console.error(
+      "Could not update favorite:",
+      error
+    );
 
-  const updatedRecipes = recipes.map((item) =>
-    item.id === recipeId ? { ...item, isFavorite: newFavoriteValue } : item
+    // Undo the local update when Supabase fails
+    setRecipes((currentRecipes) => {
+  const updatedRecipe = currentRecipes.find(
+    (item) => item.id === recipeId
   );
 
-  setRecipes(updatedRecipes);
+  if (!updatedRecipe) return currentRecipes;
 
-  const updatedSelectedRecipe =
-    updatedRecipes.find((item) => item.id === recipeId) || null;
+  const updated = {
+    ...updatedRecipe,
+    isFavorite: nextFavoriteValue,
+  };
 
-  if (selectedRecipe?.id === recipeId) {
-    setSelectedRecipe(updatedSelectedRecipe);
+  return [
+    updated,
+    ...currentRecipes.filter(
+      (item) => item.id !== recipeId
+    ),
+  ];
+});
   }
 }
 
@@ -11088,9 +11149,13 @@ className={`rounded-full px-4 py-2 font-bold ${
 </button>
 
 
-                <button
+               <button
   type="button"
+  onPointerDown={(event) => {
+    event.stopPropagation();
+  }}
   onClick={(event) => {
+    event.preventDefault();
     event.stopPropagation();
     setRecipeToDelete(recipe);
   }}
@@ -14614,14 +14679,36 @@ window.history.pushState(
 
 <section id="recipes" className="mt-14">
   <div className="mb-5 flex items-end justify-between gap-4">
-    <div>
-      <h2 className="text-3xl font-bold">{homeSectionTitle}</h2>
-    </div>
+    <h2 className="text-3xl font-bold">
+      {homeSectionTitle}
+    </h2>
+
+    {favoriteRecipes.length > 6 && (
+  <button
+    type="button"
+    onClick={() => {
+      navigateTo("recipes");
+
+      window.setTimeout(() => {
+        setFoodTypeFilter("recipe");
+        setCategoryFilter("all");
+        setVisibilityFilter("all");
+        setRecipeSort("favorites");
+      }, 0);
+    }}
+    className="shrink-0 font-bold text-[#a63a0a] hover:underline"
+  >
+    View all {favoriteRecipes.length}
+  </button>
+)}
   </div>
 
   {recipes.length === 0 ? (
     <div className="rounded-3xl bg-white p-8 shadow">
-      <h3 className="mb-2 text-xl font-bold">No recipes yet.</h3>
+      <h3 className="mb-2 text-xl font-bold">
+        No recipes yet.
+      </h3>
+
       <p className="text-[#6d5549]">
         Import your first recipe to start building your library.
       </p>
@@ -14632,22 +14719,22 @@ window.history.pushState(
         <div
           key={recipe.id}
           onClick={() => {
-  setSelectedRecipe(recipe);
-  setIsEditingRecipe(false);
-  setEditRecipeDraft(null);
+            setSelectedRecipe(recipe);
+            setIsEditingRecipe(false);
+            setEditRecipeDraft(null);
 
-  const slug = createRecipeSlug(recipe.title);
+            const slug = createRecipeSlug(recipe.title);
 
-  window.history.pushState(
-    {},
-    "",
-    `/recipe/${recipe.id}/${slug}`
-  );
+            window.history.pushState(
+              {},
+              "",
+              `/recipe/${recipe.id}/${slug}`
+            );
 
-  setTimeout(() => {
-    window.scrollTo(0, 0);
-  }, 0);
-}}
+            window.setTimeout(() => {
+              window.scrollTo(0, 0);
+            }, 0);
+          }}
           className="rounded-3xl bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
         >
           <img
@@ -14675,6 +14762,7 @@ window.history.pushState(
       ))}
     </div>
   )}
+  
       </section>
       </section>
 
