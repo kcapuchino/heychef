@@ -14515,12 +14515,14 @@ window.history.pushState(
   </p>
 
   <button
-    type="button"
-    onClick={() => navigateTo("community")}
-    className="font-bold text-[#a63a0a] hover:underline"
-  >
-    Explore community recipes →
-  </button>
+  type="button"
+  onClick={() => {
+    window.location.href = "/community";
+  }}
+  className="font-bold text-[#a63a0a] hover:underline"
+>
+  Explore community recipes →
+</button>
 </div>
 )}
         </div>
