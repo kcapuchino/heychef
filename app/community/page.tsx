@@ -90,15 +90,22 @@ type SavedRecipeRow = {
 const FALLBACK_RECIPE_IMAGE = "/hero-kitchen.jpg";
 
 const COMMUNITY_CATEGORIES = [
-  "Breakfast",
   "Main Dish",
   "Side Dish",
+  "Breakfast",
+  "Lunch",
   "Soup",
   "Salad",
-  "Bread",
-  "Dessert",
+  "Appetizer",
   "Snack",
-  "Drink",
+  "Dessert",
+  "Condiments",
+  "Sauce & Marinade",
+  "Beverage",
+  "Prepared Food",
+  "Frozen Food",
+  "Boxed Meal",
+  "Canned Food",
 ];
 
 const FEATURED_TAGS = [
