@@ -7754,59 +7754,6 @@ const { error } = await supabase
     </div>
   )}
 </section>
-<section className="mb-8 rounded-[2rem] bg-white p-5 shadow-lg md:p-6">
-  <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-  <div className="flex items-center gap-4">
-    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff4ef] text-2xl">
-      👩‍🍳
-    </div>
-
-    <div>
-      <h2 className="text-2xl font-bold text-[#a63a0a]">
-        Cooking Queue
-      </h2>
-      <p className="text-sm text-[#6d5549]">
-        Recipes you’re planning to make with these ingredients
-      </p>
-    </div>
-  </div>
-
-  <div className="mt-5 grid gap-2 md:flex md:flex-wrap">
-    <button
-      onClick={() => setCookingQueueFilter("all")}
-      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
-        cookingQueueFilter === "all"
-          ? "bg-[#a63a0a] text-white"
-          : "border border-[#a63a0a] text-[#a63a0a]"
-      }`}
-    >
-      All
-    </button>
-
-    <button
-      onClick={() => setCookingQueueFilter("ready")}
-      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
-        cookingQueueFilter === "ready"
-          ? "bg-[#a63a0a] text-white"
-          : "border border-[#a63a0a] text-[#a63a0a]"
-      }`}
-    >
-      Ready to Make
-    </button>
-
-    <button
-      onClick={() => setCookingQueueFilter("needs")}
-      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
-        cookingQueueFilter === "needs"
-          ? "bg-[#a63a0a] text-white"
-          : "border border-[#a63a0a] text-[#a63a0a]"
-      }`}
-    >
-      Needs Items
-    </button>
-  </div>
-</div>
-
 {shoppingItemToRemove && (
   <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
     <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
@@ -7843,261 +7790,6 @@ const { error } = await supabase
   </div>
 )}
 
-  {cookingQueue.filter((recipe) => !recipe.isMade).length === 0 ? (
-  <p className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-[#6d5549]">
-    No planned recipes yet. Add recipes to your meal planner to see them here.
-  </p>
-) : (
-  <div className="space-y-3">
-    {cookingQueue
-  .filter((recipe) => !recipe.isMade)
-  .slice(0, showAllCookingQueue ? cookingQueue.length : 3)
-  .map((recipe) => (
-    
-      <div
-        key={recipe.mealPlanId}
-        className="flex flex-col gap-4 rounded-2xl border border-[#ead7c8] p-4 md:flex-row md:items-center md:justify-between"
-      >
-        <div className="flex gap-4">
-          <img
-            src={recipe.image || placeholderImage}
-            alt={recipe.title}
-            className="h-20 w-24 rounded-2xl object-cover"
-          />
-
-          <div>
-            <span className="mb-1 inline-block rounded-full bg-[#fff4ef] px-3 py-1 text-xs font-bold text-[#a63a0a]">
-  {recipe.source === "leftovers"
-  ? `Leftovers • ${new Date(
-      recipe.plannedDate + "T00:00:00"
-    ).toLocaleDateString("en-US", {
-      weekday: "long",
-    })}`
-  : recipe.plannedDate
-  ? `${
-      recipe.weekStart === getWeekStartDate("current") ? "This" : "Next"
-    } ${new Date(recipe.plannedDate + "T00:00:00").toLocaleDateString("en-US", {
-      weekday: "long",
-    })}`
-  : "Planned"}
-</span>
-
-
-            <h3 className="font-bold">{recipe.title}</h3>
-{canMakeRecipeFromPantry(recipe) ? (
-  <span className="mt-1 inline-block rounded-full bg-[#e4f1dc] px-3 py-1 text-xs font-bold text-[#3f7f32]">
-    {recipe.type === "grocery" ? "READY TO EAT" : "READY TO COOK"}
-  </span>
-) : (
-  <span className="mt-1 inline-block rounded-full bg-[#f3ece7] px-3 py-1 text-xs font-bold text-[#6d5549]">
-    {recipe.type === "grocery" ? "OUT OF STOCK" : "NEEDS ITEMS"}
-  </span>
-)}
-            <p className="text-sm text-[#3f7f32]">
-  {getRecipePantryGaps(recipe).length} ingredients still needed
-</p>
-
-            <div className="mt-2 flex flex-wrap gap-2">
-              {recipe.ingredients.slice(0, 3).map((ingredient) => (
-                <span
-                  key={ingredient}
-                  className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]"
-                >
-                  {cleanIngredientName(cleanPantryDisplayName(ingredient))}
-                </span>
-              ))}
-
-              {recipe.ingredients.length > 3 && (
-                <span className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]">
-                  +{recipe.ingredients.length - 3} more
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-3 md:shrink-0">
-          <button
-            onClick={() => {
-  setSelectedRecipe(recipe);
-  setCurrentPage("recipes");
-  setShowAllRecipes(false);
-  setShowMealPlanner(false);
-  setShowShoppingList(false);
-  setShowPantry(false);
-
-  setRecipeVisibility(
-    recipe.visibility === "public"
-      ? "public"
-      : "private"
-  );
-
-  setRecipeTags(recipe.tags ?? []);
-
-  window.history.pushState(
-    {
-      page: "recipes",
-      recipeId: recipe.id,
-    },
-    "",
-    `/recipes?recipe=${recipe.id}`
-  );
-}}
-            className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
-          >
-            View Recipe
-          </button>
-
-          <button
-  onClick={() => markRecipeMade(recipe)}
-  className="rounded-full bg-[#a63a0a] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#8f3008]"
->
-  ✓ Made This
-</button>
-                </div>
-                
-      </div>
-        ))}
-
-    {cookingQueue.filter((recipe) => !recipe.isMade).length > 3 && (
-      <button
-        onClick={() => setShowAllCookingQueue(!showAllCookingQueue)}
-        className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
-      >
-        {showAllCookingQueue
-          ? "Show Less"
-          : `Show All ${cookingQueue.filter((recipe) => !recipe.isMade).length}`}
-      </button>
-    )}
-  </div>
-)}
-
-</section>
-{recentlyMade.length > 0 && (
-  <section className="mb-8 rounded-[2rem] border border-[#cfe3bf] bg-white p-5 shadow-lg md:p-6">
-    <div className="mb-5 flex items-center gap-4">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e4f1dc] text-2xl">
-        ✓
-      </div>
-
-      <div>
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-[#3f7f32]">
-            Recently Made
-          </h2>
-
-          <span className="rounded-full bg-[#e4f1dc] px-3 py-1 text-sm font-bold text-[#3f7f32]">
-            {recentlyMade.length}
-          </span>
-        </div>
-
-        <p className="text-sm text-[#6d5549]">
-          Recipes you've cooked recently
-        </p>
-
-        <button
-  onClick={() => setShowAllRecentlyMade(!showAllRecentlyMade)}
-  className="mt-2 text-sm font-bold text-[#a63a0a]"
->
-  {showAllRecentlyMade ? "Show recent 4" : "View full history"}
-  
-</button>
-      </div>
-    </div>
-
-    <div className="grid gap-4 md:grid-cols-4">
-      {(showAllRecentlyMade ? recentlyMade : recentlyMade.slice(0, 4)).map((item: any) => {
-        const recipe = item.recipes;
-
-        const recipeImage =
-          recipe?.image_url ||
-          recipe?.image ||
-          item.image_url ||
-          placeholderImage;
-
-        const recipeTitle =
-          recipe?.title ||
-          item.title ||
-          "Recently made";
-
-        const isRecipe = !!recipe;
-
-        return (
-  <div
-    key={item.id}
-    className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-3 text-left transition hover:-translate-y-1 hover:shadow-lg"
-  >
-    <button
-      type="button"
-      onClick={() => {
-  if (!isRecipe) return;
-
-  setSelectedRecipe({
-    id: recipe.id,
-    title: recipe.title,
-    image: recipe.image_url || recipe.image || "",
-    ingredients: recipe.ingredients || [],
-    steps: recipe.steps || [],
-    cookTime: recipe.cook_time || "",
-    servings: recipe.servings || "",
-    category: recipe.category || "",
-    sourceUrl: recipe.source_url || "",
-    isFavorite: recipe.is_favorite || false,
-    createdAt: recipe.created_at || "",
-    visibility:
-      recipe.visibility === "public"
-        ? "public"
-        : "private",
-  });
-
-  setRecipeVisibility(
-    recipe.visibility === "public"
-      ? "public"
-      : "private"
-  );
-  tags: Array.isArray(recipe.tags)
-  ? recipe.tags
-  : [],
-
-  setCurrentPage("recipes");
-  setShowAllRecipes(false);
-  setShowMealPlanner(false);
-  setShowShoppingList(false);
-  setShowPantry(false);
-  setShowImport(false);
-
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}}
-      className="w-full text-left"
-    >
-      <img
-        src={recipeImage}
-        alt={recipeTitle}
-        className="mb-3 h-24 w-full rounded-2xl object-cover"
-      />
-
-      <h3 className="font-bold text-[#2b1a12]">
-        {recipe?.title || item.title || "Recently made"}
-      </h3>
-
-      <p className="text-sm text-[#6d5549]">
-        Made {new Date(item.cooked_at).toLocaleDateString()}
-      </p>
-    </button>
-
-    <button
-  type="button"
-  onClick={() => makeRecentlyMadeAgain(item)}
-  className="mt-3 w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
->
-  {isRecipe ? "Make Again" : "Buy Again"}
-</button>
-  </div>
-);
-      })}
-    </div>
-  </section>
-)}
         </section>
         {showPantryModal && PantryModal()}
     
@@ -14892,7 +14584,7 @@ window.history.pushState(
 
 
 
-<section id="recipes" className="mt-14">
+<section id="recipes" className="mt-4">
   <div className="mb-5 flex items-end justify-between gap-4">
     <h2 className="text-3xl font-bold">
       {homeSectionTitle}
@@ -14979,6 +14671,317 @@ window.history.pushState(
   )}
   
       </section>
+
+      <section className="mt-8 mb-8 rounded-[2rem] bg-white p-5 shadow-lg md:p-6">
+  <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+  <div className="flex items-center gap-4">
+    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff4ef] text-2xl">
+      👩‍🍳
+    </div>
+
+    <div>
+      <h2 className="text-2xl font-bold text-[#a63a0a]">
+        Cooking Queue
+      </h2>
+      <p className="text-sm text-[#6d5549]">
+        Recipes you’re planning to make with these ingredients
+      </p>
+    </div>
+  </div>
+
+  <div className="mt-5 grid gap-2 md:flex md:flex-wrap">
+    <button
+      onClick={() => setCookingQueueFilter("all")}
+      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
+        cookingQueueFilter === "all"
+          ? "bg-[#a63a0a] text-white"
+          : "border border-[#a63a0a] text-[#a63a0a]"
+      }`}
+    >
+      All
+    </button>
+
+    <button
+      onClick={() => setCookingQueueFilter("ready")}
+      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
+        cookingQueueFilter === "ready"
+          ? "bg-[#a63a0a] text-white"
+          : "border border-[#a63a0a] text-[#a63a0a]"
+      }`}
+    >
+      Ready to Make
+    </button>
+
+    <button
+      onClick={() => setCookingQueueFilter("needs")}
+      className={`w-full md:w-40 rounded-full px-4 py-3 text-sm font-bold text-center ${
+        cookingQueueFilter === "needs"
+          ? "bg-[#a63a0a] text-white"
+          : "border border-[#a63a0a] text-[#a63a0a]"
+      }`}
+    >
+      Needs Items
+    </button>
+  </div>
+</div>
+
+
+
+  {cookingQueue.filter((recipe) => !recipe.isMade).length === 0 ? (
+  <p className="rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-5 text-[#6d5549]">
+    No planned recipes yet. Add recipes to your meal planner to see them here.
+  </p>
+) : (
+  <div className="space-y-3">
+    {cookingQueue
+  .filter((recipe) => !recipe.isMade)
+  .slice(0, showAllCookingQueue ? cookingQueue.length : 3)
+  .map((recipe) => (
+    
+      <div
+        key={recipe.mealPlanId}
+        className="flex flex-col gap-4 rounded-2xl border border-[#ead7c8] p-4 md:flex-row md:items-center md:justify-between"
+      >
+        <div className="flex gap-4">
+          <img
+            src={recipe.image || placeholderImage}
+            alt={recipe.title}
+            className="h-20 w-24 rounded-2xl object-cover"
+          />
+
+          <div>
+            <span className="mb-1 inline-block rounded-full bg-[#fff4ef] px-3 py-1 text-xs font-bold text-[#a63a0a]">
+  {recipe.source === "leftovers"
+  ? `Leftovers • ${new Date(
+      recipe.plannedDate + "T00:00:00"
+    ).toLocaleDateString("en-US", {
+      weekday: "long",
+    })}`
+  : recipe.plannedDate
+  ? `${
+      recipe.weekStart === getWeekStartDate("current") ? "This" : "Next"
+    } ${new Date(recipe.plannedDate + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "long",
+    })}`
+  : "Planned"}
+</span>
+
+
+            <h3 className="font-bold">{recipe.title}</h3>
+{canMakeRecipeFromPantry(recipe) ? (
+  <span className="mt-1 inline-block rounded-full bg-[#e4f1dc] px-3 py-1 text-xs font-bold text-[#3f7f32]">
+    {recipe.type === "grocery" ? "READY TO EAT" : "READY TO COOK"}
+  </span>
+) : (
+  <span className="mt-1 inline-block rounded-full bg-[#f3ece7] px-3 py-1 text-xs font-bold text-[#6d5549]">
+    {recipe.type === "grocery" ? "OUT OF STOCK" : "NEEDS ITEMS"}
+  </span>
+)}
+            <p className="text-sm text-[#3f7f32]">
+  {getRecipePantryGaps(recipe).length} ingredients still needed
+</p>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              {recipe.ingredients.slice(0, 3).map((ingredient) => (
+                <span
+                  key={ingredient}
+                  className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]"
+                >
+                  {cleanIngredientName(cleanPantryDisplayName(ingredient))}
+                </span>
+              ))}
+
+              {recipe.ingredients.length > 3 && (
+                <span className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]">
+                  +{recipe.ingredients.length - 3} more
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 md:shrink-0">
+          <button
+            onClick={() => {
+  setSelectedRecipe(recipe);
+  setCurrentPage("recipes");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
+
+  setRecipeVisibility(
+    recipe.visibility === "public"
+      ? "public"
+      : "private"
+  );
+
+  setRecipeTags(recipe.tags ?? []);
+
+  window.history.pushState(
+    {
+      page: "recipes",
+      recipeId: recipe.id,
+    },
+    "",
+    `/recipes?recipe=${recipe.id}`
+  );
+}}
+            className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
+          >
+            View Recipe
+          </button>
+
+          <button
+  onClick={() => markRecipeMade(recipe)}
+  className="rounded-full bg-[#a63a0a] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#8f3008]"
+>
+  ✓ Made This
+</button>
+                </div>
+                
+      </div>
+        ))}
+
+    {cookingQueue.filter((recipe) => !recipe.isMade).length > 3 && (
+      <button
+        onClick={() => setShowAllCookingQueue(!showAllCookingQueue)}
+        className="mt-4 w-full rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+      >
+        {showAllCookingQueue
+          ? "Show Less"
+          : `Show All ${cookingQueue.filter((recipe) => !recipe.isMade).length}`}
+      </button>
+    )}
+  </div>
+)}
+
+</section>
+{recentlyMade.length > 0 && (
+  <section className="mb-8 rounded-[2rem] border border-[#cfe3bf] bg-white p-5 shadow-lg md:p-6">
+    <div className="mb-5 flex items-center gap-4">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#e4f1dc] text-2xl">
+        ✓
+      </div>
+
+      <div>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold text-[#3f7f32]">
+            Recently Made
+          </h2>
+
+          <span className="rounded-full bg-[#e4f1dc] px-3 py-1 text-sm font-bold text-[#3f7f32]">
+            {recentlyMade.length}
+          </span>
+        </div>
+
+        <p className="text-sm text-[#6d5549]">
+          Recipes you've cooked recently
+        </p>
+
+        <button
+  onClick={() => setShowAllRecentlyMade(!showAllRecentlyMade)}
+  className="mt-2 text-sm font-bold text-[#a63a0a]"
+>
+  {showAllRecentlyMade ? "Show recent 4" : "View full history"}
+  
+</button>
+      </div>
+    </div>
+
+    <div className="grid gap-4 md:grid-cols-4">
+      {(showAllRecentlyMade ? recentlyMade : recentlyMade.slice(0, 4)).map((item: any) => {
+        const recipe = item.recipes;
+
+        const recipeImage =
+          recipe?.image_url ||
+          recipe?.image ||
+          item.image_url ||
+          placeholderImage;
+
+        const recipeTitle =
+          recipe?.title ||
+          item.title ||
+          "Recently made";
+
+        const isRecipe = !!recipe;
+
+        return (
+  <div
+    key={item.id}
+    className="rounded-3xl border border-[#ead7c8] bg-[#fffaf5] p-3 text-left transition hover:-translate-y-1 hover:shadow-lg"
+  >
+    <button
+      type="button"
+      onClick={() => {
+  if (!isRecipe) return;
+
+  setSelectedRecipe({
+    id: recipe.id,
+    title: recipe.title,
+    image: recipe.image_url || recipe.image || "",
+    ingredients: recipe.ingredients || [],
+    steps: recipe.steps || [],
+    cookTime: recipe.cook_time || "",
+    servings: recipe.servings || "",
+    category: recipe.category || "",
+    sourceUrl: recipe.source_url || "",
+    isFavorite: recipe.is_favorite || false,
+    createdAt: recipe.created_at || "",
+    visibility:
+      recipe.visibility === "public"
+        ? "public"
+        : "private",
+  });
+
+  setRecipeVisibility(
+    recipe.visibility === "public"
+      ? "public"
+      : "private"
+  );
+  tags: Array.isArray(recipe.tags)
+  ? recipe.tags
+  : [],
+
+  setCurrentPage("recipes");
+  setShowAllRecipes(false);
+  setShowMealPlanner(false);
+  setShowShoppingList(false);
+  setShowPantry(false);
+  setShowImport(false);
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}}
+      className="w-full text-left"
+    >
+      <img
+        src={recipeImage}
+        alt={recipeTitle}
+        className="mb-3 h-24 w-full rounded-2xl object-cover"
+      />
+
+      <h3 className="font-bold text-[#2b1a12]">
+        {recipe?.title || item.title || "Recently made"}
+      </h3>
+
+      <p className="text-sm text-[#6d5549]">
+        Made {new Date(item.cooked_at).toLocaleDateString()}
+      </p>
+    </button>
+
+    <button
+  type="button"
+  onClick={() => makeRecentlyMadeAgain(item)}
+  className="mt-3 w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+>
+  {isRecipe ? "Make Again" : "Buy Again"}
+</button>
+  </div>
+);
+      })}
+    </div>
+  </section>
+)}
       </section>
 
       {showPantryModal && PantryModal()}
