@@ -7312,6 +7312,65 @@ setNewShoppingItem("");
   </div>
 </section>
 
+<section className="mb-6 rounded-[2rem] border border-[#ead7c8] bg-white p-6 shadow-sm">
+  <div>
+    <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
+      Smart Restock
+    </p>
+
+    <h2 className="text-2xl font-bold text-[#2b1a12]">
+      Restock Suggestions
+    </h2>
+
+    <p className="mt-1 text-[#6d5549]">
+      Based on your favorite recipes and items not already on your shopping list.
+    </p>
+
+    {smartRestockItems.length === 0 ? (
+      <div className="mt-5">
+        <span className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium text-[#6d5549]">
+          You're all stocked up.
+        </span>
+      </div>
+    ) : (
+      <>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {smartRestockItems.map((item) => (
+            <div
+              key={item}
+              className="flex items-center overflow-hidden rounded-full border border-[#f3d7c6] bg-[#fff7f2]"
+            >
+              <button
+                onClick={() => addItemsToShoppingList([item])}
+                className="px-4 py-2 text-sm font-medium text-[#2b1a12] hover:bg-[#fdf0e7]"
+              >
+                {item}
+              </button>
+
+              <button
+                onClick={() =>
+                  setDismissedRestockItems((current) => [...current, item])
+                }
+                className="px-2 py-2 text-[#b68b77] hover:text-[#a63a0a]"
+                aria-label={`Dismiss ${item}`}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => addItemsToShoppingList(smartRestockItems)}
+          className="mt-5 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white hover:bg-[#8f3208]"
+        >
+          Add All ({smartRestockItems.length})
+        </button>
+      </>
+    )}
+  </div>
+</section>
+
 <section className="mb-8 rounded-[2rem] bg-white p-5 shadow-lg md:p-6">
   <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
     <div className="flex items-center gap-4">
@@ -7328,6 +7387,8 @@ setNewShoppingItem("");
   </p>
 </div>
     </div>
+
+  
 
     <div className="grid w-full gap-3 md:w-auto md:grid-cols-[160px_auto_auto]">
       <select
@@ -9550,64 +9611,7 @@ if (showPantry) {
     </div>
   </div>
 
-  <section className="mb-6 rounded-[2rem] border border-[#ead7c8] bg-white p-6 shadow-sm">
-  <div>
-    <p className="mb-1 text-sm uppercase tracking-[0.2em] text-[#a63a0a]">
-      Smart Restock
-    </p>
-
-    <h2 className="text-2xl font-bold text-[#2b1a12]">
-      Restock Suggestions
-    </h2>
-
-    <p className="mt-1 text-[#6d5549]">
-      Based on your favorite recipes and items not already on your shopping list.
-    </p>
-
-    {smartRestockItems.length === 0 ? (
-      <div className="mt-5">
-        <span className="rounded-full bg-[#fff4ef] px-4 py-2 text-sm font-medium text-[#6d5549]">
-          You're all stocked up.
-        </span>
-      </div>
-    ) : (
-      <>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {smartRestockItems.map((item) => (
-            <div
-              key={item}
-              className="flex items-center overflow-hidden rounded-full border border-[#f3d7c6] bg-[#fff7f2]"
-            >
-              <button
-                onClick={() => addItemsToShoppingList([item])}
-                className="px-4 py-2 text-sm font-medium text-[#2b1a12] hover:bg-[#fdf0e7]"
-              >
-                {item}
-              </button>
-
-              <button
-                onClick={() =>
-                  setDismissedRestockItems((current) => [...current, item])
-                }
-                className="px-2 py-2 text-[#b68b77] hover:text-[#a63a0a]"
-                aria-label={`Dismiss ${item}`}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={() => addItemsToShoppingList(smartRestockItems)}
-          className="mt-5 rounded-full bg-[#a63a0a] px-6 py-3 font-bold text-white hover:bg-[#8f3208]"
-        >
-          Add All ({smartRestockItems.length})
-        </button>
-      </>
-    )}
-  </div>
-</section>
+  
 
   {pantryItems.length === 0 ? (
     <div className="rounded-[2rem] bg-white p-8 text-center shadow-sm">
