@@ -147,7 +147,7 @@ export default function AddToHeyChefPage() {
               </p>
 
               <a
-                href={CHROME_EXTENSION_URL}
+                href="https://chromewebstore.google.com/detail/bpkbkmchajoemhkjjlcghlecnihppmih?utm_source=item-share-cb"
                 target="_blank"
                 rel="noreferrer"
                 className="mt-5 inline-block w-full rounded-full bg-[#a63a0a] px-5 py-3 text-center font-bold text-white transition hover:bg-[#8f3108] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a63a0a] focus-visible:ring-offset-2 sm:w-auto"

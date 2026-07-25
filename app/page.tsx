@@ -446,6 +446,11 @@ const [shoppingItemToRemove, setShoppingItemToRemove] =
 
 const [pantryItemToDelete, setPantryItemToDelete] =
   useState<PantryItem | null>(null);
+
+  const [
+  recipeToRemoveFromQueue,
+  setRecipeToRemoveFromQueue,
+] = useState<PlannedRecipe | null>(null);
   
   const [shoppingList, setShoppingList] = useState<string[]>([])
   const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
@@ -545,7 +550,9 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const [showPantry, setShowPantry] = useState(false);
   const [pantryCategoryFilter, setPantryCategoryFilter] = useState("all");
   const [pantrySort, setPantrySort] = useState("newest");
-  const [cookingQueueFilter, setCookingQueueFilter] = useState("all");
+  const [cookingQueueFilter, setCookingQueueFilter] = useState("all")
+  const [shoppingCookingQueue, setShoppingCookingQueue] =
+  useState<PlannedRecipe[]>([]);
   const [showAllCookingQueue, setShowAllCookingQueue] = useState(false);
   const [recentlyMade, setRecentlyMade] = useState<any[]>([]);
   const [showAllRecentlyMade, setShowAllRecentlyMade] = useState(false);
@@ -606,7 +613,7 @@ const currentCookingWeekStart = getWeekStartDate("current");
 const nextCookingWeekStart = getWeekStartDate("next");
 
 const cookingQueue = useMemo(() => {
-  return Object.values(mealPlan)
+  const mealPlanRecipes = Object.values(mealPlan)
     .flat()
     .filter((recipe: PlannedRecipe) => !recipe.isMade)
     .filter((recipe: PlannedRecipe) => {
@@ -614,7 +621,19 @@ const cookingQueue = useMemo(() => {
         recipe.weekStart === currentCookingWeekStart ||
         recipe.weekStart === nextCookingWeekStart
       );
-    })
+    });
+
+  const combinedRecipes = [
+    ...mealPlanRecipes,
+    ...shoppingCookingQueue,
+  ].filter(
+    (recipe, index, recipes) =>
+      recipes.findIndex(
+        (item) => item.id === recipe.id
+      ) === index
+  );
+
+  return combinedRecipes
     .filter((recipe: PlannedRecipe) => {
       const isReady = canMakeRecipeFromPantry(recipe);
 
@@ -629,13 +648,18 @@ const cookingQueue = useMemo(() => {
       return true;
     })
     .sort((a: PlannedRecipe, b: PlannedRecipe) => {
+      if (!a.plannedDate && !b.plannedDate) return 0;
+      if (!a.plannedDate) return 1;
+      if (!b.plannedDate) return -1;
+
       return (
-        new Date(a.plannedDate || "").getTime() -
-        new Date(b.plannedDate || "").getTime()
+        new Date(a.plannedDate).getTime() -
+        new Date(b.plannedDate).getTime()
       );
     });
 }, [
   mealPlan,
+  shoppingCookingQueue,
   cookingQueueFilter,
   pantryItems,
   currentCookingWeekStart,
@@ -3270,6 +3294,8 @@ async function addItemsToShoppingList(
     return false;
   }
 
+  console.log("Source recipe received:", sourceRecipe);
+
   const cleanItems = items
     .map((item) => item.trim())
     .filter(Boolean);
@@ -3279,11 +3305,23 @@ async function addItemsToShoppingList(
     return false;
   }
 
-  const isGroceryItem = sourceRecipe?.type === "grocery";
+  const isGroceryItem =
+    sourceRecipe?.type === "grocery";
+
+  const hasSourceRecipe = Boolean(sourceRecipe?.id);
 
   const rows = cleanItems.map((item) => ({
     user_id: user.id,
     name: item,
+
+    // Connect recipe ingredients to their source recipe.
+    recipe_id: hasSourceRecipe
+      ? sourceRecipe!.id
+      : null,
+
+    source: hasSourceRecipe
+      ? "recipe"
+      : "manual",
 
     image_url: isGroceryItem
       ? sourceRecipe?.image || ""
@@ -3311,33 +3349,185 @@ async function addItemsToShoppingList(
       : guessShoppingCategory(item),
   }));
 
-  const { data, error } = await supabase
-  .from("shopping_items")
-  .insert(rows)
-  .select();
+  const { error: shoppingError } = await supabase
+    .from("shopping_items")
+    .insert(rows);
 
-if (error) {
-  console.error("Shopping insert failed:", {
-    message: error.message,
-    details: error.details,
-    hint: error.hint,
-    code: error.code,
+  if (shoppingError) {
+    console.error("Shopping insert failed:", {
+      message: shoppingError.message,
+      details: shoppingError.details,
+      hint: shoppingError.hint,
+      code: shoppingError.code,
+    });
+
+    showToast(shoppingError.message);
+    return false;
+  }
+
+  /*
+   * Add the source recipe to this week's Cooking Queue.
+   * Manual shopping items will skip this section because
+   * they do not have a sourceRecipe.
+   */
+  if (sourceRecipe?.id) {
+    const weekStart = getWeekStartDate("current");
+
+    const { error: queueError } = await supabase
+      .from("cooking_queue")
+      .upsert(
+        {
+          user_id: user.id,
+          recipe_id: sourceRecipe.id,
+          week_start: weekStart,
+          source: "shopping_list",
+        },
+        {
+          onConflict:
+            "user_id,recipe_id,week_start",
+        }
+      );
+
+    if (queueError) {
+      console.error("Cooking queue insert failed:", {
+        message: queueError.message,
+        details: queueError.details,
+        hint: queueError.hint,
+        code: queueError.code,
+      });
+
+      if (sourceRecipe.type !== "grocery") {
+  const queueRecipe: PlannedRecipe = {
+    ...sourceRecipe,
+    mealPlanId: "",
+    plannedDate: "",
+    weekStart,
+    source: "shopping_list",
+    isMade: false,
+  };
+
+  setShoppingCookingQueue((current) => {
+    const alreadyAdded = current.some(
+      (recipe) => recipe.id === sourceRecipe.id
+    );
+
+    if (alreadyAdded) {
+      return current;
+    }
+
+    return [...current, queueRecipe];
   });
-
-  showToast(error.message);
-  return false;
 }
 
-// Wait for the full shopping list to reload
-await loadShoppingItems();
+      /*
+       * The ingredients were still successfully added.
+       * We should not tell the user the entire action failed.
+       */
+      showToast(
+        "Ingredients were added, but the recipe could not be added to your Cooking Queue."
+      );
 
-showToast(
-  isGroceryItem
-    ? "Item added to your shopping list."
-    : "Ingredients added to your shopping list."
-);
+      await loadShoppingItems();
+      return true;
+    }
+  }
 
-return true;
+  await loadShoppingItems();
+
+  
+
+  showToast(
+    isGroceryItem
+      ? "Item added to your shopping list and Cooking Queue."
+      : sourceRecipe
+        ? `${sourceRecipe.title} ingredients added to your shopping list and Cooking Queue.`
+        : "Items added to your shopping list."
+  );
+
+  return true;
+}
+
+async function removeRecipeFromQueueAndShopping(
+  recipe: PlannedRecipe
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+
+  try {
+    // 1. Remove shopping-list ingredients linked to this recipe.
+    const { error: shoppingError } = await supabase
+      .from("shopping_items")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("recipe_id", recipe.id);
+
+    if (shoppingError) {
+      throw shoppingError;
+    }
+
+    // 2. Remove the recipe from the standalone Cooking Queue.
+    const { error: queueError } = await supabase
+      .from("cooking_queue")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("recipe_id", recipe.id);
+
+    if (queueError) {
+      throw queueError;
+    }
+
+    // 3. If this recipe is meal planned, remove that exact meal-plan row.
+    if (recipe.mealPlanId) {
+      const { error: mealPlanError } = await supabase
+        .from("meal_plan")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("id", recipe.mealPlanId);
+
+      if (mealPlanError) {
+        throw mealPlanError;
+      }
+    }
+
+    // 4. Remove it from shopping-added queue state immediately.
+    setShoppingCookingQueue((current) =>
+      current.filter((item) => item.id !== recipe.id)
+    );
+
+    // 5. Remove meal-planned copies from local mealPlan state.
+    setMealPlan((current) => {
+      const updatedPlan = Object.fromEntries(
+        Object.entries(current).map(([slot, recipes]) => [
+          slot,
+          recipes.filter(
+            (item: PlannedRecipe) =>
+              item.mealPlanId !== recipe.mealPlanId &&
+              item.id !== recipe.id
+          ),
+        ])
+      );
+
+      return updatedPlan;
+    });
+
+    await loadShoppingItems();
+
+    showToast(
+      `${recipe.title} removed from your queue and shopping list.`
+    );
+  } catch (error: any) {
+    console.error("Recipe cleanup failed:", error);
+    showToast(
+      error?.message ||
+        "Could not remove this recipe."
+    );
+  }
 }
 
 async function addToShoppingList(recipe: Recipe) {
@@ -3362,109 +3552,268 @@ async function addToShoppingList(recipe: Recipe) {
     showToast("Please log in again.");
     return;
   }
-const { error: deleteError } = await supabase
-  .from("shopping_items")
-  .delete()
-  .eq("user_id", user.id)
-  .not("source_meal_plan_id", "is", null);
 
-if (deleteError) {
-  showToast(deleteError.message);
-  return;
-}
   showToast("Updating grocery list...");
 
+  const selectedWeekStart =
+    getWeekStartDate(activePlannerWeek);
+
+  /*
+   * Only include unmade meals from the week currently
+   * selected in the Meal Planner.
+   */
   const plannedMeals = Object.values(mealPlan)
     .flat()
-    .filter((item: any) => !item.isMade);
+    .filter(
+      (item: PlannedRecipe) =>
+        !item.isMade &&
+        item.weekStart === selectedWeekStart &&
+        item.source !== "shopping_list" &&
+        item.source !== "leftovers"
+    );
 
   if (plannedMeals.length === 0) {
-    showToast("No meal plan items to add.");
+    showToast(
+      `No unmade meals found for ${
+        activePlannerWeek === "current"
+          ? "this week"
+          : "next week"
+      }.`
+    );
     return;
   }
 
-  const mealPlanItems: any[] = [];
+  /*
+   * Get manually added shopping items before replacing
+   * the Meal Planner-generated items.
+   */
+  const { data: existingManualItems, error: existingError } =
+    await supabase
+      .from("shopping_items")
+      .select("name")
+      .eq("user_id", user.id)
+      .is("source_meal_plan_id", null);
+
+  if (existingError) {
+    console.error(
+      "Could not load existing shopping items:",
+      existingError
+    );
+
+    showToast(existingError.message);
+    return;
+  }
+
+  const existingManualNames = new Set(
+    (existingManualItems ?? []).map((item) =>
+      normalizeItemName(item.name)
+    )
+  );
+
+  /*
+   * Remove only shopping items previously generated
+   * from this Meal Planner week.
+   */
+  const mealPlanIds = plannedMeals
+    .map((item) => item.mealPlanId)
+    .filter(Boolean);
+
+  if (mealPlanIds.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("shopping_items")
+      .delete()
+      .eq("user_id", user.id)
+      .in("source_meal_plan_id", mealPlanIds);
+
+    if (deleteError) {
+      console.error(
+        "Could not clear old meal-plan items:",
+        deleteError
+      );
+
+      showToast(deleteError.message);
+      return;
+    }
+  }
+
+  const mealPlanItems: Array<{
+    name: string;
+    mealPlanId: string;
+    recipeId: string | null;
+    imageUrl: string;
+    sourceUrl: string;
+    buyAnyway: boolean;
+  }> = [];
 
   for (const item of plannedMeals) {
-  console.log("PLANNED ITEM", item.title, item.type, item.source, item);
+    console.log(
+      "PLANNED ITEM",
+      item.title,
+      item.type,
+      item.source,
+      item
+    );
 
-  const shouldSkipShoppingList =
-    item.source === "shopping_list" ||
-    item.source === "leftovers";
+    const isGroceryMeal =
+      item.type === "grocery" ||
+      !item.ingredients ||
+      item.ingredients.length === 0;
 
-  if (shouldSkipShoppingList) {
-    continue;
-  }
+    if (isGroceryMeal) {
+      const normalizedTitle =
+        normalizeItemName(item.title);
 
-  const isGroceryMeal =
-    item.type === "grocery" ||
-    !item.ingredients ||
-    item.ingredients.length === 0;
+      /*
+       * Do not create a duplicate when the same item
+       * was manually added already.
+       */
+      if (!existingManualNames.has(normalizedTitle)) {
+        mealPlanItems.push({
+          name: item.title,
+          mealPlanId: item.mealPlanId,
+          recipeId: item.id || null,
+          imageUrl: item.image || "",
+          sourceUrl: item.sourceUrl || "",
+          buyAnyway: true,
+        });
+      }
 
-  if (isGroceryMeal) {
-    mealPlanItems.push({
-      name: item.title,
-      mealPlanId: item.mealPlanId,
-      imageUrl: item.image || "",
-      sourceUrl: item.sourceUrl || "",
-      buyAnyway: true,
-    });
+      continue;
+    }
 
-    continue;
-  }
-      
-    const recipeId = item.id;
+    const { data: fullRecipe, error: recipeError } =
+      await supabase
+        .from("recipes")
+        .select(
+          "id, ingredients, image_url, source_url"
+        )
+        .eq("id", item.id)
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    const { data: fullRecipe, error } = await supabase
-      .from("recipes")
-      .select("ingredients, image_url, source_url")
-      .eq("id", recipeId)
-      .eq("user_id", user.id)
-      .maybeSingle();
+    if (recipeError) {
+      console.error(
+        "Could not load planned recipe:",
+        recipeError
+      );
 
-    if (error) {
-      showToast(error.message);
+      showToast(recipeError.message);
       return;
     }
 
-    const ingredients = fullRecipe?.ingredients || item.ingredients || [];
+    const ingredients: string[] =
+      fullRecipe?.ingredients ||
+      item.ingredients ||
+      [];
 
-    ingredients.forEach((ingredient: string) => {
-  mealPlanItems.push({
-    name: ingredient,
-    mealPlanId: item.mealPlanId,
-    imageUrl: fullRecipe?.image_url || item.image || "",
-sourceUrl: fullRecipe?.source_url || item.sourceUrl || "",
-    buyAnyway: false,
-  });
-});
+    /*
+     * Only add ingredients that are not currently
+     * available in the Pantry.
+     */
+    const missingIngredients = getRecipePantryGaps({
+      ...item,
+      ingredients,
+    });
+
+    /*
+     * Remove duplicates inside this individual recipe.
+     */
+    const uniqueMissingIngredients = Array.from(
+      new Map(
+        missingIngredients
+          .map((ingredient: string) =>
+            ingredient.trim()
+          )
+          .filter(Boolean)
+          .map((ingredient: string) => [
+            normalizeItemName(ingredient),
+            ingredient,
+          ])
+      ).values()
+    );
+
+    uniqueMissingIngredients.forEach(
+      (ingredient: string) => {
+        const normalizedIngredient =
+          normalizeItemName(ingredient);
+
+        /*
+         * Preserve manually added shopping items instead
+         * of inserting another copy.
+         */
+        if (
+          existingManualNames.has(
+            normalizedIngredient
+          )
+        ) {
+          return;
+        }
+
+        mealPlanItems.push({
+          name: ingredient,
+          mealPlanId: item.mealPlanId,
+          recipeId: item.id || null,
+          imageUrl:
+            fullRecipe?.image_url ||
+            item.image ||
+            "",
+          sourceUrl:
+            fullRecipe?.source_url ||
+            item.sourceUrl ||
+            "",
+          buyAnyway: false,
+        });
+      }
+    );
   }
 
   if (mealPlanItems.length === 0) {
-    showToast("No ingredients found to add.");
+    await loadShoppingItems();
+
+    showToast(
+      "Your planned meals are already covered by your pantry and shopping list."
+    );
+
     return;
   }
 
-  const { error } = await supabase.from("shopping_items").insert(
-  mealPlanItems.map((item) => ({
-    user_id: user.id,
-    name: item.name,
-    source_meal_plan_id: item.mealPlanId,
-    store_section: guessShoppingCategory(item.name),
-    image_url: item.imageUrl,
-    source_url: item.sourceUrl,
-    buy_anyway: item.buyAnyway,
-  }))
-);
+  const { error: insertError } = await supabase
+    .from("shopping_items")
+    .insert(
+      mealPlanItems.map((item) => ({
+        user_id: user.id,
+        name: item.name,
+        recipe_id: item.recipeId,
+        source: "meal_plan",
+        source_meal_plan_id: item.mealPlanId,
+        store_section: guessShoppingCategory(
+          item.name
+        ),
+        image_url: item.imageUrl,
+        source_url: item.sourceUrl,
+        buy_anyway: item.buyAnyway,
+      }))
+    );
 
-  if (error) {
-    showToast(error.message);
+  if (insertError) {
+    console.error(
+      "Meal plan shopping insert failed:",
+      insertError
+    );
+
+    showToast(insertError.message);
     return;
   }
 
   await loadShoppingItems();
 
-  showToast("Grocery list updated.");
+  showToast(
+    `${mealPlanItems.length} needed ${
+      mealPlanItems.length === 1
+        ? "item"
+        : "items"
+    } added from your meal plan.`
+  );
 }
   async function addRecipeToMealPlan(
   day: string,
@@ -14684,7 +15033,7 @@ window.history.pushState(
         Cooking Queue
       </h2>
       <p className="text-sm text-[#6d5549]">
-        Recipes you’re planning to make with these ingredients
+        Recipes you’re shopping for or getting ready to make.
       </p>
     </div>
   </div>
@@ -14782,66 +15131,134 @@ window.history.pushState(
 </p>
 
             <div className="mt-2 flex flex-wrap gap-2">
-              {recipe.ingredients.slice(0, 3).map((ingredient) => (
-                <span
-                  key={ingredient}
-                  className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]"
-                >
-                  {cleanIngredientName(cleanPantryDisplayName(ingredient))}
-                </span>
-              ))}
+  {recipe.ingredients
+    .slice(0, 3)
+    .map((ingredient: string) => (
+      <span
+        key={ingredient}
+        className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]"
+      >
+        {cleanIngredientName(
+          cleanPantryDisplayName(ingredient)
+        )}
+      </span>
+    ))}
 
-              {recipe.ingredients.length > 3 && (
-                <span className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]">
-                  +{recipe.ingredients.length - 3} more
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+  {recipe.ingredients.length > 3 && (
+    <span className="rounded-full bg-[#f8efe6] px-3 py-1 text-xs text-[#6d5549]">
+      +{recipe.ingredients.length - 3} more
+    </span>
+  )}
+</div>
+</div>
+</div>
 
-        <div className="flex gap-3 md:shrink-0">
-          <button
-            onClick={() => {
-  setSelectedRecipe(recipe);
-  setCurrentPage("recipes");
-  setShowAllRecipes(false);
-  setShowMealPlanner(false);
-  setShowShoppingList(false);
-  setShowPantry(false);
+<div className="flex flex-wrap gap-3 md:shrink-0">
+  <button
+    type="button"
+    onClick={() => {
+      setSelectedRecipe(recipe);
+      setCurrentPage("recipes");
+      setShowAllRecipes(false);
+      setShowMealPlanner(false);
+      setShowShoppingList(false);
+      setShowPantry(false);
 
-  setRecipeVisibility(
-    recipe.visibility === "public"
-      ? "public"
-      : "private"
-  );
+      setRecipeVisibility(
+        recipe.visibility === "public"
+          ? "public"
+          : "private"
+      );
 
-  setRecipeTags(recipe.tags ?? []);
+      setRecipeTags(recipe.tags ?? []);
 
-  window.history.pushState(
-    {
-      page: "recipes",
-      recipeId: recipe.id,
-    },
-    "",
-    `/recipes?recipe=${recipe.id}`
-  );
-}}
-            className="rounded-full border border-[#a63a0a] px-5 py-2 text-sm font-bold text-[#a63a0a]"
-          >
-            View Recipe
-          </button>
+      window.history.pushState(
+        {
+          page: "recipes",
+          recipeId: recipe.id,
+        },
+        "",
+        `/recipes?recipe=${recipe.id}`
+      );
+    }}
+    className="rounded-full border border-[#a63a0a] px-5 py-3 text-sm font-bold text-[#a63a0a]"
+  >
+    View Recipe
+  </button>
 
-          <button
-  onClick={() => markRecipeMade(recipe)}
-  className="rounded-full bg-[#a63a0a] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#8f3008]"
+  <button
+  type="button"
+  onClick={() =>
+    setRecipeToRemoveFromQueue(recipe)
+  }
+  className="rounded-full border border-[#a63a0a] px-5 py-3 text-sm font-bold text-[#a63a0a]"
 >
-  ✓ Made This
+  Remove from Queue
 </button>
-                </div>
-                
+
+  <button
+    type="button"
+    onClick={() => markRecipeMade(recipe)}
+    className="rounded-full bg-[#a63a0a] px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-[#8f3008]"
+  >
+    ✓ Made This
+  </button>
+</div>
       </div>
         ))}
+
+        {recipeToRemoveFromQueue && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Remove Recipe?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Remove{" "}
+        <strong>
+          {recipeToRemoveFromQueue.title}
+        </strong>{" "}
+        from your Cooking Queue?
+      </p>
+
+      <p className="mt-2 text-sm text-white/70">
+        Its linked shopping-list items will also be
+        removed. If it is meal planned, it will be
+        removed from the Meal Planner too.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setRecipeToRemoveFromQueue(null)
+          }
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const recipe =
+              recipeToRemoveFromQueue;
+
+            setRecipeToRemoveFromQueue(null);
+
+            await removeRecipeFromQueueAndShopping(
+              recipe
+            );
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Remove Recipe
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
     {cookingQueue.filter((recipe) => !recipe.isMade).length > 3 && (
       <button
