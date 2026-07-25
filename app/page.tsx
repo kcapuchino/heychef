@@ -3398,14 +3398,22 @@ async function addItemsToShoppingList(
       );
 
     if (queueError) {
-      console.error("Cooking queue insert failed:", {
-        message: queueError.message,
-        details: queueError.details,
-        hint: queueError.hint,
-        code: queueError.code,
-      });
+  console.error("Cooking queue insert failed:", {
+    message: queueError.message,
+    details: queueError.details,
+    hint: queueError.hint,
+    code: queueError.code,
+  });
 
-      if (sourceRecipe.type !== "grocery") {
+  showToast(
+    "Ingredients were added, but the recipe could not be added to your Cooking Queue."
+  );
+
+  await loadShoppingItems();
+  return true;
+}
+
+if (sourceRecipe.type !== "grocery") {
   const queueRecipe: PlannedRecipe = {
     ...sourceRecipe,
     mealPlanId: "",
@@ -3428,17 +3436,7 @@ async function addItemsToShoppingList(
   });
 }
 
-      /*
-       * The ingredients were still successfully added.
-       * We should not tell the user the entire action failed.
-       */
-      showToast(
-        "Ingredients were added, but the recipe could not be added to your Cooking Queue."
-      );
-
-      await loadShoppingItems();
-      return true;
-    }
+await loadShoppingCookingQueue();
   }
 
   await loadShoppingItems();
@@ -3551,6 +3549,8 @@ async function addToShoppingList(recipe: Recipe) {
     recipe.ingredients,
     recipe
   );
+
+  
 }
   async function addNewMealPlanItemsToShoppingList() {
   const {
@@ -4723,6 +4723,93 @@ setPantryItems(updatedPantryItems);
   setCheckedShoppingItems([]);
 
   showToast("Checked items moved to pantry.");
+}
+
+async function loadShoppingCookingQueue() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    setShoppingCookingQueue([]);
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("cooking_queue")
+    .select(`
+      id,
+      recipe_id,
+      week_start,
+      source,
+      recipes (
+        id,
+        title,
+        image_url,
+        ingredients,
+        steps,
+        cook_time,
+        servings,
+        category,
+        source_url,
+        type,
+        brand,
+        package_size,
+        created_at
+      )
+    `)
+    .eq("user_id", user.id)
+    .in("week_start", [
+      currentCookingWeekStart,
+      nextCookingWeekStart,
+    ]);
+
+  if (error) {
+    console.error(
+      "Could not load shopping cooking queue:",
+      error
+    );
+
+    setShoppingCookingQueue([]);
+    return;
+  }
+
+  const loadedQueue = (data || [])
+    .map((row: any) => {
+      const recipe = Array.isArray(row.recipes)
+        ? row.recipes[0]
+        : row.recipes;
+
+      if (!recipe) return null;
+
+      return {
+  id: recipe.id,
+  cookingQueueId: row.id,
+  mealPlanId: row.id,
+  title: recipe.title,
+  image: recipe.image_url || "",
+  ingredients: recipe.ingredients || [],
+  steps: recipe.steps || [],
+  cookTime: recipe.cook_time || "",
+  servings: recipe.servings || "",
+  category: recipe.category || "",
+  sourceUrl: recipe.source_url || "",
+  createdAt: recipe.created_at || "",
+  type: recipe.type || "recipe",
+  brand: recipe.brand || "",
+  packageSize: recipe.package_size || "",
+  source: "shopping_list",
+  weekStart: row.week_start,
+  plannedDate: "",
+  isMade: false,
+} as PlannedRecipe;
+    })
+    .filter(
+      (recipe): recipe is PlannedRecipe =>
+        recipe !== null
+    );
+
+  setShoppingCookingQueue(loadedQueue);
 }
 
 async function markRecipeMade(recipe: Recipe | PlannedRecipe) {
