@@ -451,6 +451,16 @@ const [pantryItemToDelete, setPantryItemToDelete] =
   recipeToRemoveFromQueue,
   setRecipeToRemoveFromQueue,
 ] = useState<PlannedRecipe | null>(null);
+
+const [
+  showSaveBulkPantryConfirm,
+  setShowSaveBulkPantryConfirm,
+] = useState(false);
+
+const [
+  showCancelBulkPantryConfirm,
+  setShowCancelBulkPantryConfirm,
+] = useState(false);
   
   const [shoppingList, setShoppingList] = useState<string[]>([])
   const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
@@ -518,7 +528,6 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const [hidePantryItems, setHidePantryItems] = useState(true);
   const [pantrySearch, setPantrySearch] = useState("");
   const [expandedPantryCategory, setExpandedPantryCategory] = useState<string | null>("all");
-  const [editingPantryItemId, setEditingPantryItemId] = useState<string | null>(null);
   const [isBulkEditingPantry, setIsBulkEditingPantry] = useState(false);
   const [pantryDrafts, setPantryDrafts] = useState<Record<string, PantryItem>>({});
   const [newShoppingItem, setNewShoppingItem] = useState("");
@@ -9752,24 +9761,27 @@ if (showPantry) {
 
 <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:flex-wrap">
   <button
-    onClick={() => {
-      setIsBulkEditingPantry(!isBulkEditingPantry);
+  type="button"
+  onClick={() => {
+    if (isBulkEditingPantry) {
+      setShowCancelBulkPantryConfirm(true);
+      return;
+    }
 
-      if (!isBulkEditingPantry) {
-        const drafts: Record<string, PantryItem> = {};
+    const drafts: Record<string, PantryItem> = {};
 
-        pantryItems.forEach((item) => {
-          drafts[item.id] = { ...item };
-        });
+    pantryItems.forEach((item) => {
+      drafts[item.id] = { ...item };
+    });
 
-        setPantryDrafts(drafts);
-        setExpandedPantryCategory("all");
-      }
-    }}
-    className="rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
-  >
-    {isBulkEditingPantry ? "Cancel Bulk Edit" : "Bulk Edit"}
-  </button>
+    setPantryDrafts(drafts);
+    setExpandedPantryCategory("all");
+    setIsBulkEditingPantry(true);
+  }}
+  className="rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+>
+  {isBulkEditingPantry ? "Cancel Bulk Edit" : "Bulk Edit"}
+</button>
    <button
   type="button"
   onClick={() => setShowResetPantryConfirm(true)}
@@ -9780,11 +9792,12 @@ if (showPantry) {
 
   {isBulkEditingPantry && (
   <button
-    onClick={saveBulkPantryEdits}
-    className="rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
-  >
-    Save All Changes
-  </button>
+  type="button"
+  onClick={() => setShowSaveBulkPantryConfirm(true)}
+  className="rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
+>
+  Save All Changes
+</button>
 )}
 
   <button
@@ -10045,46 +10058,50 @@ if (showPantry) {
     Quick Eats
   </button>
   <button
+  type="button"
   onClick={async () => {
-    await addItemsToShoppingList([item.name], {
-      id: item.id,
-      title: item.name,
-      image: item.image || "",
-      ingredients: [],
-      steps: [],
-      sourceUrl: item.sourceUrl || "",
-      createdAt: item.createdAt,
-      type: "grocery",
-      brand: item.brand || "",
-      packageSize: item.packageSize || "",
-      price: item.price || "",
-    });
+    try {
+      showToast(`Adding ${item.name}...`);
 
-    setBuyAnywayItems((current) => [
-      ...new Set([...current, item.name]),
-    ]);
+      await addItemsToShoppingList([item.name]);
+
+      setBuyAnywayItems((current) => [
+        ...new Set([...current, item.name]),
+      ]);
+
+      showToast(`${item.name} added to your shopping list.`);
+    } catch (error) {
+      console.error("Buy More error:", error);
+
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Could not add this item to your shopping list."
+      );
+    }
   }}
   className="text-sm font-bold text-[#a63a0a]"
 >
   Buy More
 </button>
     <button
-      onClick={() => {
-        setEditingPantryModalId(item.id);
-        setPantryModalItem(item.name);
-        setPantryModalQuantity(item.quantity || "1");
-        setPantryModalUnit(item.unit || "");
-        setPantryModalCategory(item.category || "Other");
-        setAddAnotherPantryItem(false);
-        setShowPantryModal(true);
-        setPantryModalImage(item.image || "");
-        setPantryModalSourceUrl(item.sourceUrl || "");
-        setOriginalPantrySourceUrl(item.sourceUrl || "");
-      }}
-      className="text-sm font-bold text-[#a63a0a]"
-    >
-      Edit
-    </button>
+  type="button"
+  onClick={() => {
+    setEditingPantryModalId(item.id);
+    setPantryModalItem(item.name);
+    setPantryModalQuantity(item.quantity || "1");
+    setPantryModalUnit(item.unit || "");
+    setPantryModalCategory(item.category || "Other");
+    setPantryModalImage(item.image || "");
+    setPantryModalSourceUrl(item.sourceUrl || "");
+    setOriginalPantrySourceUrl(item.sourceUrl || "");
+    setAddAnotherPantryItem(false);
+    setShowPantryModal(true);
+  }}
+  className="text-sm font-bold text-[#a63a0a]"
+>
+  Edit
+</button>
 
     <button
   type="button"
@@ -10213,7 +10230,93 @@ if (showPantry) {
     </div>
   </div>
 )}
-      <BottomNav />
+      {pantryItemToDelete && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    {/* your existing delete modal content */}
+  </div>
+)}
+
+{showPantryModal && PantryModal()}
+
+{showSaveBulkPantryConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 text-white shadow-2xl">
+      <h2 className="text-2xl font-bold">
+        Save Pantry Changes?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        This will save all quantity, unit, category, name,
+        and removal changes currently shown in Bulk Edit.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setShowSaveBulkPantryConfirm(false)
+          }
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Keep Editing
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            setShowSaveBulkPantryConfirm(false);
+            showToast("Saving pantry changes...");
+
+            await saveBulkPantryEdits();
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Save All Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+{showCancelBulkPantryConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 text-white shadow-2xl">
+      <h2 className="text-2xl font-bold">
+        Cancel Bulk Edit?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Any unsaved pantry changes will be discarded.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setShowCancelBulkPantryConfirm(false)
+          }
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Keep Editing
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowCancelBulkPantryConfirm(false);
+            setIsBulkEditingPantry(false);
+            setPantryDrafts({});
+            showToast("Bulk edit canceled.");
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Discard Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+<BottomNav />
       
  <footer className="mt-10 border-t border-[#ead7c8] pt-6 text-center text-sm text-[#6d5549]">
           <p>© 2020–2026 Hey Chef™. All rights reserved.</p>
