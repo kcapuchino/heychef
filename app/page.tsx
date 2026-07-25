@@ -11457,6 +11457,60 @@ className={`rounded-full px-4 py-2 font-bold ${
         )}
         
       </section>
+      {recipeToDelete && (
+  <div className="fixed inset-0 z-[7000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 text-white shadow-2xl">
+      <h2 className="text-2xl font-bold">
+        Delete Recipe?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Delete{" "}
+        <strong>{recipeToDelete.title}</strong>?
+        This cannot be undone.
+      </p>
+
+      <div className="mt-6 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={() => setRecipeToDelete(null)}
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            const recipe = recipeToDelete;
+
+            const { error } = await supabase
+              .from("recipes")
+              .delete()
+              .eq("id", recipe.id);
+
+            if (error) {
+              showToast(error.message);
+              return;
+            }
+
+            setRecipes((current) =>
+              current.filter(
+                (item) => item.id !== recipe.id
+              )
+            );
+
+            setRecipeToDelete(null);
+            showToast(`${recipe.title} deleted.`);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {toastMessage && (
   <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
