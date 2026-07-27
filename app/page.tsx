@@ -4443,6 +4443,19 @@ const { data: imageMemory } = await supabase
   .select("normalized_name, image_url, source_url, name")
   .eq("user_id", user.id);
 
+  const { data: currentPantryRows, error: pantryLoadError } =
+  await supabase
+    .from("pantry_items")
+    .select("*")
+    .eq("user_id", user.id);
+
+if (pantryLoadError) {
+  showToast(pantryLoadError.message);
+  return;
+}
+
+const workingPantryItems = [...(currentPantryRows || [])];
+
   for (const item of uniqueShoppingRows) {
   const cleanedName = cleanPantryDisplayName(item.name);
   const normalizedName = normalizeItemName(cleanedName);
@@ -4467,7 +4480,7 @@ pantryItems.forEach((item) => {
   );
 });    
 
-  const existingPantryItem = pantryItems.find((pantryItem) => {
+  const existingPantryItem = workingPantryItems.find((pantryItem) => {
   const pantryName = normalizeItemName(cleanPantryDisplayName(pantryItem.name));
 
   return pantryName === normalizedName;
@@ -4477,26 +4490,32 @@ pantryItems.forEach((item) => {
   const currentQty = Number(existingPantryItem.quantity || 0);
   const addQty = Number(item.quantity || 1);
 
-  const { error } = await supabase
-    .from("pantry_items")
-    .update({
-  quantity: String(currentQty + addQty),
-})
-    .eq("id", existingPantryItem.id);
+  const nextQuantity = String(currentQty + addQty);
 
-  if (error) {
-    showToast(error.message);
-    return;
-  }
+const { error } = await supabase
+  .from("pantry_items")
+  .update({
+    quantity: nextQuantity,
+  })
+  .eq("id", existingPantryItem.id);
 
-  continue;
+if (error) {
+  showToast(error.message);
+  return;
+}
+
+existingPantryItem.quantity = nextQuantity;
+
+continue;
 }
 
   const memoryMatch = (imageMemory || []).find(
     (memory) => memory.normalized_name === normalizedName
   );
 
-  const { error } = await supabase.from("pantry_items").insert({
+  const { data: insertedPantryItem, error } = await supabase
+  .from("pantry_items")
+  .insert({
     user_id: user.id,
     name: cleanedName,
     quantity: String(item.quantity || 1),
@@ -4516,12 +4535,18 @@ pantryItems.forEach((item) => {
     brand: item.brand || "",
     package_size: item.package_size || "",
     price: item.price || "",
-  });
+    })
+  .select("*")
+  .single();
 
-  if (error) {
-    showToast(error.message);
-    return;
-  }
+if (error) {
+  showToast(error.message);
+  return;
+}
+
+if (insertedPantryItem) {
+  workingPantryItems.push(insertedPantryItem);
+}
 }
 
 function getImageMemoryForPantryItem(itemName: string) {
@@ -10317,11 +10342,7 @@ if (showPantry) {
     </div>
   </div>
 )}
-      {pantryItemToDelete && (
-  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
-    {/* your existing delete modal content */}
-  </div>
-)}
+    
 
 {showPantryModal && PantryModal()}
 
