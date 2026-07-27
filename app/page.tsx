@@ -254,18 +254,28 @@ function normalizeItemName(text?: string | null) {
     .replace(/[()]/g, " ")
     .replace(/\bor\b/g, " ")
 
-    // remove recipe fluff
+    // Remove recipe fluff.
     .replace(/other sandwich toppings?.*/g, "")
     .replace(/sandwich toppings?.*/g, "")
 
+    // Remove quantities, units, packaging, sizes, and brands.
+    // The parentheses are critical so units such as "g" and "l"
+    // only match complete words—not letters inside "vegan" or "oil".
     .replace(
-      /\b\d+|cups?|cup|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|gram|g|kg|ml|l|liters?|cans?|can|packages?|package|packs?|pack|boxes?|box|bags?|bag|containers?|container|cartons?|carton|jars?|jar|bottles?|bottle|loaves?|loaf|bunches?|bunch|heads?|head|cloves?|clove|sticks?|stick|pounds?|pound|lbs?|lb|small|large|medium|extra|fresh|freshly|organic|each|kroger|simple truth|private selection\b/g,
+      /\b(\d+|cups?|tbsp|tablespoons?|teaspoons?|tsp|ounces?|ounce|oz|grams?|gram|g|kg|ml|l|liters?|cans?|packages?|packs?|boxes?|bags?|containers?|cartons?|jars?|bottles?|loaves?|loaf|bunches?|heads?|cloves?|sticks?|pounds?|lbs?|lb|small|large|medium|extra|fresh|freshly|organic|each|kroger|simple truth|private selection)\b/g,
       " "
     )
+
+    // Remove preparation and descriptive words.
     .replace(
-      /\b(vegan|dairy[- ]free|plant[- ]based|plant|chopped|diced|sliced|minced|shredded|grated|julienned|juiced|peeled|seeded|crushed|ground|whole|halved|quartered|thinly|thickly|finely|coarsely|boneless|skinless|cooked|uncooked|frozen|thawed|drained|rinsed|optional|divided|to taste|for garnish|leaves|leaf)\b/g,
+      /\b(vegan|dairy[- ]free|plant[- ]based|plant|unsalted|salted|chopped|diced|sliced|minced|shredded|grated|julienned|juiced|peeled|seeded|crushed|ground|whole|halved|quartered|thinly|thickly|finely|coarsely|boneless|skinless|cooked|uncooked|frozen|thawed|drained|rinsed|melted|cooled|softened|packed|leveled|levelled|room temperature|at room temperature|optional|divided|to taste|for garnish|minutes?|hours?|leaves|leaf)\b/g,
       " "
     )
+
+    // Remove leftover instruction phrases.
+    .replace(/\bfor\s+\d+\s+minutes?\b/g, " ")
+    .replace(/\bto\s+\d+\b/g, " ")
+
     .replace(/[^a-z\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -847,10 +857,15 @@ const smartRestockItems = [
 
     // Ready also behaves as a filter
     .filter((recipe) => {
-      if (recipeSort !== "ready") return true;
+  if (recipeSort !== "ready") return true;
 
-      return canMakeRecipeFromPantry(recipe);
-    });
+  const missingIngredients =
+    getRecipePantryGaps(recipe);
+
+  
+
+  return canMakeRecipeFromPantry(recipe);
+});
 
   return filtered.sort((a, b) => {
     if (recipeSort === "newest") {
@@ -1244,11 +1259,7 @@ useEffect(() => {
   .eq("id", currentUserId)
   .maybeSingle();
 
-console.log("PROFILE DEBUG:", {
-  currentUserId,
-  data,
-  error,
-});
+
 
     if (error) {
       console.error("loadProfile failed:", {
@@ -5152,23 +5163,40 @@ function pantryNamesMatch(ingredient: string, pantryName: string) {
 }
 
 function getMatchingPantryItem(ingredient: string) {
-  const cleanedIngredientName = normalizeItemName(ingredient);
+  const cleanedIngredientName =
+    normalizeItemName(ingredient);
+
+  if (!cleanedIngredientName) {
+    return undefined;
+  }
 
   return pantryItems.find((pantryItem) => {
-    const cleanedPantryName = normalizeItemName(pantryItem.name);
+    const cleanedPantryName =
+      normalizeItemName(pantryItem.name);
 
-    if (Number(pantryItem.quantity || 0) <= 0) {
-      return false;
-    }
-    if (!cleanedIngredientName || !cleanedPantryName) {
-      return false;
-    }
-
-    if (cleanedIngredientName.length < 3 || cleanedPantryName.length < 3) {
+    if (!cleanedPantryName) {
       return false;
     }
 
-    return pantryNamesMatch(ingredient, pantryItem.name);
+    // Only reject an item when its saved quantity is exactly zero.
+    const quantityText = String(
+      pantryItem.quantity ?? ""
+    ).trim();
+
+    if (quantityText === "0") {
+      return false;
+    }
+
+    // Plant butter, vegan butter, and unsalted butter
+    // all normalize to "butter".
+    if (cleanedIngredientName === cleanedPantryName) {
+      return true;
+    }
+
+    return pantryNamesMatch(
+      ingredient,
+      pantryItem.name
+    );
   });
 }
 
@@ -5188,6 +5216,29 @@ function canMakeRecipeFromPantry(recipe: Recipe | PlannedRecipe) {
   }
 
   return getRecipePantryGaps(recipe).length === 0;
+}
+
+function debugRecipePantryMatches(recipe: Recipe | PlannedRecipe) {
+  console.group(`PANTRY MATCHES: ${recipe.title}`);
+
+  recipe.ingredients.forEach((ingredient) => {
+    const matchingItem = getMatchingPantryItem(ingredient);
+
+    console.log({
+      ingredient,
+      normalizedIngredient: normalizeItemName(ingredient),
+      matched: Boolean(matchingItem),
+      pantryItem: matchingItem?.name || "NO MATCH",
+      pantryQuantity: matchingItem?.quantity || "",
+    });
+  });
+
+  console.log(
+    "Missing ingredients:",
+    getRecipePantryGaps(recipe)
+  );
+
+  console.groupEnd();
 }
 
 function shouldSaveAsFoodCard(name: string) {
