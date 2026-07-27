@@ -461,6 +461,22 @@ const [
   showCancelBulkPantryConfirm,
   setShowCancelBulkPantryConfirm,
 ] = useState(false);
+
+const [
+  showAddCheckedToPantryConfirm,
+  setShowAddCheckedToPantryConfirm,
+] = useState(false);
+
+const [
+  showRemoveCheckedShoppingConfirm,
+  setShowRemoveCheckedShoppingConfirm,
+] = useState(false);
+
+const [
+  showExitPantryReviewConfirm,
+  setShowExitPantryReviewConfirm,
+] = useState(false);
+
   
   const [shoppingList, setShoppingList] = useState<string[]>([])
   const [shoppingItemImages, setShoppingItemImages] = useState<Record<string, string>>({});
@@ -553,6 +569,8 @@ const [visibilityFilter, setVisibilityFilter] = useState<
   const [isRemovingShoppingItem, setIsRemovingShoppingItem] =
   useState(false);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<string[]>([]);
+  const checkedShoppingItemCount =
+  new Set(checkedShoppingItems).size;
   const [checkedRecipeIngredients, setCheckedRecipeIngredients] = useState<string[]>([]);
   const [buyAnywayItems, setBuyAnywayItems] = useState<string[]>([]);
   const [shoppingSort, setShoppingSort] = useState("az");
@@ -1739,11 +1757,13 @@ async function loadShoppingItems() {
     }, {} as Record<string, string>)
   );
 
-  setCheckedShoppingItems(
+  setCheckedShoppingItems([
+  ...new Set(
     shoppingRows
       .filter((item) => item.is_checked)
-      .map((item) => item.id)
-  );
+      .map((item) => item.name)
+  ),
+]);
 }
 
 useEffect(() => {
@@ -2038,6 +2058,11 @@ useEffect(() => {
   }
 }, [currentUserId]);
 
+useEffect(() => {
+  if (currentUserId) {
+    loadShoppingCookingQueue();
+  }
+}, [currentUserId]);
 
   async function loginUser(email: string, password: string, name?: string) {
   setAuthError("");
@@ -4383,23 +4408,39 @@ setMealPlan((current) => ({
       : "Recipe changes saved."
   );
 }
-async function toggleShoppingItemChecked(item: string, checked: boolean) {
-  if (checked) {
-    setCheckedShoppingItems([...checkedShoppingItems, item]);
-  } else {
-    setCheckedShoppingItems(
-      checkedShoppingItems.filter((savedItem) => savedItem !== item)
-    );
+async function toggleShoppingItemChecked(
+  item: string,
+  isChecked: boolean
+) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
   }
 
   const { error } = await supabase
     .from("shopping_items")
-    .update({ is_checked: checked })
+    .update({ is_checked: isChecked })
+    .eq("user_id", user.id)
     .eq("name", item);
 
   if (error) {
     showToast(error.message);
+    return;
   }
+
+  setCheckedShoppingItems((current) => {
+    const withoutItem = current.filter(
+      (savedItem) => savedItem !== item
+    );
+
+    return isChecked
+      ? [...withoutItem, item]
+      : withoutItem;
+  });
 }
 
 async function addCheckedItemsToPantry() {
@@ -4750,6 +4791,51 @@ setPantryItems(updatedPantryItems);
   showToast("Checked items moved to pantry.");
 }
 
+async function removeCheckedItemsFromShoppingList() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    showToast("Please log in again.");
+    return;
+  }
+
+  if (checkedShoppingItems.length === 0) {
+    showToast("Select at least one shopping item.");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("shopping_items")
+    .delete()
+    .eq("user_id", user.id)
+    .in("name", checkedShoppingItems);
+
+  if (error) {
+    showToast(error.message);
+    return;
+  }
+
+  const removedCount = checkedShoppingItems.length;
+
+  setShoppingList((current) =>
+    current.filter(
+      (item) => !checkedShoppingItems.includes(item)
+    )
+  );
+
+  setCheckedShoppingItems([]);
+
+  await loadShoppingItems();
+
+  showToast(
+    `${removedCount} checked ${
+      removedCount === 1 ? "item" : "items"
+    } removed from your shopping list.`
+  );
+}
+
 async function loadShoppingCookingQueue() {
   const {
     data: { user },
@@ -4784,10 +4870,7 @@ async function loadShoppingCookingQueue() {
       )
     `)
     .eq("user_id", user.id)
-    .in("week_start", [
-      currentCookingWeekStart,
-      nextCookingWeekStart,
-    ]);
+.order("week_start", { ascending: false });
 
   if (error) {
     console.error(
@@ -4810,7 +4893,7 @@ async function loadShoppingCookingQueue() {
       return {
   id: recipe.id,
   cookingQueueId: row.id,
-  mealPlanId: row.id,
+  mealPlanId: "",
   title: recipe.title,
   image: recipe.image_url || "",
   ingredients: recipe.ingredients || [],
@@ -7917,11 +8000,23 @@ setNewShoppingItem("");
       </select>
 
       <button
-        onClick={() => setHidePantryItems(!hidePantryItems)}
-        className="rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
-      >
-        {hidePantryItems ? "Show Pantry Items" : "Hide Pantry Items"}
-      </button>
+  onClick={() => {
+    if (
+      !hidePantryItems &&
+      checkedShoppingItemCount > 0
+    ) {
+      setShowExitPantryReviewConfirm(true);
+      return;
+    }
+
+    setHidePantryItems(!hidePantryItems);
+  }}
+  className="rounded-full border border-[#a63a0a] px-6 py-3 font-bold text-[#a63a0a]"
+>
+  {hidePantryItems
+    ? "Show Pantry Items"
+    : "Hide Pantry Items"}
+</button>
 
       <div className="rounded-full bg-[#f8efe6] px-6 py-3 text-center font-bold">
   {shoppingList.length - neededShoppingListCount} On Hand
@@ -7936,10 +8031,19 @@ setNewShoppingItem("");
   ) : (
     <div className="divide-y divide-[#ead7c8]">
       {checkedShoppingItems.length > 0 && (
-  <div className="pb-3">
+  <div className="grid gap-3 pb-3 sm:grid-cols-2">
     <button
-      onClick={addCheckedItemsToPantry}
+      type="button"
+      onClick={() => setShowRemoveCheckedShoppingConfirm(true)}
       className="w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+    >
+      Remove Checked from List
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setShowAddCheckedToPantryConfirm(true)}
+      className="w-full rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
     >
       Add Checked to Pantry
     </button>
@@ -8212,18 +8316,193 @@ const { error } = await supabase
         })}
 
       {checkedShoppingItems.length > 0 && (
-        <div className="pt-5">
-          <button
-            onClick={addCheckedItemsToPantry}
-            className="w-full rounded-full border border-[#a63a0a] px-5 py-3 text-sm font-bold text-[#a63a0a]"
-          >
-            Add Checked to Pantry
-          </button>
-        </div>
-      )}
+  <div className="grid gap-3 pb-3 sm:grid-cols-2">
+    <button
+      type="button"
+      onClick={() => setShowRemoveCheckedShoppingConfirm(true)}
+      className="w-full rounded-full border border-[#a63a0a] px-4 py-2 text-sm font-bold text-[#a63a0a]"
+    >
+      Remove Checked from List
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setShowAddCheckedToPantryConfirm(true)}
+      className="w-full rounded-full bg-[#a63a0a] px-4 py-2 text-sm font-bold text-white"
+    >
+      Add Checked to Pantry
+    </button>
+  </div>
+)}
     </div>
   )}
 </section>
+{showExitPantryReviewConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Leave Pantry Review?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        You have{" "}
+        <strong>
+          {checkedShoppingItemCount}{" "}
+          {checkedShoppingItemCount === 1
+            ? "item"
+            : "items"}
+        </strong>{" "}
+        selected.
+      </p>
+
+      <p className="mt-2 text-sm text-white/60">
+        Leaving Pantry Review will clear your current
+        selections.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setShowExitPantryReviewConfirm(false)
+          }
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Stay Here
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            setShowExitPantryReviewConfirm(false);
+
+            // Allow the modal to animate closed.
+            await new Promise((resolve) =>
+              setTimeout(resolve, 180)
+            );
+
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+
+            if (user) {
+              await supabase
+                .from("shopping_items")
+                .update({
+                  is_checked: false,
+                })
+                .eq("user_id", user.id);
+            }
+
+            setCheckedShoppingItems([]);
+            setHidePantryItems(true);
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Leave Review
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showRemoveCheckedShoppingConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Remove Checked Items?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Remove{" "}
+        <strong>
+          {checkedShoppingItemCount}{" "}
+          {checkedShoppingItemCount === 1
+            ? "checked item"
+            : "checked items"}
+        </strong>{" "}
+        from your shopping list?
+      </p>
+
+      <p className="mt-2 text-sm text-white/60">
+        Your pantry will not be changed.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setShowRemoveCheckedShoppingConfirm(false)
+          }
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            setShowRemoveCheckedShoppingConfirm(false);
+            await removeCheckedItemsFromShoppingList();
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Remove from List
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showAddCheckedToPantryConfirm && (
+  <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
+    <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
+      <h2 className="text-2xl font-bold text-white">
+        Add Checked Items to Pantry?
+      </h2>
+
+      <p className="mt-3 text-white/80">
+        Add{" "}
+        <strong>
+          {checkedShoppingItemCount}{" "}
+          {checkedShoppingItemCount === 1
+            ? "checked item"
+            : "checked items"}
+        </strong>{" "}
+        to your pantry?
+      </p>
+
+      <p className="mt-2 text-sm text-white/60">
+        Pantry quantities will be updated and these items
+        will be removed from your shopping list.
+      </p>
+
+      <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          onClick={() =>
+            setShowAddCheckedToPantryConfirm(false)
+          }
+          className="rounded-full border border-white/30 px-5 py-3 font-bold text-white"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          onClick={async () => {
+            setShowAddCheckedToPantryConfirm(false);
+            await addCheckedItemsToPantry();
+          }}
+          className="rounded-full bg-[#a63a0a] px-5 py-3 font-bold text-white"
+        >
+          Add to Pantry
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 {shoppingItemToRemove && (
   <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
     <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
