@@ -64,6 +64,7 @@ type ShoppingItem = {
   image?: string;
   sourceUrl?: string;
   price?: string;
+  buyAnyway?: boolean;
 };
 
 type SavedUserData = {
@@ -666,11 +667,36 @@ const [changePasswordError, setChangePasswordError] =
   const [dismissedRestockItems, setDismissedRestockItems] = useState<string[]>([]);
 
 
-  const neededShoppingListCount = shoppingList.filter((item) => {
-    const matchingPantryItem = getMatchingPantryItem(item);
-    const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
+  const neededShoppingListCount = Object.values(
+  shoppingList.reduce<Record<string, string>>(
+    (uniqueItems, item) => {
+      const key = cleanForSort(item);
 
-  return !matchingPantryItem && !isManuallyMarkedOnHand;
+      if (!uniqueItems[key]) {
+        uniqueItems[key] = item;
+      }
+
+      return uniqueItems;
+    },
+    {}
+  )
+).filter((item) => {
+  const matchingPantryItem = getMatchingPantryItem(item);
+
+  const isManuallyMarkedOnHand = manuallyMarkedOnHand.some(
+    (onHandItem) =>
+      normalizeItemName(onHandItem) === normalizeItemName(item)
+  );
+
+  const isBuyAnyway = buyAnywayItems.some(
+    (buyAnywayItem) =>
+      normalizeItemName(buyAnywayItem) === normalizeItemName(item)
+  );
+
+  return (
+    isBuyAnyway ||
+    (!matchingPantryItem && !isManuallyMarkedOnHand)
+  );
 }).length;
 
 
@@ -3706,6 +3732,71 @@ await loadShoppingCookingQueue();
   return true;
 }
 
+async function addBuyAnywayItem(itemName: string) {
+  if (!currentUserId) {
+    showToast("Please sign in first.");
+    return;
+  }
+
+  try {
+    await addItemsToShoppingList([itemName]);
+
+    const normalizedItemName = normalizeItemName(itemName);
+
+    const { data: matchingRows, error: findError } = await supabase
+      .from("shopping_items")
+      .select("id, name")
+      .eq("user_id", currentUserId);
+
+    if (findError) {
+      throw findError;
+    }
+
+    const matchingIds = (matchingRows || [])
+      .filter(
+        (row) =>
+          normalizeItemName(row.name) === normalizedItemName
+      )
+      .map((row) => row.id);
+
+    if (matchingIds.length === 0) {
+      throw new Error("Shopping item was not found after adding it.");
+    }
+
+    const { error: updateError } = await supabase
+      .from("shopping_items")
+      .update({
+        buy_anyway: true,
+      })
+      .in("id", matchingIds);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    setBuyAnywayItems((current) => {
+      const alreadyIncluded = current.some(
+        (currentItem) =>
+          normalizeItemName(currentItem) === normalizedItemName
+      );
+
+      return alreadyIncluded
+        ? current
+        : [...current, itemName];
+    });
+
+    showToast(`${itemName} will stay on your shopping list.`);
+  } catch (error) {
+    console.error("Buy Anyway failed:", error);
+
+    showToast(
+      error instanceof Error
+        ? error.message
+        : "Could not add this item to your shopping list."
+    );
+  }
+}
+
 async function removeRecipeFromQueueAndShopping(
   recipe: PlannedRecipe
 ) {
@@ -4545,12 +4636,16 @@ setMealPlan((current) => ({
     }
 
     const savedRecipe: Recipe = {
-      ...updatedRecipe,
-      id: data.id,
-      title: data.title,
-      createdAt: data.created_at,
-      visibility: nextVisibility,
-    };
+  ...updatedRecipe,
+  id: data.id,
+  title: data.title,
+  createdAt: data.created_at,
+  tags:
+    updatedRecipe.type === "grocery"
+      ? []
+      : recipeTags,
+  visibility: nextVisibility,
+};
 
     setRecipes((currentRecipes) => [
       savedRecipe,
@@ -4610,9 +4705,13 @@ setMealPlan((current) => ({
   }
 
   const savedUpdatedRecipe: Recipe = {
-    ...updatedRecipe,
-    visibility: nextVisibility,
-  };
+  ...updatedRecipe,
+  tags:
+    updatedRecipe.type === "grocery"
+      ? []
+      : recipeTags,
+  visibility: nextVisibility,
+};
 
   setRecipes((currentRecipes) =>
     currentRecipes.map((recipe) =>
@@ -8356,8 +8455,16 @@ setNewShoppingItem("");
       )
         .filter(({ item }) => {
   const matchingPantryItem = getMatchingPantryItem(item);
-  const isManuallyMarkedOnHand = manuallyMarkedOnHand.includes(item);
-  const isBuyAnyway = buyAnywayItems.includes(item);
+
+  const isManuallyMarkedOnHand = manuallyMarkedOnHand.some(
+    (onHandItem) =>
+      normalizeItemName(onHandItem) === normalizeItemName(item)
+  );
+
+  const isBuyAnyway = buyAnywayItems.some(
+    (buyAnywayItem) =>
+      normalizeItemName(buyAnywayItem) === normalizeItemName(item)
+  );
 
   if (!hidePantryItems) {
     return true;
@@ -8551,13 +8658,12 @@ const { error } = await supabase
         </button>
       ) : (
         <button
-          onClick={() => {
-            setBuyAnywayItems([...buyAnywayItems, item]);
-          }}
-          className="text-sm font-medium text-[#a63a0a]"
-        >
-          Buy Anyway
-        </button>
+  type="button"
+  onClick={() => addBuyAnywayItem(item)}
+  className="text-sm font-medium text-[#a63a0a]"
+>
+  Buy Anyway
+</button>
       )}
     </>
   ) : isManuallyMarkedOnHand ? (
@@ -10746,7 +10852,21 @@ if (showPantry) {
 
       await addItemsToShoppingList([item.name]);
 
-      setBuyAnywayItems((current) => [
+      const { error } = await supabase
+  .from("shopping_items")
+  .update({
+    buy_anyway: true,
+  })
+  .eq("user_id", currentUserId)
+  .eq("name", item.name);
+
+if (error) {
+  console.error("Buy Anyway failed:", error);
+  showToast("Could not update shopping item.");
+  return;
+}
+
+setBuyAnywayItems((current) => [
         ...new Set([...current, item.name]),
       ]);
 
@@ -13846,12 +13966,24 @@ console.log("selectedRecipe", selectedRecipe);
       </span>
 
       {isOnHand ? (
-  <span className="shrink-0 rounded-full bg-[#edf7e8] px-2.5 py-1 text-xs font-bold text-[#315f25]">
-    ✓ On hand
-  </span>
-) : (
-  <div className="flex shrink-0 items-center gap-2">
+  <div className="flex shrink-0 items-center gap-3">
+    <span className="rounded-full bg-[#edf7e8] px-2.5 py-1 text-xs font-bold text-[#315f25]">
+      ✓ On Hand
+    </span>
 
+    <button
+  type="button"
+  onClick={(event) => {
+    event.stopPropagation();
+    void addBuyAnywayItem(ingredient);
+  }}
+  className="text-xs font-semibold text-[#a63a0a] hover:underline"
+>
+  Buy Anyway
+</button>
+  </div>
+) : (
+  <div className="flex shrink-0 items-center gap-3">
     <button
       type="button"
       onClick={(event) => {
@@ -13863,7 +13995,18 @@ console.log("selectedRecipe", selectedRecipe);
       }}
       className="rounded-full border border-[#a63a0a] px-3 py-1 text-xs font-bold text-[#a63a0a] hover:bg-[#fff4ef]"
     >
-      + Add to Shopping List
+      + Add to List
+    </button>
+
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        addShoppingItemToPantry(ingredient);
+      }}
+      className="text-xs font-semibold text-[#315f25] hover:underline"
+    >
+      I Have This
     </button>
   </div>
 )}
