@@ -27,6 +27,7 @@ pantryQuantity?: number;
 source?: "recipe" | "shopping_list" | "leftovers";
 price?: string;
 visibility?: "private" | "public";
+notes?: string;
 };
 
 
@@ -277,6 +278,33 @@ function normalizeItemName(text?: string | null) {
     .replace(/\bto\s+\d+\b/g, " ")
 
     .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getIngredientMatchKey(text?: string | null) {
+  let cleaned = normalizeItemName(text);
+
+  const aliases: Array<[RegExp, string]> = [
+    [/\b(eggs?|egg yolks?|yolks?)\b/g, "egg"],
+    [/\b(plant butter|vegan butter|margarine)\b/g, "butter"],
+    [/\b(all purpose flour|plain flour)\b/g, "flour"],
+    [/\b(chocolate chips?|semi sweet chocolate|chocolate chunks?)\b/g, "chocolate"],
+    [/\b(baking soda|bicarbonate of soda)\b/g, "baking soda"],
+    [/\b(vanilla extract|pure vanilla)\b/g, "vanilla"],
+    [/\b(brown sugar|light brown sugar|dark brown sugar)\b/g, "brown sugar"],
+    [/\b(granulated sugar|white sugar|cane sugar)\b/g, "sugar"],
+  ];
+
+  aliases.forEach(([pattern, replacement]) => {
+    cleaned = cleaned.replace(pattern, replacement);
+  });
+
+  return cleaned
+    .replace(
+      /\b(grade|white|yellow|original|classic|premium|brand|style)\b/g,
+      " "
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1481,6 +1509,7 @@ async function completeOnboarding() {
     servings: recipe.servings || "",
     category: recipe.category || "",
     sourceUrl: recipe.source_url || "",
+    notes: recipe.notes || "",
     isFavorite: recipe.is_favorite || false,
     isPlanningQueue: recipe.is_planning_queue || false,
     createdAt: recipe.created_at,
@@ -2389,9 +2418,87 @@ async function importFoodItem() {
         ? data.category
         : guessShoppingCategory(importedTitle);
 
-    const { data: savedFoodItem, error } = await supabase
+    const { data: existingFoodItem, error: duplicateCheckError } =
+  await supabase
+    .from("recipes")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("type", "grocery")
+    .eq("source_url", trimmedUrl)
+    .maybeSingle();
+
+if (duplicateCheckError) {
+  console.error(
+    "Grocery duplicate check failed:",
+    duplicateCheckError
+  );
+
+  setImportError(
+    duplicateCheckError.message ||
+      "Could not check whether this grocery product already exists."
+  );
+
+  return;
+}
+
+if (existingFoodItem) {
+  const shouldReplace = window.confirm(
+    `${existingFoodItem.title} is already in your library.\n\n` +
+      `Replace the imported product details?\n\n` +
+      `Your personal notes and favorite status will be preserved.`
+  );
+
+  if (!shouldReplace) {
+    setSelectedRecipe(existingFoodItem);
+    showToast(
+      `${existingFoodItem.title} is already in your library.`
+    );
+    return;
+  }
+
+  const { data: updatedFoodItem, error: updateError } =
+    await supabase
       .from("recipes")
-      .insert({
+      .update({
+        title: importedTitle,
+        image_url: data.image || "",
+        ingredients: [],
+        steps: [],
+        cook_time: "",
+        servings: "",
+        category: importedCategory || "Other",
+        source_url: trimmedUrl,
+        type: "grocery",
+        brand: data.brand || "",
+        package_size: data.packageSize || "",
+      })
+      .eq("id", existingFoodItem.id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+  if (updateError || !updatedFoodItem) {
+    console.error(
+      "Replace grocery product failed:",
+      updateError
+    );
+
+    setImportError(
+      updateError?.message ||
+        "Could not replace this grocery product."
+    );
+
+    return;
+  }
+
+  setSelectedRecipe(updatedFoodItem);
+  showToast(`${updatedFoodItem.title} was updated.`);
+  return;
+}
+
+const { data: savedFoodItem, error } = await supabase
+  .from("recipes")
+  .insert({
         user_id: user.id,
         title: importedTitle,
         image_url: data.image || "",
@@ -2522,31 +2629,119 @@ if (existingFoodCard) {
   return;
 }
 
-  const { data, error } = await supabase
-    .from("recipes")
-    .insert({
-      user_id: user.id,
-      title: foodTitle.trim(),
-      image_url: foodImage.trim(),
-      ingredients: [],
-      steps: [],
-      cook_time: "",
-      servings: "",
-      category: foodCategory,
-      source_url: foodUrl.trim(),
-      is_favorite: false,
-      is_planning_queue: false,
-      type: "grocery",
-brand: foodBrand.trim(),
-package_size: foodPackageSize.trim(),
-    })
-    .select()
-    .single();
+  const trimmedFoodUrl = foodUrl.trim();
 
-  if (error) {
-    showToast(error.message);
+let existingFoodItem = null;
+
+if (trimmedFoodUrl) {
+  const {
+    data: duplicateFoodItem,
+    error: duplicateCheckError,
+  } = await supabase
+    .from("recipes")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("type", "grocery")
+    .eq("source_url", trimmedFoodUrl)
+    .maybeSingle();
+
+  if (duplicateCheckError) {
+    console.error(
+      "Manual grocery duplicate check failed:",
+      duplicateCheckError
+    );
+
+    showToast(
+      duplicateCheckError.message ||
+        "Could not check for an existing grocery item."
+    );
+
     return;
   }
+
+  existingFoodItem = duplicateFoodItem;
+}
+
+if (existingFoodItem) {
+  const shouldReplace = window.confirm(
+    `${existingFoodItem.title} is already in your library.\n\n` +
+      `Replace its grocery details?\n\n` +
+      `Your notes, favorite status, and planning queue status will be preserved.`
+  );
+
+  if (!shouldReplace) {
+    setSelectedRecipe(existingFoodItem);
+    showToast(
+      `${existingFoodItem.title} is already in your library.`
+    );
+    return;
+  }
+
+  const { data: updatedFoodItem, error: updateError } =
+    await supabase
+      .from("recipes")
+      .update({
+        title: foodTitle.trim(),
+        image_url: foodImage.trim(),
+        ingredients: [],
+        steps: [],
+        cook_time: "",
+        servings: "",
+        category: foodCategory,
+        source_url: trimmedFoodUrl,
+        type: "grocery",
+        brand: foodBrand.trim(),
+        package_size: foodPackageSize.trim(),
+      })
+      .eq("id", existingFoodItem.id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+  if (updateError || !updatedFoodItem) {
+    console.error(
+      "Manual grocery replacement failed:",
+      updateError
+    );
+
+    showToast(
+      updateError?.message ||
+        "Could not replace this grocery item."
+    );
+
+    return;
+  }
+
+  setSelectedRecipe(updatedFoodItem);
+  showToast(`${updatedFoodItem.title} was updated.`);
+  return;
+}
+
+const { data, error } = await supabase
+  .from("recipes")
+  .insert({
+    user_id: user.id,
+    title: foodTitle.trim(),
+    image_url: foodImage.trim(),
+    ingredients: [],
+    steps: [],
+    cook_time: "",
+    servings: "",
+    category: foodCategory,
+    source_url: trimmedFoodUrl,
+    is_favorite: false,
+    is_planning_queue: false,
+    type: "grocery",
+    brand: foodBrand.trim(),
+    package_size: foodPackageSize.trim(),
+  })
+  .select()
+  .single();
+
+if (error) {
+  showToast(error.message);
+  return;
+}
 
   const newFoodItem: Recipe = {
     id: data.id,
@@ -2770,7 +2965,8 @@ const normalizedRecipeUrl = normalizeRecipeUrl(
 let duplicateQuery = supabase
   .from("recipes")
   .select("*")
-  .eq("user_id", user.id);
+  .eq("user_id", user.id)
+  .eq("type", "recipe");
 
 if (normalizedRecipeUrl) {
   duplicateQuery = duplicateQuery.eq(
@@ -2784,44 +2980,6 @@ if (normalizedRecipeUrl) {
   );
 }
 
-const normalizedImportedTitle = normalizeItemName(
-  importedData.title || "Imported Recipe"
-);
-
-const existingRecipeCard = recipes.find((recipe) => {
-  if (recipe.type === "grocery") return false;
-
-  const normalizedExistingTitle = normalizeItemName(
-    recipe.title
-  );
-
-  const normalizedExistingUrl = normalizeRecipeUrl(
-    recipe.sourceUrl || ""
-  );
-
-  return (
-    normalizedExistingTitle === normalizedImportedTitle ||
-    (
-      normalizedRecipeUrl &&
-      normalizedExistingUrl === normalizedRecipeUrl
-    )
-  );
-});
-
-if (existingRecipeCard) {
-  setSelectedRecipe(existingRecipeCard);
-
-  setRecipeUrl("");
-  setManualRecipe("");
-  setImportError("");
-  setShowManualImport(false);
-  setShowImport(false);
-
-  showToast("Recipe already exists.");
-
-  return;
-}
-
 const {
   data: existingRecipe,
   error: duplicateCheckError,
@@ -2831,38 +2989,89 @@ const {
 
 if (duplicateCheckError) {
   console.error(
-    "Could not check for duplicate recipe:",
+    "Recipe duplicate check failed:",
     duplicateCheckError
   );
 
   setImportError(
-    "Could not check this recipe. Please try again."
+    duplicateCheckError.message ||
+      "Could not check whether this recipe already exists."
   );
 
   return;
 }
+
+let savedRecipe;
 
 if (existingRecipe) {
-  const existingRecipeCard = recipes.find(
-    (recipe) => recipe.id === existingRecipe.id
+  const shouldReplace = window.confirm(
+    `${existingRecipe.title} is already in your library.\n\n` +
+      `Replace the imported recipe details?\n\n` +
+      `Your personal notes, favorite status, and planning queue status will be preserved.`
   );
 
-  if (existingRecipeCard) {
-    setSelectedRecipe(existingRecipeCard);
+  if (!shouldReplace) {
+    const existingRecipeForApp: Recipe = {
+      id: existingRecipe.id,
+      title: existingRecipe.title,
+      image: existingRecipe.image_url || "",
+      ingredients: existingRecipe.ingredients || [],
+      steps: existingRecipe.steps || [],
+      cookTime: existingRecipe.cook_time || "",
+      servings: existingRecipe.servings || "",
+      sourceUrl: existingRecipe.source_url || "",
+      isFavorite: existingRecipe.is_favorite || false,
+      createdAt: existingRecipe.created_at,
+      notes: existingRecipe.notes || "",
+    };
+
+    setSelectedRecipe(existingRecipeForApp);
+
+    showToast(
+      `${existingRecipe.title} is already in your library.`
+    );
+
+    return;
   }
 
-  setRecipeUrl("");
-  setManualRecipe("");
-  setImportError("");
-  setShowManualImport(false);
-  setShowImport(false);
+  const { data: updatedRecipe, error: updateError } =
+    await supabase
+      .from("recipes")
+      .update({
+        title: importedData.title || "Imported Recipe",
+        image_url: importedData.image || "",
+        ingredients: importedData.ingredients || [],
+        steps: importedData.steps || [],
+        cook_time: importedData.cookTime || "",
+        servings: importedData.servings || "",
+        source_url: normalizedRecipeUrl,
+        type: "recipe",
+      })
+      .eq("id", existingRecipe.id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
 
-  showToast("Recipe already exists.");
+  if (updateError || !updatedRecipe) {
+    console.error(
+      "Recipe replacement failed:",
+      updateError
+    );
 
-  return;
-}
+    setImportError(
+      updateError?.message ||
+        "Could not replace this recipe."
+    );
 
-    const { data: savedRecipe, error } = await supabase
+    return;
+  }
+
+  savedRecipe = updatedRecipe;
+
+  showToast(`${updatedRecipe.title} was updated.`);
+} else {
+  const { data: insertedRecipe, error: insertError } =
+    await supabase
       .from("recipes")
       .insert({
         user_id: user.id,
@@ -2874,30 +3083,37 @@ if (existingRecipe) {
         servings: importedData.servings || "",
         source_url: normalizedRecipeUrl,
         is_favorite: false,
+        is_planning_queue: false,
         type: "recipe",
       })
       .select()
       .single();
 
-    if (error) {
-      setImportError(error.message);
-      return;
-    }
+  if (insertError || !insertedRecipe) {
+    setImportError(
+      insertError?.message || "Could not save this recipe."
+    );
+    return;
+  }
 
-    const newRecipe: Recipe = {
-      id: savedRecipe.id,
-      title: savedRecipe.title,
-      image: savedRecipe.image_url || "",
-      ingredients: savedRecipe.ingredients || [],
-      steps: savedRecipe.steps || [],
-      cookTime: savedRecipe.cook_time || "",
-      servings: savedRecipe.servings || "",
-      sourceUrl: savedRecipe.source_url || "",
-      isFavorite: savedRecipe.is_favorite || false,
-      createdAt: savedRecipe.created_at,
-    };
+  savedRecipe = insertedRecipe;
+}
 
-   setRecipes((current) => [
+const newRecipe: Recipe = {
+  id: savedRecipe.id,
+  title: savedRecipe.title,
+  image: savedRecipe.image_url || "",
+  ingredients: savedRecipe.ingredients || [],
+  steps: savedRecipe.steps || [],
+  cookTime: savedRecipe.cook_time || "",
+  servings: savedRecipe.servings || "",
+  sourceUrl: savedRecipe.source_url || "",
+  isFavorite: savedRecipe.is_favorite || false,
+  createdAt: savedRecipe.created_at,
+  notes: savedRecipe.notes || "",
+};
+
+setRecipes((current) => [
   newRecipe,
   ...current.filter(
     (recipe) => recipe.id !== newRecipe.id
@@ -5147,19 +5363,42 @@ async function makeRecentlyMadeAgain(item: any) {
   }
 }
 
-function pantryNamesMatch(ingredient: string, pantryName: string) {
-  const cleanIngredient = normalizeItemName(ingredient);
-  const cleanPantry = normalizeItemName(pantryName);
+function pantryNamesMatch(
+  ingredient: string,
+  pantryName: string
+) {
+  const ingredientKey =
+    getIngredientMatchKey(ingredient);
 
-  if (!cleanIngredient || !cleanPantry) return false;
+  const pantryKey =
+    getIngredientMatchKey(pantryName);
 
-  if (cleanIngredient === cleanPantry) return true;
+  if (!ingredientKey || !pantryKey) {
+    return false;
+  }
 
-  const ingredientWords = cleanIngredient.split(" ");
-  const pantryWords = cleanPantry.split(" ");
+  if (ingredientKey === pantryKey) {
+    return true;
+  }
 
-  return ingredientWords.every((word) => pantryWords.includes(word)) ||
-    pantryWords.every((word) => ingredientWords.includes(word));
+  if (
+    ingredientKey.includes(pantryKey) ||
+    pantryKey.includes(ingredientKey)
+  ) {
+    return true;
+  }
+
+  const ingredientWords = ingredientKey
+    .split(" ")
+    .filter((word) => word.length > 1);
+
+  const pantryWords = pantryKey
+    .split(" ")
+    .filter((word) => word.length > 1);
+
+  return ingredientWords.some((word) =>
+    pantryWords.includes(word)
+  );
 }
 
 function getMatchingPantryItem(ingredient: string) {
@@ -7984,7 +8223,7 @@ setNewShoppingItem("");
         <div className="mt-5 flex flex-wrap gap-2">
           {smartRestockItems.map((item) => (
             <div
-              key={item}
+  key={`restock-${item}`}
               className="flex items-center overflow-hidden rounded-full border border-[#f3d7c6] bg-[#fff7f2]"
             >
               <button
@@ -8200,7 +8439,7 @@ const itemImage =
 
           return (
             <div
-              key={item}
+              key={cleanForSort(item)}
               className="grid gap-3 border-b border-[#ead7c8] py-4 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
             >
               <label className="flex min-w-0 items-center gap-3">
@@ -11815,7 +12054,7 @@ className={`rounded-full px-4 py-2 font-bold ${
     className="h-36 w-full rounded-2xl object-cover"
   />
 
-  {recipe.type === "grocery" && (
+  {recipe.type === "grocery" ? (
   canMakeRecipeFromPantry(recipe) ? (
     <div className="absolute left-3 top-3 rounded-full bg-[#315f25] px-3 py-1 text-xs font-bold text-white">
       ✓ Ready to Eat
@@ -11825,6 +12064,24 @@ className={`rounded-full px-4 py-2 font-bold ${
       ⚠ Out of Stock
     </div>
   )
+) : (
+  (() => {
+    const missingIngredients =
+      getRecipePantryGaps(recipe);
+
+    return missingIngredients.length === 0 ? (
+      <div className="absolute left-3 top-3 rounded-full bg-[#315f25] px-3 py-1 text-xs font-bold text-white">
+        ✓ Ready to Make
+      </div>
+    ) : (
+      <div className="absolute left-3 top-3 rounded-full bg-[#fff4ef] px-3 py-1 text-xs font-bold text-[#a63a0a] shadow-sm">
+        Needs {missingIngredients.length}{" "}
+        {missingIngredients.length === 1
+          ? "ingredient"
+          : "ingredients"}
+      </div>
+    );
+  })()
 )}
 </div>
 
@@ -13301,6 +13558,8 @@ console.log("selectedRecipe", selectedRecipe);
         Steps
       </label>
 
+      
+
       {publishValidationErrors.includes("steps") && (
         <p className="mb-3 text-sm font-semibold text-red-600">
           Add at least one instruction step before publishing.
@@ -13330,11 +13589,34 @@ console.log("selectedRecipe", selectedRecipe);
             : "border-[#ead7c8] bg-white"
         }`}
       />
+      <div className="mb-5 rounded-2xl border border-transparent p-4">
+  <label className="mb-2 block font-bold">
+    My Notes{" "}
+    <span className="font-normal text-[#6d5549]">
+      (optional)
+    </span>
+  </label>
+
+  <textarea
+    value={selectedRecipe.notes || ""}
+    onChange={(e) =>
+      setSelectedRecipe({
+        ...selectedRecipe,
+        notes: e.target.value,
+      })
+    }
+    placeholder="Add your own cooking notes, substitutions, reminders, or changes for next time."
+    rows={5}
+    className="w-full rounded-xl border border-[#ead7c8] bg-white p-3"
+  />
+</div>
     </div>
   </>
 )}
   </div>
 )}
+
+
 
 {recipeTourStep > 0 && (
   <div className="fixed inset-0 z-50 bg-black/45" />
@@ -13526,34 +13808,68 @@ console.log("selectedRecipe", selectedRecipe);
   <h2 className="mb-5 text-2xl font-bold">Ingredients</h2>
 
   <ul className="space-y-3">
-    {selectedRecipe.ingredients.map((ingredient, index) => (
-      <li
-        key={`${ingredient}-${index}`}
-        className="flex items-center gap-3"
-      >
-        <input
-          type="checkbox"
-          checked={checkedRecipeIngredients.includes(ingredient)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setCheckedRecipeIngredients([
-                ...checkedRecipeIngredients,
-                ingredient,
-              ]);
-            } else {
-              setCheckedRecipeIngredients(
-                checkedRecipeIngredients.filter(
-                  (item) => item !== ingredient
-                )
-              );
-            }
-          }}
-          className="h-5 w-5"
-        />
+    {selectedRecipe.ingredients.map((ingredient, index) => {
+  const matchingPantryItem =
+    getMatchingPantryItem(ingredient);
 
-        <span>{ingredient}</span>
-      </li>
-    ))}
+  const isOnHand = Boolean(matchingPantryItem);
+
+  return (
+    <li
+      key={`${ingredient}-${index}`}
+      className="flex items-start gap-3 border-b border-[#ead7c8] py-3 last:border-b-0"
+    >
+      <input
+        type="checkbox"
+        checked={checkedRecipeIngredients.includes(
+          ingredient
+        )}
+        onChange={(e) => {
+          if (e.target.checked) {
+            setCheckedRecipeIngredients([
+              ...checkedRecipeIngredients,
+              ingredient,
+            ]);
+          } else {
+            setCheckedRecipeIngredients(
+              checkedRecipeIngredients.filter(
+                (item) => item !== ingredient
+              )
+            );
+          }
+        }}
+        className="mt-1 h-5 w-5 shrink-0"
+      />
+
+      <span className="min-w-0 flex-1 leading-snug">
+        {ingredient}
+      </span>
+
+      {isOnHand ? (
+  <span className="shrink-0 rounded-full bg-[#edf7e8] px-2.5 py-1 text-xs font-bold text-[#315f25]">
+    ✓ On hand
+  </span>
+) : (
+  <div className="flex shrink-0 items-center gap-2">
+
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        addItemsToShoppingList(
+          [ingredient],
+          selectedRecipe
+        );
+      }}
+      className="rounded-full border border-[#a63a0a] px-3 py-1 text-xs font-bold text-[#a63a0a] hover:bg-[#fff4ef]"
+    >
+      + Add to Shopping List
+    </button>
+  </div>
+)}
+    </li>
+  );
+})}
   </ul>
 </div>
 
@@ -13641,16 +13957,31 @@ console.log("selectedRecipe", selectedRecipe);
 
       <h2 className="mb-4 mt-8 text-2xl font-bold">Steps</h2>
 
-      <ol className="space-y-3">
-        {selectedRecipe.steps.map((step, index) => (
-          <li
-            key={`${step}-${index}`}
-            className="rounded-2xl bg-[#f8efe6] p-4"
-          >
-            <strong>Step {index + 1}:</strong> {step}
-          </li>
-        ))}
-      </ol>
+<ol className="space-y-3">
+  {selectedRecipe.steps.map((step, index) => (
+    <li
+      key={`${step}-${index}`}
+      className="rounded-2xl bg-[#f8efe6] p-4"
+    >
+      <strong>Step {index + 1}:</strong> {step}
+    </li>
+  ))}
+</ol>
+
+<section className="mt-8 rounded-2xl border border-[#ead7c8] bg-[#fffaf5] p-6">
+  <h2 className="text-2xl font-bold">📝 My Notes</h2>
+
+  {selectedRecipe.notes?.trim() ? (
+    <p className="mt-3 whitespace-pre-wrap text-[#6d5549]">
+      {selectedRecipe.notes}
+    </p>
+  ) : (
+    <p className="mt-3 italic text-[#8d7568]">
+      No personal notes yet. Edit this recipe to add substitutions,
+      reminders, or cooking tips for next time.
+    </p>
+  )}
+</section>
     </>
   )
 )}
