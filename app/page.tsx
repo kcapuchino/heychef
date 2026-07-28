@@ -75,6 +75,15 @@ type SavedUserData = {
   
 };
 
+type ConfirmDialogOptions = {
+  title: string;
+  message: string;
+  icon?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+};
+
 
 
 const meals = ["Breakfast", "Lunch", "Dinner"];
@@ -515,6 +524,13 @@ const [
   showExitPantryReviewConfirm,
   setShowExitPantryReviewConfirm,
 ] = useState(false);
+
+const [confirmDialog, setConfirmDialog] =
+  useState<ConfirmDialogOptions | null>(null);
+
+const confirmDialogResolver = useRef<
+  ((confirmed: boolean) => void) | null
+>(null);
 
   
   const [shoppingList, setShoppingList] = useState<string[]>([])
@@ -2468,11 +2484,15 @@ if (duplicateCheckError) {
 }
 
 if (existingFoodItem) {
-  const shouldReplace = window.confirm(
-    `${existingFoodItem.title} is already in your library.\n\n` +
-      `Replace the imported product details?\n\n` +
-      `Your personal notes and favorite status will be preserved.`
-  );
+  const shouldReplace = await requestConfirmation({
+  title: "Recipe Already Exists",
+  message:
+    `${existingFoodItem.title} is already in your Recipe Library. ` +
+    `Replacing it will update the imported recipe details while preserving ` +
+    `your personal notes, favorite status, and planning queue status.`,
+  confirmLabel: "Replace Recipe",
+  cancelLabel: "Open Existing",
+});
 
   if (!shouldReplace) {
     setSelectedRecipe(existingFoodItem);
@@ -2689,11 +2709,15 @@ if (trimmedFoodUrl) {
 }
 
 if (existingFoodItem) {
-  const shouldReplace = window.confirm(
-    `${existingFoodItem.title} is already in your library.\n\n` +
-      `Replace its grocery details?\n\n` +
-      `Your notes, favorite status, and planning queue status will be preserved.`
-  );
+  const shouldReplace = await requestConfirmation({
+  title: "Food Item Already Exists",
+  message:
+    `${existingFoodItem.title} is already in your library. ` +
+    `Replacing it will update the imported product details while preserving ` +
+    `your notes, favorite status, and planning queue status.`,
+  confirmLabel: "Replace Food Item",
+  cancelLabel: "Open Existing",
+});
 
   if (!shouldReplace) {
     setSelectedRecipe(existingFoodItem);
@@ -2988,30 +3012,18 @@ const normalizedRecipeUrl = normalizeRecipeUrl(
   ""
 );
 
-let duplicateQuery = supabase
-  .from("recipes")
-  .select("*")
-  .eq("user_id", user.id)
-  .eq("type", "recipe");
+const importedTitle =
+  importedData.title || "Imported Recipe";
 
-if (normalizedRecipeUrl) {
-  duplicateQuery = duplicateQuery.eq(
-    "source_url",
-    normalizedRecipeUrl
-  );
-} else {
-  duplicateQuery = duplicateQuery.ilike(
-    "title",
-    importedData.title || "Imported Recipe"
-  );
-}
+const normalizedImportedTitle =
+  normalizeItemName(importedTitle);
 
-const {
-  data: existingRecipe,
-  error: duplicateCheckError,
-} = await duplicateQuery
-  .limit(1)
-  .maybeSingle();
+const { data: possibleDuplicates, error: duplicateCheckError } =
+  await supabase
+    .from("recipes")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("type", "recipe");
 
 if (duplicateCheckError) {
   console.error(
@@ -3027,14 +3039,39 @@ if (duplicateCheckError) {
   return;
 }
 
+const existingRecipe =
+  (possibleDuplicates || []).find((recipe) => {
+    const existingUrl = normalizeRecipeUrl(
+      recipe.source_url || ""
+    );
+
+    const existingTitle = normalizeItemName(
+      recipe.title || ""
+    );
+
+    const urlMatches =
+      Boolean(normalizedRecipeUrl) &&
+      existingUrl === normalizedRecipeUrl;
+
+    const titleMatches =
+      Boolean(normalizedImportedTitle) &&
+      existingTitle === normalizedImportedTitle;
+
+    return urlMatches || titleMatches;
+  }) || null;
+
 let savedRecipe;
 
 if (existingRecipe) {
-  const shouldReplace = window.confirm(
-    `${existingRecipe.title} is already in your library.\n\n` +
-      `Replace the imported recipe details?\n\n` +
-      `Your personal notes, favorite status, and planning queue status will be preserved.`
-  );
+  const shouldReplace = await requestConfirmation({
+  title: "Recipe Already Exists",
+  message:
+    `${existingRecipe.title} is already in your Recipe Library. ` +
+    `Replacing it will update the imported recipe details while preserving ` +
+    `your personal notes, favorite status, and planning queue status.`,
+  confirmLabel: "Replace Recipe",
+  cancelLabel: "Open Existing",
+});
 
   if (!shouldReplace) {
     const existingRecipeForApp: Recipe = {
@@ -3398,6 +3435,21 @@ function showToast(message: string) {
   setTimeout(() => {
     setToastMessage("");
   }, 2500);
+}
+
+function requestConfirmation(
+  options: ConfirmDialogOptions
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    confirmDialogResolver.current = resolve;
+    setConfirmDialog(options);
+  });
+}
+
+function finishConfirmation(confirmed: boolean) {
+  confirmDialogResolver.current?.(confirmed);
+  confirmDialogResolver.current = null;
+  setConfirmDialog(null);
 }
 
 function getGreeting() {
@@ -14134,6 +14186,8 @@ console.log("selectedRecipe", selectedRecipe);
   </div>
 )}
 
+
+
  {showPublishModal && selectedRecipe && (
   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4">
     <div
@@ -14286,6 +14340,7 @@ console.log("selectedRecipe", selectedRecipe);
 
           </div>
         </section>
+        
         {recipeToDelete && (
   <div className="fixed inset-0 z-[6000] flex items-center justify-center bg-black/45 px-4">
     <div className="w-full max-w-md rounded-[2rem] bg-[#2b1b14] p-6 shadow-2xl">
@@ -14395,8 +14450,10 @@ console.log("selectedRecipe", selectedRecipe);
   </div>
 )}
 
+
+
 {toastMessage && (
-  <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
+  <div className="fixed left-1/2 top-1/2 z-[6000] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-[#2b1b14] px-5 py-4 text-center font-semibold text-white shadow-xl">
     {toastMessage}
   </div>
 )}
@@ -16470,7 +16527,60 @@ window.history.pushState(
 )}
       </section>
 
-      {showPantryModal && PantryModal()}
+     {confirmDialog && (
+  <div
+    className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#000000cc] px-4 py-8 backdrop-blur-sm"
+    onMouseDown={() => finishConfirmation(false)}
+  >
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hey-chef-confirm-title"
+      onMouseDown={(event) => event.stopPropagation()}
+      className="w-full max-w-md rounded-[2rem] border border-[#4b3127] bg-[#2b1a12] p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+    >
+      <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-[#fff4ef] text-3xl shadow-md">
+        {confirmDialog.icon || "👩‍🍳"}
+      </div>
+
+      <h2
+        id="hey-chef-confirm-title"
+        className="text-3xl font-bold text-[#fffaf5]"
+      >
+        {confirmDialog.title}
+      </h2>
+
+      <p className="mt-5 text-lg leading-8 text-[#ead7c8]">
+        {confirmDialog.message}
+      </p>
+
+      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+        <button
+          type="button"
+          onClick={() => finishConfirmation(false)}
+          className="rounded-full border border-[#ead7c8] bg-transparent px-7 py-3 font-bold text-[#ead7c8] transition hover:bg-[#ffffff12]"
+        >
+          {confirmDialog.cancelLabel || "Cancel"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => finishConfirmation(true)}
+          className={`rounded-full px-7 py-3 font-bold text-white transition ${
+            confirmDialog.destructive
+              ? "bg-red-700 hover:bg-red-800"
+              : "bg-[#a63a0a] hover:bg-[#8f3108]"
+          }`}
+        >
+          {confirmDialog.confirmLabel || "Continue"}
+        </button>
+      </div>
+    </section>
+  </div>
+)}
+
+{showPantryModal && PantryModal()}
+
     
 
       {toastMessage && (
